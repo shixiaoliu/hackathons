@@ -1,17 +1,24 @@
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useUserRole } from '../context/UserRoleContext';
+import { useTask } from '../context/TaskContext';
+import { useAuthContext } from '../context/AuthContext';
+import { useAccount } from 'wagmi';
 import { Clock, Award, ChevronLeft, Calendar, User, CheckCircle, AlertTriangle } from 'lucide-react';
 import Button from '../components/common/Button';
 import Card, { CardBody, CardHeader, CardFooter } from '../components/common/Card';
-import { mockTasks } from '../data/mockTasks';
 import { formatDateTime, formatDate } from '../utils/dateUtils';
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { userRole } = useUserRole();
+  const { tasks, assignTask, submitTask, approveTask, rejectTask } = useTask();
+  const { user } = useAuthContext();
+  const { address } = useAccount();
   
-  const task = mockTasks.find(task => task.id === id);
+  // 从TaskContext中查找任务而不是mockTasks
+  const task = tasks.find(task => task.id === id);
   
   if (!task) {
     return (
@@ -26,11 +33,24 @@ const TaskDetail = () => {
   }
   
   const isParent = userRole === 'parent';
-  const isChild = userRole === 'child';
+  const isChild = userRole === 'child' || user?.role === 'child';
   const isOverdue = new Date(task.deadline) < new Date() && task.status === 'open';
   
+  const isAssignedToCurrentUser = task?.assignedTo && address && 
+    task.assignedTo.toLowerCase() === address.toLowerCase();
+  
   const canAcceptTask = isChild && task.status === 'open';
-  const canSubmitTask = isChild && task.status === 'in-progress' && task.assignedTo;
+  const canSubmitTask = isChild && task.status === 'in-progress';
+
+  // 添加调试信息
+  console.log('[TaskDetail Debug] userRole:', userRole);
+  console.log('[TaskDetail Debug] user?.role:', user?.role);
+  console.log('[TaskDetail Debug] isChild:', isChild);
+  console.log('[TaskDetail Debug] task.status:', task.status);
+  console.log('[TaskDetail Debug] task.assignedTo:', task.assignedTo);
+  console.log('[TaskDetail Debug] current address:', address);
+  console.log('[TaskDetail Debug] isAssignedToCurrentUser:', isAssignedToCurrentUser);
+  console.log('[TaskDetail Debug] canSubmitTask:', canSubmitTask);
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -45,6 +65,7 @@ const TaskDetail = () => {
       </div>
       
       <Card>
+        {/* Task image if available */}
         {task.imageUrl && (
           <div className="h-64 overflow-hidden">
             <img 
@@ -56,172 +77,205 @@ const TaskDetail = () => {
         )}
         
         <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">{task.title}</h1>
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{task.title}</h1>
+              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                <div className="flex items-center">
+                  <Calendar className="h-4 w-4 mr-1" />
+                  <span>Due {formatDate(task.deadline)}</span>
+                </div>
+                <div className="flex items-center">
+                  <Award className="h-4 w-4 mr-1" />
+                  <span className="font-medium text-primary-600">{task.reward} ETH</span>
+                </div>
+              </div>
+            </div>
             
-            <div className="mt-2 md:mt-0 flex items-center">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium
-                ${task.status === 'open' ? 'bg-blue-100 text-blue-800' : ''}
-                ${task.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' : ''}
-                ${task.status === 'completed' ? 'bg-orange-100 text-orange-800' : ''}
-                ${task.status === 'approved' ? 'bg-green-100 text-green-800' : ''}
-                ${task.status === 'rejected' ? 'bg-red-100 text-red-800' : ''}
-              `}>
-                {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+            <div className="flex flex-col items-end space-y-2">
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                task.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                task.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {task.difficulty.charAt(0).toUpperCase() + task.difficulty.slice(1)}
               </span>
               
-              <span className="ml-2 px-3 py-1 rounded-full text-sm font-medium
-                ${task.difficulty === 'easy' ? 'bg-green-100 text-green-800' : ''}
-                ${task.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' : ''}
-                ${task.difficulty === 'hard' ? 'bg-red-100 text-red-800' : ''}
-              ">
-                {task.difficulty.charAt(0).toUpperCase() + task.difficulty.slice(1)}
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                task.status === 'open' ? 'bg-blue-100 text-blue-800' :
+                task.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
+                task.status === 'completed' ? 'bg-orange-100 text-orange-800' :
+                task.status === 'approved' ? 'bg-green-100 text-green-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {task.status === 'in-progress' ? 'In Progress' : 
+                 task.status.charAt(0).toUpperCase() + task.status.slice(1)}
               </span>
             </div>
           </div>
         </CardHeader>
         
         <CardBody>
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Description</h2>
-              <p className="text-gray-700">{task.description}</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Overdue warning */}
+          {isOverdue && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <div className="flex items-center">
-                <Calendar className="h-5 w-5 text-gray-500 mr-2" />
-                <div>
-                  <p className="text-sm text-gray-500">Deadline</p>
-                  <p className={`text-sm font-medium ${isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
+                <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
+                <span className="text-red-700 font-medium">This task is overdue!</span>
+              </div>
+            </div>
+          )}
+          
+          {/* Task description */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Description</h3>
+            <p className="text-gray-700 leading-relaxed">{task.description}</p>
+          </div>
+          
+          {/* Completion criteria */}
+          {task.completionCriteria && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Completion Criteria</h3>
+              <p className="text-gray-700 leading-relaxed">{task.completionCriteria}</p>
+            </div>
+          )}
+          
+          {/* Task details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">Task Details</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Created:</span>
+                  <span className="text-gray-900">{formatDateTime(task.createdAt)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Deadline:</span>
+                  <span className={`font-medium ${
+                    isOverdue ? 'text-red-600' : 'text-gray-900'
+                  }`}>
                     {formatDateTime(task.deadline)}
-                    {isOverdue && ' (Overdue)'}
-                  </p>
+                  </span>
                 </div>
-              </div>
-              
-              <div className="flex items-center">
-                <Award className="h-5 w-5 text-gray-500 mr-2" />
-                <div>
-                  <p className="text-sm text-gray-500">Reward</p>
-                  <p className="text-sm font-medium text-gray-900">{task.reward} ETH</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <User className="h-5 w-5 text-gray-500 mr-2" />
-                <div>
-                  <p className="text-sm text-gray-500">Created By</p>
-                  <p className="text-sm font-medium text-gray-900">
-                    {task.createdBy.substring(0, 6)}...{task.createdBy.substring(task.createdBy.length - 4)}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <Clock className="h-5 w-5 text-gray-500 mr-2" />
-                <div>
-                  <p className="text-sm text-gray-500">Created On</p>
-                  <p className="text-sm font-medium text-gray-900">{formatDate(task.createdAt)}</p>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Reward:</span>
+                  <span className="text-primary-600 font-medium">{task.reward} ETH</span>
                 </div>
               </div>
             </div>
             
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Completion Criteria</h2>
-              <div className="bg-gray-50 p-4 rounded-md">
-                <p className="text-gray-700">{task.completionCriteria}</p>
-              </div>
-            </div>
-            
-            {task.status === 'completed' && task.proof && (
+            {task.assignedTo && (
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-2">Submission Proof</h2>
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <p className="text-gray-700 mb-4">{task.proof.description}</p>
-                  {task.proof.images.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {task.proof.images.map((image, index) => (
-                        <img 
-                          key={index} 
-                          src={image} 
-                          alt={`Proof ${index + 1}`} 
-                          className="rounded-md w-full h-48 object-cover"
-                        />
-                      ))}
+                <h4 className="font-medium text-gray-900 mb-2">Assignment</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Assigned to:</span>
+                    <span className="text-gray-900 font-mono text-xs">
+                      {task.assignedTo.slice(0, 6)}...{task.assignedTo.slice(-4)}
+                    </span>
+                  </div>
+                  {task.updatedAt !== task.createdAt && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Last updated:</span>
+                      <span className="text-gray-900">{formatDateTime(task.updatedAt)}</span>
                     </div>
                   )}
-                  <p className="text-sm text-gray-500 mt-4">
-                    Submitted on {formatDateTime(task.proof.submittedAt)}
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            {(task.status === 'approved' || task.status === 'rejected') && (
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                  {task.status === 'approved' ? 'Approval' : 'Rejection'} Details
-                </h2>
-                <div className={`p-4 rounded-md ${
-                  task.status === 'approved' ? 'bg-green-50' : 'bg-red-50'
-                }`}>
-                  <div className="flex items-start">
-                    {task.status === 'approved' ? (
-                      <CheckCircle className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
-                    ) : (
-                      <AlertTriangle className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
-                    )}
-                    <div>
-                      <p className={`font-medium ${
-                        task.status === 'approved' ? 'text-green-800' : 'text-red-800'
-                      }`}>
-                        {task.status === 'approved' 
-                          ? 'Task approved and reward sent!' 
-                          : 'Task was rejected'}
-                      </p>
-                      <p className="text-sm mt-1">
-                        {task.status === 'approved'
-                          ? `Reward of ${task.reward} ETH has been transferred to your wallet.`
-                          : 'The submission did not meet the required criteria. Please try again with improvements.'}
-                      </p>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
           </div>
+          
+          {/* Submission proof */}
+          {task.submissionProof && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Submission</h3>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center mb-3">
+                  <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                  <span className="font-medium text-gray-900">Task Completed</span>
+                  <span className="ml-auto text-sm text-gray-500">
+                    {formatDateTime(task.submissionProof.submittedAt)}
+                  </span>
+                </div>
+                
+                {task.submissionProof.description && (
+                  <p className="text-gray-700 mb-3">{task.submissionProof.description}</p>
+                )}
+                
+                {task.submissionProof.imageUrl && (
+                  <div className="mt-3">
+                    <img 
+                      src={task.submissionProof.imageUrl} 
+                      alt="Task completion proof" 
+                      className="max-w-full h-auto rounded-lg border"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </CardBody>
         
-        <CardFooter className="flex justify-between">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate(isParent ? '/parent' : '/child')}
-          >
-            Back
-          </Button>
-          
-          <div className="flex space-x-3">
-            {canAcceptTask && (
-              <Button onClick={() => {
-                // In a real app, this would assign the task to the user
-                console.log('Accepting task:', task.id);
-                alert('Task accepted! You can now submit it when completed.');
-              }}>
-                Accept Task
-              </Button>
-            )}
+        <CardFooter>
+          <div className="flex flex-col w-full">
+            <div className="flex justify-between items-center w-full">
+              <div className="flex items-center space-x-2">
+                {task.status === 'approved' && (
+                  <div className="flex items-center text-green-600">
+                    <CheckCircle className="h-5 w-5 mr-1" />
+                    <span className="font-medium">Approved</span>
+                  </div>
+                )}
+                
+                {task.status === 'rejected' && (
+                  <div className="flex items-center text-red-600">
+                    <AlertTriangle className="h-5 w-5 mr-1" />
+                    <span className="font-medium">Rejected</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex space-x-3">
+                {/* Child actions */}
+                {canAcceptTask && (
+                  <Button onClick={() => {
+                    if (address && user?.id) {
+                      assignTask(task.id, address, user.id.toString());
+                    }
+                  }}>
+                    Accept Task
+                  </Button>
+                )}
+                
+                {canSubmitTask && (
+                  <Button onClick={() => {
+                    const proof = {
+                      description: '任务已完成',
+                      submittedAt: new Date().toISOString()
+                    };
+                    submitTask(task.id, proof);
+                    // 提交后留在当前页面，或导航到子仪表板
+                    // navigate('/child');
+                  }}>
+                    Complete Task
+                  </Button>
+                )}
+              </div>
+            </div>
             
-            {canSubmitTask && (
-              <Button onClick={() => navigate(`/submit-task/${task.id}`)}>
-                Submit Proof
-              </Button>
-            )}
-            
+            {/* Parent actions - 移动到右下角 */}
             {isParent && task.status === 'completed' && (
-              <Button onClick={() => navigate(`/parent/review/${task.id}`)}>
-                Review Submission
-              </Button>
+              <div className="flex justify-end mt-4 space-x-2">
+                <Button 
+                  variant="secondary"
+                  onClick={() => rejectTask(task.id)}
+                >
+                  Reject
+                </Button>
+                <Button onClick={() => approveTask(task.id)}>
+                  Approve
+                </Button>
+              </div>
             )}
           </div>
         </CardFooter>

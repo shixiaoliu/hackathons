@@ -9,20 +9,25 @@ import ParentTaskReview from './ParentTaskReview';
 import ChildrenManager from '../components/family/ChildrenManager';
 import { useFamily } from '../context/FamilyContext';
 import { useTask } from '../context/TaskContext';
+import { useAuthContext } from '../context/AuthContext';
 
 const ParentDashboard = () => {
   const navigate = useNavigate();
   const { address } = useAccount();
+  const { user } = useAuthContext();
   const [filter, setFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('tasks');
   const { children, selectedChild } = useFamily();
   const { tasks, getTasksForParent, approveTask, rejectTask } = useTask();
   
+  // 获取当前用户的钱包地址（优先使用user.wallet_address，其次使用wagmi的address）
+  const currentWalletAddress = user?.wallet_address || address;
+  
   // 获取当前家长的任务
-  const parentTasks = address ? getTasksForParent(address) : [];
+  const parentTasks = currentWalletAddress ? getTasksForParent(currentWalletAddress) : [];
   
   // 添加调试信息
-  console.log('[ParentDashboard] address:', address);
+  console.log('[ParentDashboard] currentWalletAddress:', currentWalletAddress);
   console.log('[ParentDashboard] parentTasks:', parentTasks);
   console.log('[ParentDashboard] selectedChild:', selectedChild);
   console.log('[ParentDashboard] filter:', filter);
@@ -202,32 +207,37 @@ const ParentDashboard = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredTasks.map((task) => (
                       <div key={task.id} className="relative">
-                        <TaskCard task={task} onClick={() => navigate(`/task/${task.id}`)} />
-                        {task.status === 'completed' && (
-                          <div className="absolute top-2 right-2 flex gap-1">
-                            <Button 
-                              size="sm" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleApproveTask(task.id);
-                              }}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              Approve
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="secondary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRejectTask(task.id);
-                              }}
-                              className="bg-red-600 hover:bg-red-700 text-white"
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        )}
+                        <TaskCard 
+                          task={task} 
+                          onClick={() => navigate(`/task/${task.id}`)} 
+                          actionButtons={
+                            task.status === 'completed' ? (
+                              <div className="flex gap-1 mt-2 justify-end">
+                                <Button 
+                                  size="sm" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleApproveTask(task.id);
+                                  }}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  Approve
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="secondary"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRejectTask(task.id);
+                                  }}
+                                  className="bg-red-600 hover:bg-red-700 text-white"
+                                >
+                                  Reject
+                                </Button>
+                              </div>
+                            ) : null
+                          }
+                        />
                       </div>
                     ))}
                   </div>
@@ -235,9 +245,11 @@ const ParentDashboard = () => {
                   {filteredTasks.length === 0 && (
                     <div className="text-center py-12">
                       <p className="text-gray-500 text-lg mb-4">No tasks found</p>
-                      <Button onClick={() => navigate('/create-task')}>
-                        Create First Task
-                      </Button>
+                      {filter !== 'pending' && filter !== 'completed' && (
+                        <Button onClick={() => navigate('/create-task')}>
+                          Create First Task
+                        </Button>
+                      )}
                     </div>
                   )}
                 </>

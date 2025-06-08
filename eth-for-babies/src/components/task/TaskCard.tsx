@@ -9,10 +9,12 @@ interface TaskCardProps {
   task: Task;
   onClick?: () => void;
   onTakeTask?: () => void;
+  onCompleteTask?: () => void;
   showTakeButton?: boolean;
+  actionButtons?: React.ReactNode;
 }
 
-const TaskCard = ({ task, onClick, onTakeTask, showTakeButton = false }: TaskCardProps) => {
+const TaskCard = ({ task, onClick, onTakeTask, onCompleteTask, showTakeButton = false, actionButtons }: TaskCardProps) => {
   const isOverdue = new Date(task.deadline) < new Date() && task.status === 'open';
   
   const statusColors = {
@@ -70,31 +72,53 @@ const TaskCard = ({ task, onClick, onTakeTask, showTakeButton = false }: TaskCar
         </div>
       </CardBody>
       
-      <CardFooter className="flex justify-between items-center py-3 bg-gray-50">
-        <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[task.status]}`}>
-          {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
-        </span>
-        
-        <div className="flex items-center gap-2">
-          {showTakeButton && task.status === 'open' && onTakeTask && (
-            <Button 
-              size="sm" 
-              onClick={(e) => {
-                e.stopPropagation();
-                onTakeTask();
-              }}
-            >
-              Take Task
-            </Button>
-          )}
+      <CardFooter className="flex flex-col py-3 bg-gray-50">
+        <div className="flex justify-between items-center w-full">
+          <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[task.status]}`}>
+            {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+          </span>
           
-          {isOverdue && (
-            <div className="flex items-center text-xs text-red-500">
-              <AlertTriangle className="h-3 w-3 mr-1" />
-              Overdue
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {showTakeButton && task.status === 'open' && onTakeTask && (
+              <Button 
+                size="sm" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTakeTask();
+                }}
+              >
+                Take Task
+              </Button>
+            )}
+            
+            {task.status === 'in-progress' && task.assignedTo && (
+              <Button 
+                size="sm"
+                variant="success" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (typeof onCompleteTask === 'function') {
+                    onCompleteTask();
+                  } else if (onClick) {
+                    onClick();
+                  }
+                }}
+              >
+                Complete
+              </Button>
+            )}
+            
+            {isOverdue && (
+              <div className="flex items-center text-xs text-red-500">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Overdue
+              </div>
+            )}
+          </div>
         </div>
+        
+        {/* 渲染自定义操作按钮 */}
+        {actionButtons}
       </CardFooter>
     </Card>
   );

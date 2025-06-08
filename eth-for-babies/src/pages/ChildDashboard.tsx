@@ -2,27 +2,39 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { Filter, Wallet, History, Clock, User } from 'lucide-react';
-import { mockTasks } from '../data/mockTasks';
 import TaskCard from '../components/task/TaskCard';
 import Card, { CardBody, CardHeader } from '../components/common/Card';
 import { formatDistanceToNow } from '../utils/dateUtils';
 import { useFamily } from '../context/FamilyContext';
 import { useTask } from '../context/TaskContext';
+import { useAuthContext } from '../context/AuthContext';
 
 const ChildDashboard = () => {
   const navigate = useNavigate();
   const { address } = useAccount();
+  const { user } = useAuthContext();
   const { currentChild, loginAsChild, getAllChildren, findChildByAddress } = useFamily();
-  const { tasks, assignTask, getTasksForChild, getAvailableTasks } = useTask();
+  const { tasks, assignTask, getTasksForChild, getAvailableTasks, submitTask } = useTask();
   const [filter, setFilter] = useState('available');
   const [showChildSelector, setShowChildSelector] = useState(false);
 
+  // 获取当前用户的钱包地址（优先使用user.wallet_address，其次使用wagmi的address）
+  const currentWalletAddress = user?.wallet_address || address;
+
+  // 添加调试信息
+  console.log('[ChildDashboard] currentWalletAddress:', currentWalletAddress);
+  console.log('[ChildDashboard] currentChild:', currentChild);
+  console.log('[ChildDashboard] getAllChildren():', getAllChildren());
+  console.log('[ChildDashboard] tasks:', tasks);
+
   // 如果没有当前child，显示child选择器
-  if (!currentChild && address) {
+  if (!currentChild && currentWalletAddress) {
     const allChildren = getAllChildren();
+    console.log('[ChildDashboard] allChildren:', allChildren);
     const availableChildren = allChildren.filter(child => 
-      child.walletAddress.toLowerCase() === address.toLowerCase()
+      child.walletAddress.toLowerCase() === currentWalletAddress.toLowerCase()
     );
+    console.log('[ChildDashboard] availableChildren:', availableChildren);
 
     if (availableChildren.length === 0) {
       return (
@@ -31,12 +43,23 @@ const ChildDashboard = () => {
             <User className="h-12 w-12 text-yellow-600 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Child Account Not Found</h2>
             <p className="text-gray-600 mb-4">
-              Your wallet address ({address}) is not registered as a child account.
+              Your wallet address ({currentWalletAddress}) is not registered as a child account.
               Please ask your parent to add you as a child first.
             </p>
+            <div className="mt-4 p-4 bg-gray-100 rounded text-sm text-left">
+              <p className="font-semibold mb-2">Debug Info:</p>
+              <p>Current Address: {currentWalletAddress}</p>
+              <p>Available Children: {allChildren.length}</p>
+              <div className="mt-2">
+                <p>Children Addresses:</p>
+                {allChildren.map(child => (
+                  <p key={child.id} className="ml-2">- {child.name}: {child.walletAddress}</p>
+                ))}
+              </div>
+            </div>
             <button
               onClick={() => navigate('/')}
-              className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
+              className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 mt-4"
             >
               Go Back to Home
             </button>
@@ -47,6 +70,7 @@ const ChildDashboard = () => {
 
     // 自动登录找到的child
     const child = availableChildren[0];
+    console.log('[ChildDashboard] Auto-login child:', child);
     loginAsChild(child.walletAddress);
   }
 
@@ -95,7 +119,7 @@ const ChildDashboard = () => {
     .reduce((total, task) => total + parseFloat(task.reward), 0);
 
   // 处理任务分配
-  const handleTakeTask = (taskId) => {
+  const handleTakeTask = (taskId: string) => {
     if (!currentChild) {
       alert('Please login as a child first');
       return;
@@ -105,7 +129,7 @@ const ChildDashboard = () => {
     alert('Task assigned successfully!');
   };
 
-  // Mock recent transactions for demonstration
+  // 获取最近的交易记录
   const recentTransactions = childTasks
     .filter(task => task.status === 'approved')
     .slice(0, 3);
@@ -241,6 +265,15 @@ const ChildDashboard = () => {
                    task={task} 
                    onClick={() => navigate(`/task/${task.id}`)}
                    onTakeTask={filter === 'available' ? () => handleTakeTask(task.id) : undefined}
+                   onCompleteTask={task.status === 'in-progress' ? () => {
+                     // 直接在仪表盘完成任务
+                     const proof = {
+                       description: '任务已完成',
+                       submittedAt: new Date().toISOString()
+                     };
+                     submitTask(task.id, proof);
+                     alert('任务已标记为完成！');
+                   } : undefined}
                    showTakeButton={filter === 'available'}
                  />
               ))}

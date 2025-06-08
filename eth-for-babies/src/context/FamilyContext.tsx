@@ -16,6 +16,7 @@ interface FamilyContextType {
   currentChild: Child | null;
   loginAsChild: (walletAddress: string) => Child | null;
   getAllChildren: () => Child[];
+  findChildByAddress: (address: string) => Child | null;
 }
 
 const FamilyContext = createContext<FamilyContextType | undefined>(undefined);
@@ -28,6 +29,7 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
   const [isParent, setIsParent] = useState(false);
   const [currentChild, setCurrentChild] = useState<Child | null>(null);
   const [loading, setLoading] = useState(false);
+  const [allChildren, setAllChildren] = useState<Child[]>([]);
 
   // 加载用户数据
   useEffect(() => {
@@ -40,6 +42,8 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
       setCurrentChild(null);
       setSelectedChild(null);
       setIsParent(false);
+      // 未登录时使用模拟数据
+      setAllChildren(getAllChildrenFromStorage());
     }
   }, [isAuthenticated, user]);
 
@@ -100,15 +104,18 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
               createdAt: currentFamily.created_at,
               children
             });
+            setAllChildren(children);
           } else {
-            console.error('[FamilyContext] 加载children失败:', childrenResponse.error);
-            // 如果加载children失败，设置空的children数组
-             setFamily({
-               id: currentFamily.id.toString(),
-               parentAddress: currentFamily.parent_address,
-               createdAt: currentFamily.created_at,
-               children: []
-             });
+            console.error('[FamilyContext] 加载children失败，使用模拟数据:', childrenResponse.error);
+            // 如果加载children失败，使用模拟数据
+            const mockChildren = getAllChildrenFromStorage();
+            setFamily({
+              id: currentFamily.id.toString(),
+              parentAddress: currentFamily.parent_address,
+              createdAt: currentFamily.created_at,
+              children: mockChildren
+            });
+            setAllChildren(mockChildren);
           }
         }
       } else {
@@ -117,7 +124,7 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
         if (childResponse.success && childResponse.data) {
           const child = childResponse.data.find(c => c.wallet_address === user.wallet_address);
           if (child) {
-            setCurrentChild({
+            const childData = {
               id: child.id.toString(),
               name: child.name,
               walletAddress: child.wallet_address,
@@ -127,12 +134,40 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
               createdAt: child.created_at,
               totalTasksCompleted: child.total_tasks_completed,
               totalRewardsEarned: child.total_rewards_earned,
-            });
+            };
+            setCurrentChild(childData);
+            // 为child用户也设置allChildren数据
+            setAllChildren(getAllChildrenFromStorage());
+          } else {
+            // 如果API中没有找到child，使用模拟数据
+            const mockChildren = getAllChildrenFromStorage();
+            const mockChild = mockChildren.find(c => c.walletAddress.toLowerCase() === user.wallet_address.toLowerCase());
+            if (mockChild) {
+              setCurrentChild(mockChild);
+            }
+            setAllChildren(mockChildren);
           }
+        } else {
+          // API调用失败，使用模拟数据
+          const mockChildren = getAllChildrenFromStorage();
+          const mockChild = mockChildren.find(c => c.walletAddress.toLowerCase() === (user.wallet_address || '').toLowerCase());
+          if (mockChild) {
+            setCurrentChild(mockChild);
+          }
+          setAllChildren(mockChildren);
         }
       }
     } catch (error) {
-      console.error('加载用户数据失败:', error);
+      console.error('加载用户数据失败，使用模拟数据:', error);
+      // 发生错误时使用模拟数据
+      const mockChildren = getAllChildrenFromStorage();
+      setAllChildren(mockChildren);
+      if (user && user.role === 'child') {
+        const mockChild = mockChildren.find(c => c.walletAddress.toLowerCase() === (user.wallet_address || '').toLowerCase());
+        if (mockChild) {
+          setCurrentChild(mockChild);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -230,25 +265,30 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const loginAsChild = (walletAddress: string): Child | null => {
-    // 从当前family的children中查找
-    const child = family?.children.find(child => child.walletAddress === walletAddress) || null;
+    // 从allChildren中查找，而不是只从family.children中查找
+    const child = allChildren.find(child => child.walletAddress.toLowerCase() === walletAddress.toLowerCase()) || null;
     if (child) {
       setCurrentChild(child);
       setIsParent(false);
-      setFamily(null);
+      // 不要清空family，保持children数据可用
       return child;
     }
     return null;
   };
 
   const getAllChildren = (): Child[] => {
-    return family?.children || [];
+    // 优先返回allChildren，如果为空则返回模拟数据
+    return allChildren.length > 0 ? allChildren : getAllChildrenFromStorage();
+  };
+
+  const findChildByAddress = (address: string): Child | null => {
+    return getAllChildren().find(child => child.walletAddress.toLowerCase() === address.toLowerCase()) || null;
   };
 
   return (
     <FamilyContext.Provider value={{
       family,
-      children: isParent ? (family?.children || []) : [],
+      children: isParent ? (family?.children || []) : allChildren,
       selectedChild,
       addChild,
       selectChild,
@@ -257,7 +297,8 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
       isParent,
       currentChild,
       loginAsChild,
-      getAllChildren
+      getAllChildren,
+      findChildByAddress
     }}>
       {children}
     </FamilyContext.Provider>
@@ -280,21 +321,15 @@ function createNewFamily(address: string): Family {
   };
 }
 
-function findChildByAddress(address: string): Child | null {
-  // 这个函数现在需要通过context来访问真实数据
-  // 暂时返回null，实际使用时应该通过context获取
-  return null;
-}
-
 function getAllChildrenFromStorage(): Child[] {
   // 模拟从存储中获取所有孩子的数据
   const mockChildren = [
     {
       id: '1',
-      name: 'Alice',
+      name: 'emma',
       walletAddress: '0x6E296d7Ac7b8F492880CE4550262C97daa34eC16',
       age: 10,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alice',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=emma',
       parentAddress: '0x1234567890abcdef1234567890abcdef12345678',
       createdAt: new Date().toISOString(),
       totalTasksCompleted: 5,
@@ -303,7 +338,7 @@ function getAllChildrenFromStorage(): Child[] {
     {
       id: '2',
       name: 'Bob',
-      walletAddress: '0x6E296d7Ac7b8F492880CE4550262C97daa34eC16',
+      walletAddress: '0x6E296d7Ac7b8F492880CE4550262C97daa34eC17',
       age: 8,
       avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bob',
       parentAddress: '0x1234567890abcdef1234567890abcdef12345678',
@@ -314,7 +349,7 @@ function getAllChildrenFromStorage(): Child[] {
     {
       id: '3',
       name: 'Charlie',
-      walletAddress: '0x6E296d7Ac7b8F492880CE4550262C97daa34eC16',
+      walletAddress: '0x6E296d7Ac7b8F492880CE4550262C97daa34eC18',
       age: 12,
       avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie',
       parentAddress: '0x1234567890abcdef1234567890abcdef12345678',

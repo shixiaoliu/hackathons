@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -6,6 +6,7 @@ import { CheckCircle, Shield, Award, ChevronRight, User, Settings } from 'lucide
 import Button from '../components/common/Button';
 import { useUserRole } from '../context/UserRoleContext';
 import { useFamily } from '../context/FamilyContext';
+import { useAuthContext } from '../context/AuthContext';
 import ChildLoginModal from '../components/auth/ChildLoginModal';
 import { ApiTest } from '../components/ApiTest';
 
@@ -15,19 +16,23 @@ interface HomeProps {
 
 const Home: React.FC<HomeProps> = ({ onLoginClick }) => {
   const { isConnected, address } = useAccount();
+  const { user } = useAuthContext();
   const navigate = useNavigate();
   const { setUserRole } = useUserRole();
   const { getAllChildren, loginAsChild } = useFamily();
   const [showChildLoginModal, setShowChildLoginModal] = useState(false);
   const [showApiTest, setShowApiTest] = useState(false);
 
-  const handleRoleSelect = (role: 'arent' | 'child') => {
-    if (role === 'child' && address) {
+  // 获取当前用户的钱包地址（优先使用user.wallet_address，其次使用wagmi的address）
+  const currentWalletAddress = user?.wallet_address || address;
+
+  const handleRoleSelect = (role: 'parent' | 'child') => {
+    if (role === 'child' && currentWalletAddress) {
       // 检查是否有多个child账户关联到这个钱包
       const allChildren = getAllChildren();
       
       const availableChildren = allChildren.filter(child => 
-        child.walletAddress.toLowerCase() === address.toLowerCase()
+        child.walletAddress.toLowerCase() === currentWalletAddress.toLowerCase()
       );
 
       if (availableChildren.length === 0) {
