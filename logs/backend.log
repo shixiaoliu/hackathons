@@ -280,3 +280,29 @@ Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-
 2025/06/08 19:11:11 [32m/Users/patrikhuang/metaNode/hackathons/eth-for-babies-backend/internal/api/handlers/child.go:168
 [0m[33m[0.331ms] [34;1m[rows:4][0m SELECT * FROM `children` WHERE parent_address = "0x6e296d7ac7b8f492880ce4550262c97daa34ec16" AND `children`.`deleted_at` IS NULL
 ::1 - [Sun, 08 Jun 2025 19:11:11 CST] "GET /api/v1/children/my?_t=1749381071151&_r=hwtxdduxvl HTTP/1.1 200 557.703µs "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" "
+::1 - [Sun, 08 Jun 2025 19:12:11 CST] "OPTIONS /api/v1/tasks?_t=1749381131141&_r=bzgrvaj7dyl HTTP/1.1 204 7.623µs "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" "
+
+2025/06/08 19:12:11 [32m/Users/patrikhuang/metaNode/hackathons/eth-for-babies-backend/internal/api/handlers/task.go:217
+[0m[33m[0.273ms] [34;1m[rows:2][0m SELECT * FROM `children` WHERE `children`.`id` IN (3,4) AND `children`.`deleted_at` IS NULL
+
+2025/06/08 19:12:11 [32m/Users/patrikhuang/metaNode/hackathons/eth-for-babies-backend/internal/api/handlers/task.go:217
+[0m[33m[1.061ms] [34;1m[rows:5][0m SELECT * FROM `tasks` WHERE created_by = "0x6e296d7ac7b8f492880ce4550262c97daa34ec16" AND `tasks`.`deleted_at` IS NULL ORDER BY created_at DESC
+::1 - [Sun, 08 Jun 2025 19:12:11 CST] "GET /api/v1/tasks?_t=1749381131141&_r=bzgrvaj7dyl HTTP/1.1 200 4.739821ms "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" "
+::1 - [Sun, 08 Jun 2025 19:12:11 CST] "OPTIONS /api/v1/children/my?_t=1749381131160&_r=adgkz4otaa HTTP/1.1 204 7.996µs "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" "
+
+2025/06/08 19:12:11 [32m/Users/patrikhuang/metaNode/hackathons/eth-for-babies-backend/internal/api/handlers/child.go:168
+[0m[33m[0.972ms] [34;1m[rows:4][0m SELECT * FROM `children` WHERE parent_address = "0x6e296d7ac7b8f492880ce4550262c97daa34ec16" AND `children`.`deleted_at` IS NULL
+::1 - [Sun, 08 Jun 2025 19:12:11 CST] "GET /api/v1/children/my?_t=1749381131160&_r=adgkz4otaa HTTP/1.1 200 1.127659ms "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" "
+::1 - [Sun, 08 Jun 2025 19:13:11 CST] "OPTIONS /api/v1/tasks?_t=1749381191143&_r=37nt9ukysse HTTP/1.1 204 9.356µs "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" "
+
+2025/06/08 19:13:11 [32m/Users/patrikhuang/metaNode/hackathons/eth-for-babies-backend/internal/api/handlers/task.go:217
+[0m[33m[0.377ms] [34;1m[rows:2][0m SELECT * FROM `children` WHERE `children`.`id` IN (3,4) AND `children`.`deleted_at` IS NULL
+
+2025/06/08 19:13:11 [32m/Users/patrikhuang/metaNode/hackathons/eth-for-babies-backend/internal/api/handlers/task.go:217
+[0m[33m[1.020ms] [34;1m[rows:5][0m SELECT * FROM `tasks` WHERE created_by = "0x6e296d7ac7b8f492880ce4550262c97daa34ec16" AND `tasks`.`deleted_at` IS NULL ORDER BY created_at DESC
+::1 - [Sun, 08 Jun 2025 19:13:11 CST] "GET /api/v1/tasks?_t=1749381191143&_r=37nt9ukysse HTTP/1.1 200 1.303471ms "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" "
+::1 - [Sun, 08 Jun 2025 19:13:11 CST] "OPTIONS /api/v1/children/my?_t=1749381191154&_r=g0b81pzibkp HTTP/1.1 204 8.007µs "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" "
+
+2025/06/08 19:13:11 [32m/Users/patrikhuang/metaNode/hackathons/eth-for-babies-backend/internal/api/handlers/child.go:168
+[0m[33m[0.407ms] [34;1m[rows:4][0m SELECT * FROM `children` WHERE parent_address = "0x6e296d7ac7b8f492880ce4550262c97daa34ec16" AND `children`.`deleted_at` IS NULL
+::1 - [Sun, 08 Jun 2025 19:13:11 CST] "GET /api/v1/children/my?_t=1749381191154&_r=g0b81pzibkp HTTP/1.1 200 667.177µs "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" "
