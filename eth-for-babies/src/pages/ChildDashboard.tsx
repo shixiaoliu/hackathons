@@ -98,7 +98,7 @@ const ChildDashboard = () => {
         );
       case 'completed':
         return getTasksForChild(currentChild.walletAddress).filter(task => 
-          task.status === 'completed' || task.status === 'approved'
+          task.status === 'completed' || task.status === 'approved' || task.status === 'rejected'
         );
       default:
         return [];
