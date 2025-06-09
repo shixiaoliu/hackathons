@@ -58,11 +58,11 @@ const ParentDashboard = () => {
   console.log('[ParentDashboard] filteredTasks:', filteredTasks);
 
   // 处理任务审批
-  const handleApproveTask = (taskId) => {
+  const handleApproveTask = (taskId: string) => {
     approveTask(taskId);
   };
 
-  const handleRejectTask = (taskId) => {
+  const handleRejectTask = (taskId: string) => {
     rejectTask(taskId);
   };
   
@@ -210,6 +210,7 @@ const ParentDashboard = () => {
                         <TaskCard 
                           task={task} 
                           onClick={() => navigate(`/task/${task.id}`)} 
+                          isParentDashboard={true}
                           actionButtons={
                             task.status === 'completed' ? (
                               <div className="flex gap-1 mt-2 justify-end">

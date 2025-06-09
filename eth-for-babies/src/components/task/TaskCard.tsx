@@ -12,9 +12,10 @@ interface TaskCardProps {
   onCompleteTask?: () => void;
   showTakeButton?: boolean;
   actionButtons?: React.ReactNode;
+  isParentDashboard?: boolean;
 }
 
-const TaskCard = ({ task, onClick, onTakeTask, onCompleteTask, showTakeButton = false, actionButtons }: TaskCardProps) => {
+const TaskCard = ({ task, onClick, onTakeTask, onCompleteTask, showTakeButton = false, actionButtons, isParentDashboard = false }: TaskCardProps) => {
   const isOverdue = new Date(task.deadline) < new Date() && task.status === 'open';
   
   const statusColors = {
@@ -91,7 +92,7 @@ const TaskCard = ({ task, onClick, onTakeTask, onCompleteTask, showTakeButton = 
               </Button>
             )}
             
-            {task.status === 'in-progress' && task.assignedTo && (
+            {!isParentDashboard && task.status === 'in-progress' && task.assignedTo && (
               <Button 
                 size="sm"
                 variant="success" 
