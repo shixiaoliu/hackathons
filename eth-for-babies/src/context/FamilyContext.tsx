@@ -122,7 +122,7 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
         // 加载儿童数据
         const childResponse = await childApi.getAll();
         if (childResponse.success && childResponse.data) {
-          const child = childResponse.data.find(c => c.wallet_address === user.wallet_address);
+          const child = childResponse.data.find(c => c.wallet_address.toLowerCase() === user.wallet_address.toLowerCase());
           if (child) {
             const childData = {
               id: child.id.toString(),
@@ -136,37 +136,36 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
               totalRewardsEarned: child.total_rewards_earned,
             };
             setCurrentChild(childData);
-            // 为child用户也设置allChildren数据
-            setAllChildren(getAllChildrenFromStorage());
+            // 为child用户设置所有children数据
+            const allChildrenData = childResponse.data.map(c => ({
+              id: c.id.toString(),
+              name: c.name,
+              walletAddress: c.wallet_address,
+              age: c.age,
+              avatar: c.avatar || undefined,
+              parentAddress: c.parent_address,
+              createdAt: c.created_at,
+              totalTasksCompleted: c.total_tasks_completed,
+              totalRewardsEarned: c.total_rewards_earned,
+            }));
+            setAllChildren(allChildrenData);
           } else {
-            // 如果API中没有找到child，使用模拟数据
-            const mockChildren = getAllChildrenFromStorage();
-            const mockChild = mockChildren.find(c => c.walletAddress.toLowerCase() === user.wallet_address.toLowerCase());
-            if (mockChild) {
-              setCurrentChild(mockChild);
-            }
-            setAllChildren(mockChildren);
+            // 如果API中没有找到child，设置为空
+            setCurrentChild(null);
+            setAllChildren([]);
           }
         } else {
-          // API调用失败，使用模拟数据
-          const mockChildren = getAllChildrenFromStorage();
-          const mockChild = mockChildren.find(c => c.walletAddress.toLowerCase() === (user.wallet_address || '').toLowerCase());
-          if (mockChild) {
-            setCurrentChild(mockChild);
-          }
-          setAllChildren(mockChildren);
+          // API调用失败，设置为空
+          setCurrentChild(null);
+          setAllChildren([]);
         }
       }
     } catch (error) {
-      console.error('加载用户数据失败，使用模拟数据:', error);
-      // 发生错误时使用模拟数据
-      const mockChildren = getAllChildrenFromStorage();
-      setAllChildren(mockChildren);
+      console.error('加载用户数据失败:', error);
+      // 发生错误时设置为空
+      setAllChildren([]);
       if (user && user.role === 'child') {
-        const mockChild = mockChildren.find(c => c.walletAddress.toLowerCase() === (user.wallet_address || '').toLowerCase());
-        if (mockChild) {
-          setCurrentChild(mockChild);
-        }
+        setCurrentChild(null);
       }
     } finally {
       setLoading(false);
@@ -322,44 +321,9 @@ function createNewFamily(address: string): Family {
 }
 
 function getAllChildrenFromStorage(): Child[] {
-  // 模拟从存储中获取所有孩子的数据
-  const mockChildren = [
-    {
-      id: '1',
-      name: 'emma',
-      walletAddress: '0x6E296d7Ac7b8F492880CE4550262C97daa34eC16',
-      age: 10,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=emma',
-      parentAddress: '0x1234567890abcdef1234567890abcdef12345678',
-      createdAt: new Date().toISOString(),
-      totalTasksCompleted: 5,
-      totalRewardsEarned: '0.05'
-    },
-    {
-      id: '2',
-      name: 'Bob',
-      walletAddress: '0x6E296d7Ac7b8F492880CE4550262C97daa34eC17',
-      age: 8,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bob',
-      parentAddress: '0x1234567890abcdef1234567890abcdef12345678',
-      createdAt: new Date().toISOString(),
-      totalTasksCompleted: 3,
-      totalRewardsEarned: '0.03'
-    },
-    {
-      id: '3',
-      name: 'Charlie',
-      walletAddress: '0x6E296d7Ac7b8F492880CE4550262C97daa34eC18',
-      age: 12,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie',
-      parentAddress: '0x1234567890abcdef1234567890abcdef12345678',
-      createdAt: new Date().toISOString(),
-      totalTasksCompleted: 8,
-      totalRewardsEarned: '0.12'
-    }
-  ];
-  
-  return mockChildren;
+  // 不再使用模拟数据，返回空数组
+  // 所有数据都应该从API获取
+  return [];
 }
 
 export const useFamily = (): FamilyContextType => {

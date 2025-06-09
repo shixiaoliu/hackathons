@@ -118,46 +118,63 @@ export const useAuth = () => {
       // 如果是手动输入地址，使用特殊方式处理
       let signature;
       if (manualAddress) {
-        // 手动地址模式，先尝试注册再直接返回登录成功
+        // 手动地址模式，尝试使用模拟签名进行登录
         try {
-          // 尝试直接注册用户
-          const registerResponse = await authApi.register(walletAddress, role);
-          console.log('手动地址模式注册响应:', registerResponse);
+          // 创建一个模拟签名（在实际应用中，这应该是真实的签名）
+          const mockSignature = '0x' + '0'.repeat(130); // 模拟签名
           
-          // 创建模拟的认证状态
-          const mockUser = {
-            id: Date.now(),
-            wallet_address: walletAddress,
-            role: role,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
+          // 调用后端登录API
+          const loginResponse = await authApi.login(walletAddress, mockSignature, role);
           
-          const mockToken = `manual_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-          
-          // 保存到localStorage
-          apiClient.setToken(mockToken);
-          localStorage.setItem('auth_token', mockToken);
-          localStorage.setItem('user_data', JSON.stringify(mockUser));
-          localStorage.setItem('user_role', role);
-          
-          // 更新认证状态
-          setAuthState({
-            user: mockUser,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null
-          });
-          
-          console.log('手动地址模式模拟登录成功');
-          return true;
+          if (loginResponse.success && loginResponse.data) {
+            const { token, user } = loginResponse.data;
+            
+            // 保存真实的JWT token
+            apiClient.setToken(token);
+            localStorage.setItem('auth_token', token);
+            localStorage.setItem('user_data', JSON.stringify(user));
+            localStorage.setItem('user_role', user.role);
+            
+            // 更新认证状态
+            setAuthState({
+              user: user,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null
+            });
+            
+            console.log('手动地址模式登录成功');
+            return true;
+          } else {
+            // 如果登录失败，尝试注册
+            const registerResponse = await authApi.register(walletAddress, role);
+            if (registerResponse.success) {
+              // 注册成功后再次尝试登录
+              const retryLoginResponse = await authApi.login(walletAddress, mockSignature, role);
+              if (retryLoginResponse.success && retryLoginResponse.data) {
+                const { token, user } = retryLoginResponse.data;
+                
+                apiClient.setToken(token);
+                localStorage.setItem('auth_token', token);
+                localStorage.setItem('user_data', JSON.stringify(user));
+                localStorage.setItem('user_role', user.role);
+                
+                setAuthState({
+                  user: user,
+                  isAuthenticated: true,
+                  isLoading: false,
+                  error: null
+                });
+                
+                return true;
+              }
+            }
+            throw new Error(loginResponse.error || '登录失败');
+          }
         } catch (err) {
-          console.warn('手动地址模式注册失败，使用标准流程');
+          console.error('手动地址登录失败:', err);
+          throw err;
         }
-        
-        // 使用固定签名（仅用于测试）
-        signature = '0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
-        console.log('使用模拟签名(手动地址模式)');
       } else {
         // 请求用户签名
         console.log('请求用户签名消息...');
