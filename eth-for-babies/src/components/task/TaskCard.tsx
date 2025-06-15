@@ -115,11 +115,10 @@ const TaskCard = ({ task, onClick, onTakeTask, onCompleteTask, showTakeButton = 
                 Overdue
               </div>
             )}
+            
+            {actionButtons}
           </div>
         </div>
-        
-        {/* 渲染自定义操作按钮 */}
-        {actionButtons}
       </CardFooter>
     </Card>
   );
