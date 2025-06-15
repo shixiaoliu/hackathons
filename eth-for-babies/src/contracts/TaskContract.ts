@@ -6,7 +6,7 @@ import { ethers } from 'ethers';
 // Example ABI for a task contract
 export const TaskContractABI = [
   // Task creation
-  "function createTask(string title, string description, uint256 deadline, uint8 difficulty, string completionCriteria) payable returns (uint256)",
+  "function createTask(string title, string description, uint256 reward) returns (uint256)",
   
   // Task management
   "function acceptTask(uint256 taskId)",
@@ -28,27 +28,21 @@ export const TaskContractABI = [
 ];
 
 // Example code to interact with the contract
-export const getTaskContract = (provider: ethers.providers.Web3Provider, contractAddress: string) => {
-  const signer = provider.getSigner();
-  return new ethers.Contract(contractAddress, TaskContractABI, signer);
+export const getTaskContract = (provider: ethers.BrowserProvider, contractAddress: string) => {
+  return provider.getSigner().then(signer => new ethers.Contract(contractAddress, TaskContractABI, signer));
 };
 
 export const createTask = async (
-  contract: ethers.Contract,
+  contractPromise: Promise<ethers.Contract>,
   title: string,
   description: string,
-  deadline: number,
-  difficulty: number,
-  completionCriteria: string,
   rewardAmount: string
 ) => {
+  const contract = await contractPromise;
   const tx = await contract.createTask(
     title,
     description,
-    deadline,
-    difficulty,
-    completionCriteria,
-    { value: ethers.utils.parseEther(rewardAmount) }
+    ethers.parseEther(rewardAmount)
   );
   return tx.wait();
 };

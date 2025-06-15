@@ -72,21 +72,19 @@ const CreateTask = () => {
         alert('No Ethereum provider found');
         return;
       }
-      const provider = new ethers.providers.Web3Provider((window as any).ethereum);
-      const contract = getTaskContract(provider, TASK_CONTRACT_ADDRESS);
+      // ethers v6: 使用 BrowserProvider
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const contractPromise = getTaskContract(provider, TASK_CONTRACT_ADDRESS);
       // 转换时间为秒
       const deadlineTimestamp = Math.floor(new Date(formData.deadline).getTime() / 1000);
       // 难度映射
       const difficultyMap = { easy: 0, medium: 1, hard: 2 };
-      const difficultyNum = difficultyMap[formData.difficulty] ?? 0;
+      const difficultyNum = difficultyMap[formData.difficulty as keyof typeof difficultyMap] ?? 0;
       // 调用合约
       const txReceipt = await createTaskOnChain(
-        contract,
+        contractPromise,
         formData.title,
         formData.description,
-        deadlineTimestamp,
-        difficultyNum,
-        formData.completionCriteria,
         formData.reward
       );
       // 2. 合约成功后再调用后端API
