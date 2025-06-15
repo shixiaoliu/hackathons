@@ -396,7 +396,7 @@ func (h *ChildHandler) GetChildProgress(c *gin.Context) {
 	h.db.Model(&models.Task{}).Where("assigned_child_id = ? AND status = ?", id, "rejected").Count(&taskStats.Rejected)
 
 	progress := gin.H{
-		"child":              child,
+		"child":                 child,
 		"total_tasks_completed": child.TotalTasksCompleted,
 		"total_rewards_earned":  child.TotalRewardsEarned,
 		"task_statistics":       taskStats,
@@ -405,5 +405,67 @@ func (h *ChildHandler) GetChildProgress(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    progress,
+	})
+}
+
+// DeleteChild 删除孩子
+func (h *ChildHandler) DeleteChild(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid child ID",
+		})
+		return
+	}
+
+	walletAddress, exists := c.Get("wallet_address")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   "User not authenticated",
+		})
+		return
+	}
+
+	// 查找孩子
+	var child models.Child
+	result := h.db.First(&child, uint(id))
+	if result.Error == gorm.ErrRecordNotFound {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "Child not found",
+		})
+		return
+	} else if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Database error",
+		})
+		return
+	}
+
+	// 只有父母能删除自己的孩子
+	role, _ := c.Get("role")
+	if role != "parent" || child.ParentAddress != walletAddress.(string) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"error":   "Access denied",
+		})
+		return
+	}
+
+	if err := h.db.Delete(&child).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to delete child",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Child deleted successfully",
 	})
 }

@@ -255,12 +255,27 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const removeChild = async (childId: string) => {
-    // 注意：这里需要后端提供删除儿童的 API
-    // 暂时只在前端移除
-    setFamily(prev => prev ? {
-      ...prev,
-      children: prev.children.filter(child => child.id !== childId)
-    } : null);
+    try {
+      // 调用后端API删除child
+      const response = await childApi.delete(parseInt(childId));
+      if (response.success) {
+        setFamily(prev => prev ? {
+          ...prev,
+          children: prev.children.filter(child => child.id !== childId)
+        } : null);
+        setAllChildren(prev => prev.filter(child => child.id !== childId));
+        alert('Child deleted successfully!');
+      } else {
+        const errorMessage = response.error || 'Failed to delete child.';
+        alert(errorMessage);
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      console.error('删除child失败:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Network error';
+      alert('Failed to delete child: ' + errorMessage);
+      throw error;
+    }
   };
 
   const loginAsChild = (walletAddress: string): Child | null => {

@@ -458,6 +458,9 @@ export const childApi = {
   // 获取儿童进度
   getProgress: (id: number) =>
     apiClient.get<any>(`/children/${id}/progress`),
+
+  // 删除儿童
+  delete: (id: number) => apiClient.delete(`/children/${id}`),
 };
 
 // 任务相关 API

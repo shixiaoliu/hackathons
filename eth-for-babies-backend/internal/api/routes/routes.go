@@ -63,6 +63,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 				children.GET("/:id", childHandler.GetChildByID)
 				children.PUT("/:id", childHandler.UpdateChild)
 				children.GET("/:id/progress", childHandler.GetChildProgress)
+				children.DELETE("/:id", middleware.RequireRole("parent"), childHandler.DeleteChild)
 			}
 
 			// 任务管理路由
