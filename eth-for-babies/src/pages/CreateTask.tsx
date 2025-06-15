@@ -6,6 +6,10 @@ import Button from '../components/common/Button';
 import Card, { CardBody, CardFooter } from '../components/common/Card';
 import { useTask } from '../context/TaskContext';
 import { useFamily } from '../context/FamilyContext';
+import { ethers } from 'ethers';
+import { getTaskContract, createTask as createTaskOnChain } from '../contracts/TaskContract';
+
+const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0xYourContractAddressHere';
 
 const CreateTask = () => {
   const navigate = useNavigate();
@@ -63,7 +67,29 @@ const CreateTask = () => {
     }
 
     try {
-      // 创建任务，使用已选择的孩子信息
+      // 1. 调用合约，发送ETH锁定奖励
+      if (!(window as any).ethereum) {
+        alert('No Ethereum provider found');
+        return;
+      }
+      const provider = new ethers.providers.Web3Provider((window as any).ethereum);
+      const contract = getTaskContract(provider, TASK_CONTRACT_ADDRESS);
+      // 转换时间为秒
+      const deadlineTimestamp = Math.floor(new Date(formData.deadline).getTime() / 1000);
+      // 难度映射
+      const difficultyMap = { easy: 0, medium: 1, hard: 2 };
+      const difficultyNum = difficultyMap[formData.difficulty] ?? 0;
+      // 调用合约
+      const txReceipt = await createTaskOnChain(
+        contract,
+        formData.title,
+        formData.description,
+        deadlineTimestamp,
+        difficultyNum,
+        formData.completionCriteria,
+        formData.reward
+      );
+      // 2. 合约成功后再调用后端API
       await addTask({
         title: formData.title,
         description: formData.description,
