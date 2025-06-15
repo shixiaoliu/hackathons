@@ -85,15 +85,15 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 				contracts.GET("/transactions/:hash", contractHandler.GetTransactionStatus)
 			}
 		}
-	}
 
-	// 健康检查路由
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "ok",
-			"message": "Family Task Chain Backend is running",
+		// 在 v1 路由组下添加健康检查路由
+		v1.GET("/health", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"status":  "ok",
+				"message": "Family Task Chain Backend is running",
+			})
 		})
-	})
+	}
 
 	return router
 }
