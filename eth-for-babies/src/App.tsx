@@ -43,9 +43,7 @@ function App() {
             <Routes>
               <Route 
                 path="/" 
-                element={
-                  isAuthenticated ? 
-                    <Navigate to={getDefaultRoute()} /> : 
+                element={ 
                     <Home onLoginClick={() => setShowLoginModal(true)} />
                 } 
               />
