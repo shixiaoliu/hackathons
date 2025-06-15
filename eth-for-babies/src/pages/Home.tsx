@@ -85,11 +85,12 @@ const Home: React.FC<HomeProps> = ({ onLoginClick }) => {
             <ConnectButton label="Connect Wallet to Start" />
           </div>
         ) : (
-          <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row justify-center gap-6 mb-10">
             <Button 
               size="lg" 
               onClick={() => handleRoleSelect('parent')}
               rightIcon={<ChevronRight />}
+              className="rounded-full shadow-lg px-8 py-4 text-lg font-semibold transition-transform duration-150 hover:scale-105 hover:shadow-xl bg-gradient-to-r from-primary-500 to-primary-400 text-white"
             >
               I'm a Parent
             </Button>
@@ -98,19 +99,32 @@ const Home: React.FC<HomeProps> = ({ onLoginClick }) => {
               variant="secondary" 
               onClick={() => handleRoleSelect('child')}
               rightIcon={<ChevronRight />}
+              className="rounded-full shadow-lg px-8 py-4 text-lg font-semibold transition-transform duration-150 hover:scale-105 hover:shadow-xl bg-gradient-to-r from-blue-400 to-blue-500 text-white"
             >
               I'm a Child
             </Button>
           </div>
         )}
         
-        <div className="mt-10 relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-gray-50 z-10"></div>
-          <img 
-            src="https://images.pexels.com/photos/4260477/pexels-photo-4260477.jpeg" 
-            alt="Family using app together" 
-            className="rounded-lg shadow-xl max-h-96 object-cover mx-auto"
-          />
+        <div className="mt-10 flex flex-col items-center">
+          <div className="relative w-full max-w-4xl h-96 rounded-3xl overflow-hidden shadow-2xl border border-gray-200 bg-white">
+            {/* Main image */}
+            <img 
+              src="https://images.pexels.com/photos/4262010/pexels-photo-4262010.jpeg" 
+              alt="Family working together" 
+              className="w-full h-full object-cover object-center"
+            />
+            {/* Overlay and text */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/10 to-white/70 z-10 flex flex-col justify-between">
+              <div className="p-8">
+                <div className="text-4xl md:text-5xl font-extrabold text-white drop-shadow-lg tracking-wide mb-2">FamilyChain</div>
+                <div className="text-lg md:text-2xl text-white/90 font-medium drop-shadow-md">A New Way for Family Tasks · Blockchain Rewards for Growth</div>
+              </div>
+              <div className="p-8 pb-6 text-lg text-gray-800 font-semibold drop-shadow-sm">
+                <span className="bg-white/70 rounded-xl px-4 py-2">Make family collaboration fun and rewards transparent!</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
