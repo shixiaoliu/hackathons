@@ -28,8 +28,69 @@ export const TaskContractABI = [
 ];
 
 // Example code to interact with the contract
-export const getTaskContract = (provider: ethers.BrowserProvider, contractAddress: string) => {
-  return provider.getSigner().then(signer => new ethers.Contract(contractAddress, TaskContractABI, signer));
+export const getTaskContract = async (provider: ethers.BrowserProvider, contractAddress: string) => {
+  const signer = await provider.getSigner();
+  const network = await provider.getNetwork();
+  
+  console.log('Current network chainId:', network.chainId);
+  console.log('Full network object:', network);
+
+  // 检查是否在 Sepolia 网络上
+  if (network.chainId !== 11155111n) { // Sepolia 的 chainId
+    // 尝试自动切换到 Sepolia 网络
+    try {
+      const ethereum = (window as any).ethereum;
+      if (ethereum) {
+        // 首先尝试添加 Sepolia 网络
+        try {
+          await ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: '0xaa36a7', // 11155111 in hex
+              chainName: 'Sepolia Test Network',
+              nativeCurrency: {
+                name: 'Sepolia ETH',
+                symbol: 'SEP',
+                decimals: 18
+              },
+              rpcUrls: ['https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161'],
+              blockExplorerUrls: ['https://sepolia.etherscan.io/']
+            }]
+          });
+        } catch (addError: any) {
+          // 网络可能已经存在
+          if (addError.code !== 4902) {
+            console.log('Network may already exist:', addError);
+          }
+        }
+
+        // 然后切换到 Sepolia 网络
+        await ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0xaa36a7' }]
+        });
+
+        // 等待网络切换完成
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 重新获取网络信息
+        const newProvider = new ethers.BrowserProvider(ethereum);
+        const newSigner = await newProvider.getSigner();
+        const newNetwork = await newProvider.getNetwork();
+        
+        if (newNetwork.chainId === 11155111n) {
+          console.log('Successfully switched to Sepolia network');
+          return new ethers.Contract(contractAddress, TaskContractABI, newSigner);
+        }
+      }
+    } catch (switchError) {
+      console.error('Failed to switch network automatically:', switchError);
+    }
+    
+    throw new Error('Please switch to Sepolia network in your wallet');
+  }
+  
+  return new ethers.Contract(contractAddress, TaskContractABI, signer);
 };
 
 export const createTask = async (
@@ -39,10 +100,12 @@ export const createTask = async (
   rewardAmount: string
 ) => {
   const contract = await contractPromise;
+  const reward = ethers.parseEther(rewardAmount);
   const tx = await contract.createTask(
     title,
     description,
-    ethers.parseEther(rewardAmount)
+    reward,
+    { value: reward.toString() }
   );
   return tx.wait();
 };
@@ -65,9 +128,13 @@ export const submitTaskCompletion = async (
 export const approveTask = async (
   contract: ethers.Contract,
   taskId: number,
-  feedback: string
+  reward: string
 ) => {
-  const tx = await contract.approveTask(taskId, feedback);
+  const value = ethers.parseEther(reward);
+  const tx = await contract.approveTask(
+    taskId,
+    { value: value.toString() }
+  );
   return tx.wait();
 };
 

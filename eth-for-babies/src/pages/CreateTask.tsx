@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAccount } from 'wagmi';
+import { useAccount, useSwitchChain } from 'wagmi';
 import { Upload, X, Calendar, PlusCircle, Award, Users } from 'lucide-react';
 import Button from '../components/common/Button';
 import Card, { CardBody, CardFooter } from '../components/common/Card';
@@ -13,10 +13,11 @@ const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0xY
 
 const CreateTask = () => {
   const navigate = useNavigate();
-  const { address } = useAccount();
+  const { address, chainId } = useAccount();
   const { addTask } = useTask();
   const { getAllChildren, selectedChild } = useFamily();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const { switchChain } = useSwitchChain();
   
   const children = getAllChildren();
   
@@ -55,11 +56,6 @@ const CreateTask = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!address) {
-      alert('Please connect your wallet first');
-      return;
-    }
-
     // 验证必填字段
     if (!formData.title || !formData.description || !formData.reward || !formData.deadline || !formData.completionCriteria) {
       alert('Please fill in all required fields');
@@ -67,6 +63,95 @@ const CreateTask = () => {
     }
 
     try {
+      // 确保钱包连接
+      if (!address) {
+        alert('Please connect your wallet first');
+        return;
+      }
+
+      // 检查当前网络是否为 Sepolia，如果不是则尝试切换
+      if (chainId !== 11155111) { // Sepolia 的 chainId 为 11155111
+        try {
+          // 首先尝试添加 Sepolia 网络到钱包（如果还没有的话）
+          const ethereum = (window as any).ethereum;
+          if (ethereum) {
+            try {
+              await ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: '0xaa36a7', // 11155111 in hex
+                  chainName: 'Sepolia Test Network',
+                  nativeCurrency: {
+                    name: 'Sepolia ETH',
+                    symbol: 'SEP',
+                    decimals: 18
+                  },
+                  rpcUrls: ['https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161'],
+                  blockExplorerUrls: ['https://sepolia.etherscan.io/']
+                }]
+              });
+            } catch (addError: any) {
+              // 如果网络已经存在，这个错误是正常的
+              if (addError.code !== 4902) {
+                console.log('Network may already exist or other error:', addError);
+              }
+            }
+
+            // 然后尝试切换到 Sepolia 网络
+            try {
+              await ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0xaa36a7' }] // 11155111 in hex
+              });
+            } catch (switchError: any) {
+              console.error('Failed to switch network:', switchError);
+              throw switchError;
+            }
+          }
+
+          // 使用 wagmi 的 switchChain 作为备选方案
+          if (switchChain) {
+            try {
+              await switchChain({ chainId: 11155111 });
+            } catch (wagmiError) {
+              console.log('Wagmi switch failed, but manual switch may have worked:', wagmiError);
+            }
+          }
+
+          // IMPORTANT: Poll to ensure chainId has updated after switch attempt
+          let attempts = 0;
+          const maxAttempts = 30; // Try for up to 15 seconds (30 * 500ms)
+          const delayMs = 500;
+
+          while (attempts < maxAttempts) {
+            if (!(window as any).ethereum) {
+              alert('No Ethereum provider found after network switch attempt.');
+              return;
+            }
+            const tempProvider = new ethers.BrowserProvider((window as any).ethereum);
+            const networkFromTempProvider = await tempProvider.getNetwork();
+            if (networkFromTempProvider.chainId === 11155111n) {
+              console.log('Wallet successfully detected Sepolia after switch attempt.');
+              break; // Exit polling loop
+            }
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+            attempts++;
+          }
+
+          // If after polling, network is still not Sepolia
+          if ((await new ethers.BrowserProvider((window as any).ethereum).getNetwork()).chainId !== 11155111n) {
+            alert('Failed to switch to Sepolia network automatically. Please switch manually in your wallet and try again.');
+            return;
+          }
+          console.log('Successfully switched to Sepolia or already on it.');
+
+        } catch (switchError) {
+          console.error('Failed to switch network:', switchError);
+          alert('Failed to switch to Sepolia network. Please switch manually in your wallet.');
+          return;
+        }
+      }
+
       // 1. 调用合约，发送ETH锁定奖励
       if (!(window as any).ethereum) {
         alert('No Ethereum provider found');

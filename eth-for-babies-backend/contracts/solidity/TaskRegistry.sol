@@ -20,6 +20,12 @@ contract TaskRegistry {
     mapping(uint256 => Task) public tasks;
     uint256 public taskCount = 0;
     
+    address public owner;
+
+    constructor() {
+        owner = msg.sender;
+    }
+
     // Events
     event TaskCreated(uint256 indexed taskId, address indexed creator, string title, uint256 reward);
     event TaskAssigned(uint256 indexed taskId, address indexed assignedTo);
@@ -30,7 +36,7 @@ contract TaskRegistry {
     /**
      * @dev Creates a new task
      */
-    function createTask(string memory title, string memory description, uint256 reward) public returns (uint256) {
+    function createTask(string memory title, string memory description, uint256 reward) public payable returns (uint256) {
         taskCount++;
         tasks[taskCount] = Task(
             taskCount,
@@ -108,4 +114,11 @@ contract TaskRegistry {
             task.approved
         );
     }
+
+    function withdraw() public {
+        require(msg.sender == owner, "Only owner can withdraw");
+        payable(owner).transfer(address(this).balance);
+    }
+
+    receive() external payable {}
 } 
