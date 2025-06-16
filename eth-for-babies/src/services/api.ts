@@ -61,7 +61,7 @@ interface Task {
   reward_amount: string;
   difficulty: 'easy' | 'medium' | 'hard';
   status: 'pending' | 'in_progress' | 'completed' | 'approved' | 'rejected';
-  assigned_child_id: number;
+  assigned_child_id?: number;
   created_by: string;
   due_date?: string;
   created_at: string;

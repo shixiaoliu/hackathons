@@ -81,7 +81,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
               description: apiTask.description,
               reward: apiTask.reward_amount,
               deadline: apiTask.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-              difficulty: 'medium' as const, // API中没有difficulty字段，设置默认值
+              difficulty: apiTask.difficulty || 'medium',
               status: apiTask.status === 'pending' ? 'open' as const :
                      apiTask.status === 'in_progress' ? 'in-progress' as const :
                      apiTask.status === 'completed' ? 'completed' as const :
@@ -169,7 +169,9 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         reward_amount: taskData.reward,
         difficulty: taskData.difficulty,
         assigned_child_id: taskData.assignedChildId ? parseInt(taskData.assignedChildId) : undefined,
-        due_date: formattedDueDate
+        due_date: formattedDueDate,
+        created_by: address,
+        status: 'pending' as const
       };
       
       console.log('Sending API data:', apiTaskData);
