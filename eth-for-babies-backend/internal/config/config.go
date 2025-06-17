@@ -36,7 +36,7 @@ func Load() *Config {
 		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
 		Database: DatabaseConfig{
 			Driver: getEnv("DB_DRIVER", "sqlite"),
-			DSN:    getEnv("DB_DSN", "./data/app.db"),
+			DSN:    getEnv("DB_DSN", "./data/family_task_chain.db"),
 		},
 		Blockchain: BlockchainConfig{
 			RPCURL:          getEnv("BLOCKCHAIN_RPC_URL", "http://localhost:8545"),
