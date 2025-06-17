@@ -5,12 +5,13 @@ import (
 	"eth-for-babies-backend/internal/api/middleware"
 	"eth-for-babies-backend/internal/config"
 	"eth-for-babies-backend/internal/utils"
+	"eth-for-babies-backend/pkg/blockchain"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
+func SetupRoutes(db *gorm.DB, cfg *config.Config, contractManager *blockchain.ContractManager) *gin.Engine {
 	router := gin.New()
 
 	// 创建JWT管理器
@@ -25,7 +26,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	authHandler := handlers.NewAuthHandler(db, jwtManager)
 	familyHandler := handlers.NewFamilyHandler(db)
 	childHandler := handlers.NewChildHandler(db)
-	taskHandler := handlers.NewTaskHandler(db)
+	taskHandler := handlers.NewTaskHandler(db, contractManager)
 	contractHandler := handlers.NewContractHandler(db)
 
 	// API v1 路由组

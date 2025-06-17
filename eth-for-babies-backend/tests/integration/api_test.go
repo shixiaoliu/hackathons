@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/yourusername/eth-for-babies-backend/internal/api/routes"
+	"eth-for-babies-backend/internal/api/routes"
 )
 
 // Setup test environment

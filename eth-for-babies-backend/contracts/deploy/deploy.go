@@ -20,6 +20,11 @@ type ContractAddresses struct {
 	RewardToken    common.Address
 }
 
+// Placeholder types for contracts
+type TaskRegistry struct{}
+type FamilyRegistry struct{}
+type RewardToken struct{}
+
 // DeployContracts deploys all smart contracts to the blockchain
 func DeployContracts(client *ethclient.Client, privateKey *ecdsa.PrivateKey) (*ContractAddresses, error) {
 	addresses := &ContractAddresses{}

@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/yourusername/eth-for-babies-backend/internal/models"
-	"github.com/yourusername/eth-for-babies-backend/internal/services"
+	"eth-for-babies-backend/internal/models"
+	"eth-for-babies-backend/internal/services"
 )
 
 // Mock repositories

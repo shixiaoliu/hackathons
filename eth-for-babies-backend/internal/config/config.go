@@ -6,12 +6,15 @@ import (
 )
 
 type Config struct {
-	Port        string
-	Environment string
-	LogLevel    string
-	JWTSecret   string
-	Database    DatabaseConfig
-	Blockchain  BlockchainConfig
+	Port                 string
+	Environment          string
+	LogLevel             string
+	JWTSecret            string
+	BlockchainRPCURL     string
+	PrivateKey           string
+	TaskContractAddress  string
+	Database             DatabaseConfig
+	Blockchain           BlockchainConfig
 }
 
 type DatabaseConfig struct {
@@ -30,10 +33,13 @@ func Load() *Config {
 	chainID, _ := strconv.ParseInt(getEnv("BLOCKCHAIN_CHAIN_ID", "1337"), 10, 64)
 
 	return &Config{
-		Port:        getEnv("PORT", "8080"),
-		Environment: getEnv("ENVIRONMENT", "development"),
-		LogLevel:    getEnv("LOG_LEVEL", "info"),
-		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+		Port:                getEnv("PORT", "8080"),
+		Environment:         getEnv("ENVIRONMENT", "development"),
+		LogLevel:            getEnv("LOG_LEVEL", "info"),
+		JWTSecret:           getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+		BlockchainRPCURL:    getEnv("BLOCKCHAIN_RPC_URL", "http://localhost:8545"),
+		PrivateKey:          getEnv("BLOCKCHAIN_PRIVATE_KEY", ""),
+		TaskContractAddress: getEnv("TASK_CONTRACT_ADDRESS", ""),
 		Database: DatabaseConfig{
 			Driver: getEnv("DB_DRIVER", "sqlite"),
 			DSN:    getEnv("DB_DSN", "./data/family_task_chain.db"),

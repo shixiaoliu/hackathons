@@ -4,29 +4,36 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"math/big"
+	"fmt"
 
 	"eth-for-babies-backend/internal/models"
 	"eth-for-babies-backend/internal/utils"
+	"eth-for-babies-backend/pkg/blockchain"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 type TaskHandler struct {
-	db *gorm.DB
+	db              *gorm.DB
+	contractManager *blockchain.ContractManager
 }
 
-func NewTaskHandler(db *gorm.DB) *TaskHandler {
-	return &TaskHandler{db: db}
+func NewTaskHandler(db *gorm.DB, contractManager *blockchain.ContractManager) *TaskHandler {
+	return &TaskHandler{
+		db:              db,
+		contractManager: contractManager,
+	}
 }
 
 type CreateTaskRequest struct {
-	Title            string `json:"title" binding:"required"`
-	Description      string `json:"description" binding:"required"`
-	RewardAmount     string `json:"reward_amount" binding:"required"`
-	Difficulty       string `json:"difficulty" binding:"required"`
-	AssignedChildID  *uint  `json:"assigned_child_id,omitempty"`
-	DueDate          string `json:"due_date,omitempty"`
+	Title           string `json:"title" binding:"required"`
+	Description     string `json:"description" binding:"required"`
+	RewardAmount    string `json:"reward_amount" binding:"required"`
+	Difficulty      string `json:"difficulty" binding:"required"`
+	AssignedChildID *uint  `json:"assigned_child_id,omitempty"`
+	DueDate         string `json:"due_date,omitempty"`
 }
 
 type UpdateTaskRequest struct {
@@ -134,6 +141,38 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		task.Status = "in_progress"
 	}
 
+	// 1. 首先与区块链合约交互
+	if h.contractManager != nil {
+		// 将奖励金额转换为wei
+		rewardWei, success := new(big.Int).SetString(req.RewardAmount, 10)
+		if !success {
+			// 如果不是wei单位，尝试解析为ETH并转换
+			rewardFloat := new(big.Float)
+			rewardFloat.SetString(req.RewardAmount)
+			ethToWei := new(big.Float).SetInt(big.NewInt(1000000000000000000)) // 1 ETH = 10^18 wei
+			rewardFloat.Mul(rewardFloat, ethToWei)
+			rewardWei, _ = rewardFloat.Int(nil)
+		}
+
+		// 调用合约创建任务
+		contractTaskID, err := h.contractManager.CreateTask(
+			utils.SanitizeString(req.Title),
+			utils.SanitizeString(req.Description),
+			rewardWei,
+		)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   fmt.Sprintf("Failed to create task on blockchain: %v", err),
+			})
+			return
+		}
+
+		// 将合约任务ID存储到任务中
+		task.ContractTaskID = &contractTaskID
+	}
+
+	// 2. 区块链交互成功后，保存到数据库
 	if err := h.db.Create(&task).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -181,7 +220,7 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 	if role == "parent" {
 		// 父母可以看到自己创建的所有任务
 		query = query.Where("created_by = ?", walletAddress)
-		
+
 		// 如果指定了孩子ID，过滤该孩子的任务
 		if childIDParam != "" {
 			childID, err := strconv.ParseUint(childIDParam, 10, 32)

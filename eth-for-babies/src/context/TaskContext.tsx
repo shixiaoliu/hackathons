@@ -153,6 +153,11 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => {
+    if (!address) {
+      throw new Error('无法创建任务：钱包地址不可用。');
+    }
+    const creatorAddress = address as string; // 明确断言 address 为 string
+
     try {
       // 转换本地Task格式到API格式
       // 将datetime-local格式转换为RFC3339格式
@@ -170,7 +175,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         difficulty: taskData.difficulty,
         assigned_child_id: taskData.assignedChildId ? parseInt(taskData.assignedChildId) : undefined,
         due_date: formattedDueDate,
-        created_by: address,
+        created_by: creatorAddress,
         status: 'pending' as const
       };
       

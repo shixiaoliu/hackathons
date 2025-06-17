@@ -6,24 +6,56 @@ import (
 
 	"eth-for-babies-backend/internal/api/routes"
 	"eth-for-babies-backend/internal/config"
+	"eth-for-babies-backend/pkg/blockchain"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
 func main() {
+	log.Println("Starting Family Task Chain Backend...")
+	
 	// 加载环境变量
 	if err := godotenv.Load(); err != nil {
 		log.Println("Warning: .env file not found")
 	}
+	log.Println("Environment variables loaded")
 
 	// 初始化配置
 	cfg := config.Load()
+	log.Println("Configuration loaded")
 
 	// 初始化数据库
+	log.Println("Initializing database...")
 	db, err := config.InitDatabase(cfg)
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
+	}
+	log.Println("Database initialized successfully")
+
+	// 初始化区块链客户端
+	var contractManager *blockchain.ContractManager
+	if cfg.BlockchainRPCURL != "" && cfg.PrivateKey != "" {
+		ethClient, err := blockchain.NewEthClient(cfg.BlockchainRPCURL, cfg.PrivateKey)
+		if err != nil {
+			log.Printf("Warning: Failed to initialize blockchain client: %v", err)
+			log.Println("Continuing without blockchain functionality...")
+		} else {
+			// 初始化合约管理器
+			contractAddresses := map[string]string{
+				"TaskRegistry": cfg.TaskContractAddress,
+			}
+			contractManager, err = blockchain.NewContractManager(ethClient, contractAddresses)
+			if err != nil {
+				log.Printf("Warning: Failed to initialize contract manager: %v", err)
+				log.Println("Continuing without blockchain functionality...")
+				contractManager = nil
+			} else {
+				log.Println("Blockchain client and contract manager initialized successfully")
+			}
+		}
+	} else {
+		log.Println("Blockchain configuration not found, running without blockchain functionality")
 	}
 
 	// Set Gin mode based on configuration
@@ -34,7 +66,9 @@ func main() {
 	}
 
 	// 初始化路由
-	router := routes.SetupRoutes(db, cfg)
+	log.Println("Setting up routes...")
+	router := routes.SetupRoutes(db, cfg, contractManager)
+	log.Println("Routes setup completed")
 
 	// 启动服务器
 	port := os.Getenv("PORT")
