@@ -266,14 +266,14 @@ const TaskDetail = () => {
             {/* Parent actions - 移动到右下角 */}
             {isParent && task.status === 'completed' && (
               <div className="flex justify-end mt-4 space-x-2">
+                <Button onClick={() => approveTask(task.id)}>
+                  Approve
+                </Button>
                 <Button 
                   variant="secondary"
                   onClick={() => rejectTask(task.id)}
                 >
                   Reject
-                </Button>
-                <Button onClick={() => approveTask(task.id)}>
-                  Approve
                 </Button>
               </div>
             )}
