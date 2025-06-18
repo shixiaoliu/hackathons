@@ -81,11 +81,10 @@ contract TaskRegistry {
     /**
      * @dev Approves a completed task and transfers the reward
      */
-    function approveTask(uint256 taskId) public payable {
+    function approveTask(uint256 taskId) public {
         require(tasks[taskId].creator == msg.sender, "Only task creator can approve the task");
         require(tasks[taskId].completed, "Task not completed yet");
         require(!tasks[taskId].approved, "Task already approved");
-        require(msg.value >= tasks[taskId].reward, "Insufficient funds for reward");
         
         tasks[taskId].approved = true;
         

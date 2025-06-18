@@ -11,7 +11,7 @@ export const TaskContractABI = [
   // Task management
   "function acceptTask(uint256 taskId)",
   "function submitTaskCompletion(uint256 taskId, string proofDescription, string[] proofImages)",
-  "function approveTask(uint256 taskId, string feedback)",
+  "function approveTask(uint256 taskId)",
   "function rejectTask(uint256 taskId, string feedback)",
   
   // View functions
@@ -53,7 +53,7 @@ export const getTaskContract = async (provider: ethers.BrowserProvider, contract
                 symbol: 'SEP',
                 decimals: 18
               },
-              rpcUrls: ['https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161'],
+              rpcUrls: ['https://eth-sepolia.g.alchemy.com/v2/ISsWLMLFTjBF1rFC4G9R3'],
               blockExplorerUrls: ['https://sepolia.etherscan.io/']
             }]
           });
@@ -130,11 +130,7 @@ export const approveTask = async (
   taskId: number,
   reward: string
 ) => {
-  const value = ethers.parseEther(reward);
-  const tx = await contract.approveTask(
-    taskId,
-    { value: value.toString() }
-  );
+  const tx = await contract.approveTask(taskId);
   return tx.wait();
 };
 
