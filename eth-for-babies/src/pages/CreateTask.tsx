@@ -58,14 +58,14 @@ const CreateTask = () => {
     
     // 验证必填字段
     if (!formData.title || !formData.description || !formData.reward || !formData.deadline || !formData.completionCriteria) {
-      alert('Please fill in all required fields');
+      alert('请填写所有必填字段');
       return;
     }
 
     try {
       // 确保钱包连接
       if (!address) {
-        alert('Please connect your wallet first');
+        alert('请先连接您的钱包');
         return;
       }
 
@@ -93,7 +93,7 @@ const CreateTask = () => {
             } catch (addError: any) {
               // 如果网络已经存在，这个错误是正常的
               if (addError.code !== 4902) {
-                console.log('Network may already exist or other error:', addError);
+                console.log('网络可能已存在或其他错误:', addError);
               }
             }
 
@@ -104,7 +104,7 @@ const CreateTask = () => {
                 params: [{ chainId: '0xaa36a7' }] // 11155111 in hex
               });
             } catch (switchError: any) {
-              console.error('Failed to switch network:', switchError);
+              console.error('切换网络失败:', switchError);
               throw switchError;
             }
           }
@@ -114,82 +114,100 @@ const CreateTask = () => {
             try {
               await switchChain({ chainId: 11155111 });
             } catch (wagmiError) {
-              console.log('Wagmi switch failed, but manual switch may have worked:', wagmiError);
+              console.log('Wagmi切换失败，但手动切换可能已成功:', wagmiError);
             }
           }
 
-          // IMPORTANT: Poll to ensure chainId has updated after switch attempt
+          // 重要：轮询以确保chainId在切换尝试后已更新
           let attempts = 0;
-          const maxAttempts = 30; // Try for up to 15 seconds (30 * 500ms)
+          const maxAttempts = 30; // 尝试长达15秒（30 * 500毫秒）
           const delayMs = 500;
 
           while (attempts < maxAttempts) {
             if (!(window as any).ethereum) {
-              alert('No Ethereum provider found after network switch attempt.');
+              alert('网络切换尝试后未找到以太坊提供者。');
               return;
             }
             const tempProvider = new ethers.BrowserProvider((window as any).ethereum);
             const networkFromTempProvider = await tempProvider.getNetwork();
             if (networkFromTempProvider.chainId === 11155111n) {
-              console.log('Wallet successfully detected Sepolia after switch attempt.');
-              break; // Exit polling loop
+              console.log('钱包在切换尝试后成功检测到Sepolia。');
+              break; // 退出轮询循环
             }
             await new Promise(resolve => setTimeout(resolve, delayMs));
             attempts++;
           }
 
-          // If after polling, network is still not Sepolia
+          // 如果轮询后，网络仍然不是Sepolia
           if ((await new ethers.BrowserProvider((window as any).ethereum).getNetwork()).chainId !== 11155111n) {
-            alert('Failed to switch to Sepolia network automatically. Please switch manually in your wallet and try again.');
+            alert('无法自动切换到Sepolia网络。请在您的钱包中手动切换并重试。');
             return;
           }
-          console.log('Successfully switched to Sepolia or already on it.');
+          console.log('成功切换到Sepolia或已经在Sepolia上。');
 
         } catch (switchError) {
-          console.error('Failed to switch network:', switchError);
-          alert('Failed to switch to Sepolia network. Please switch manually in your wallet.');
+          console.error('切换网络失败:', switchError);
+          alert('切换到Sepolia网络失败。请在您的钱包中手动切换。');
           return;
         }
       }
 
       // 1. 调用合约，发送ETH锁定奖励
       if (!(window as any).ethereum) {
-        alert('No Ethereum provider found');
+        alert('未找到以太坊提供者');
         return;
       }
-      // ethers v6: 使用 BrowserProvider
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
-      const contractPromise = getTaskContract(provider, TASK_CONTRACT_ADDRESS);
-      // 转换时间为秒
-      const deadlineTimestamp = Math.floor(new Date(formData.deadline).getTime() / 1000);
-      // 难度映射
-      const difficultyMap = { easy: 0, medium: 1, hard: 2 };
-      const difficultyNum = difficultyMap[formData.difficulty as keyof typeof difficultyMap] ?? 0;
-      // 调用合约
-      const txReceipt = await createTaskOnChain(
-        contractPromise,
-        formData.title,
-        formData.description,
-        formData.reward
-      );
-      // 2. 合约成功后再调用后端API
-      await addTask({
-        title: formData.title,
-        description: formData.description,
-        reward: formData.reward,
-        deadline: formData.deadline,
-        difficulty: formData.difficulty as 'easy' | 'medium' | 'hard',
-        completionCriteria: formData.completionCriteria,
-        createdBy: address,
-        assignedChildId: selectedChild?.id || undefined,
-        assignedTo: selectedChild?.walletAddress || undefined
-      });
+      
+      // 提示用户将要创建交易
+      alert(`您将创建一个任务，并锁定 ${formData.reward} ETH 作为奖励。请在钱包中确认交易。`);
+      
+      try {
+        // ethers v6: 使用 BrowserProvider
+        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        const contractPromise = getTaskContract(provider, TASK_CONTRACT_ADDRESS);
+        
+        // 调用合约
+        const txReceipt = await createTaskOnChain(
+          contractPromise,
+          formData.title,
+          formData.description,
+          formData.reward
+        );
+        
+        console.log('区块链交易成功:', txReceipt);
+        
+        // 2. 合约成功后再调用后端API
+        await addTask({
+          title: formData.title,
+          description: formData.description,
+          reward: formData.reward,
+          deadline: formData.deadline,
+          difficulty: formData.difficulty as 'easy' | 'medium' | 'hard',
+          completionCriteria: formData.completionCriteria,
+          createdBy: address,
+          assignedChildId: selectedChild?.id || undefined,
+          assignedTo: selectedChild?.walletAddress || undefined
+        });
 
-      alert('Task created successfully!');
-      navigate('/parent');
+        alert('任务创建成功！');
+        navigate('/parent');
+      } catch (contractError: any) {
+        console.error('创建任务合约调用失败:', contractError);
+        
+        // 检查是否是用户拒绝交易
+        if (contractError.code === -32603 || 
+            (contractError.message && contractError.message.includes('User rejected'))) {
+          alert('您已取消交易。任务未创建。');
+          return;
+        }
+        
+        // 其他合约错误
+        alert('创建任务失败: ' + (contractError.message || '未知错误'));
+        throw contractError;
+      }
     } catch (error) {
-      console.error('Error creating task:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create task. Please try again.';
+      console.error('创建任务时出错:', error);
+      const errorMessage = error instanceof Error ? error.message : '创建任务失败。请重试。';
       alert(errorMessage);
     }
   };

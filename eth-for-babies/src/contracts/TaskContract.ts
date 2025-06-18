@@ -127,8 +127,7 @@ export const submitTaskCompletion = async (
 
 export const approveTask = async (
   contract: ethers.Contract,
-  taskId: number,
-  reward: string
+  taskId: number
 ) => {
   const tx = await contract.approveTask(taskId);
   return tx.wait();

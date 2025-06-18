@@ -653,6 +653,32 @@ func (h *TaskHandler) ApproveTask(c *gin.Context) {
 		}
 	}
 
+	// 如果有区块链管理器，进行链上操作（智能合约会自动处理ETH转账）
+	if h.contractManager != nil && task.ContractTaskID != nil {
+		// 解析奖励金额
+		rewardAmount := new(big.Int)
+		rewardAmount, ok := rewardAmount.SetString(task.RewardAmount, 10)
+		if !ok {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   "Invalid reward amount format",
+			})
+			return
+		}
+
+		// 在区块链上approve任务（合约会自动将ETH转账给子账户）
+		err := h.contractManager.ApproveTask(*task.ContractTaskID, rewardAmount)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   fmt.Sprintf("Failed to approve task on blockchain: %v", err),
+			})
+			return
+		}
+	}
+
 	// 提交事务
 	if err := tx.Commit().Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -665,6 +691,7 @@ func (h *TaskHandler) ApproveTask(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    task,
+		"message": "Task approved and reward transferred successfully",
 	})
 }
 

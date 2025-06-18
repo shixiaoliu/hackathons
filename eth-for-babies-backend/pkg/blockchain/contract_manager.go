@@ -249,8 +249,9 @@ func (cm *ContractManager) ApproveTask(taskID uint64, reward *big.Int) error {
 		return fmt.Errorf("failed to create auth: %v", err)
 	}
 
-	// Set value for the transaction
-	auth.Value = reward
+	// Do not set auth.Value as the reward is already locked in the contract
+	// The smart contract will transfer the reward from its own balance to the child
+	auth.Value = big.NewInt(0)
 
 	tx, err := cm.taskRegistry.ApproveTask(auth, big.NewInt(int64(taskID)))
 	if err != nil {
@@ -264,6 +265,27 @@ func (cm *ContractManager) ApproveTask(taskID uint64, reward *big.Int) error {
 	}
 
 	return nil
+}
+
+// TransferETH transfers ETH from the contract manager's account to a specified address
+func (cm *ContractManager) TransferETH(to common.Address, amount *big.Int) (*types.Transaction, error) {
+	if cm.client == nil {
+		return nil, fmt.Errorf("eth client not initialized")
+	}
+
+	// Send ETH transaction
+	tx, err := cm.client.SendTransaction(to, amount, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send ETH transaction: %v", err)
+	}
+
+	// Wait for transaction to be mined
+	_, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
+	if err != nil {
+		return nil, fmt.Errorf("error waiting for ETH transfer transaction: %v", err)
+	}
+
+	return tx, nil
 }
 
 // GetTask retrieves a task by ID
