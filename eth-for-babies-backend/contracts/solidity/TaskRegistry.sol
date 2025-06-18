@@ -37,6 +37,7 @@ contract TaskRegistry {
      * @dev Creates a new task
      */
     function createTask(string memory title, string memory description, uint256 reward) public payable returns (uint256) {
+        require(msg.value == reward, "msg.value must equal reward");
         taskCount++;
         tasks[taskCount] = Task(
             taskCount,

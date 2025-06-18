@@ -6,7 +6,7 @@ import { ethers } from 'ethers';
 // Example ABI for a task contract
 export const TaskContractABI = [
   // Task creation
-  "function createTask(string title, string description, uint256 reward) returns (uint256)",
+  "function createTask(string title, string description, uint256 reward) payable returns (uint256)",
   
   // Task management
   "function acceptTask(uint256 taskId)",
