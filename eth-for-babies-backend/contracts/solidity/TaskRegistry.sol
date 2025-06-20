@@ -88,12 +88,17 @@ contract TaskRegistry {
         
         tasks[taskId].approved = true;
         
-        // Transfer reward to child
-        address payable recipient = payable(tasks[taskId].assignedTo);
-        recipient.transfer(tasks[taskId].reward);
+        // Log the assigned address and reward amount
+        address assignedAddress = tasks[taskId].assignedTo;
+        uint256 rewardAmount = tasks[taskId].reward;
         
+        // For debugging purposes
         emit TaskApproved(taskId, msg.sender);
-        emit RewardTransferred(taskId, tasks[taskId].assignedTo, tasks[taskId].reward);
+        emit RewardTransferred(taskId, assignedAddress, rewardAmount);
+        
+        // Transfer reward to child
+        address payable recipient = payable(assignedAddress);
+        recipient.transfer(rewardAmount);
     }
 
     /**

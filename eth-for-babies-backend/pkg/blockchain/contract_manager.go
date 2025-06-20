@@ -166,6 +166,9 @@ func (cm *ContractManager) CreateTask(title, description string, reward *big.Int
 		return 0, fmt.Errorf("failed to create auth: %v", err)
 	}
 
+	// Set the value to be sent with the transaction (must equal reward)
+	auth.Value = reward
+
 	tx, err := cm.taskRegistry.CreateTask(auth, title, description, reward)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create task: %v", err)

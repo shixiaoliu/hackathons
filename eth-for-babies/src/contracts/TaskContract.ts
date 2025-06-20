@@ -20,7 +20,7 @@ export const TaskContractABI = [
   "function getTasksByAssignee(address assignee) view returns (uint256[])",
   
   // Events
-  "event TaskCreated(uint256 indexed taskId, address indexed creator, uint256 reward)",
+  "event TaskCreated(uint256 indexed taskId, address indexed creator, string title, uint256 reward)",
   "event TaskAccepted(uint256 indexed taskId, address indexed assignee)",
   "event TaskCompleted(uint256 indexed taskId, address indexed assignee)",
   "event TaskApproved(uint256 indexed taskId, address indexed approver, address indexed assignee, uint256 reward)",
@@ -105,7 +105,7 @@ export const createTask = async (
     title,
     description,
     reward,
-    { value: reward.toString() }
+    { value: reward }
   );
   return tx.wait();
 };
