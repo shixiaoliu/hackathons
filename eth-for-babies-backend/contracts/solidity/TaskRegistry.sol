@@ -75,7 +75,7 @@ contract TaskRegistry {
         
         tasks[taskId].completed = true;
         
-        emit TaskCompleted(taskId, msg.sender);
+        emit TaskCompleted(taskId, tasks[taskId].assignedTo);
     }
 
     /**

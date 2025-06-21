@@ -190,6 +190,32 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 			// 更新数据库中的任务，添加合约任务ID
 			h.db.Model(&task).Update("contract_task_id", contractTaskID)
 			log.Printf("Task %d successfully created on blockchain with ID %d", task.ID, contractTaskID)
+
+			// 如果任务已分配给孩子，还需要调用 assignTask 方法
+			if req.AssignedChildID != nil {
+				// 获取孩子的钱包地址
+				var child models.Child
+				result := h.db.Where("id = ?", *req.AssignedChildID).First(&child)
+				if result.Error != nil {
+					log.Printf("Failed to find child with ID %d: %v", *req.AssignedChildID, result.Error)
+					return
+				}
+
+				if child.WalletAddress == "" {
+					log.Printf("Child with ID %d has no wallet address", *req.AssignedChildID)
+					return
+				}
+
+				// 调用区块链合约的 AssignTask 方法
+				err = h.contractManager.AssignTask(contractTaskID, common.HexToAddress(child.WalletAddress))
+				if err != nil {
+					log.Printf("Failed to assign task %d to child %s on blockchain: %v",
+						contractTaskID, child.WalletAddress, err)
+					return
+				}
+
+				log.Printf("Successfully assigned task %d on blockchain to %s", contractTaskID, child.WalletAddress)
+			}
 		}
 	}()
 }
