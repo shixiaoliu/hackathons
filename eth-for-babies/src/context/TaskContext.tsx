@@ -217,6 +217,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateTask = async (taskId: string, updates: Partial<Task>) => {
+    console.log('updateTask', taskId, updates);
     // 立即更新本地状态
     setTasks(prev => {
       const newTasks = prev.map(task => 
@@ -322,6 +323,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const assignTask = async (taskId: string, childWalletAddress: string, childId: string) => {
+    console.log('assignTask', taskId, childWalletAddress, childId);
     await updateTask(taskId, {
       assignedTo: childWalletAddress,
       assignedChildId: childId,

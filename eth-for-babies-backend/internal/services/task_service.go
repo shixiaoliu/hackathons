@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"math/big"
 	"time"
 
 	"eth-for-babies-backend/internal/models"
@@ -28,7 +29,18 @@ func (s *TaskService) CreateTask(task *models.Task) error {
 	if task.Title == "" {
 		return errors.New("task title is required")
 	}
-	if task.RewardAmount <= 0 {
+	// 验证奖励金额格式和值
+	if task.RewardAmount == "" {
+		return errors.New("reward amount is required")
+	}
+	// 尝试解析奖励金额以验证格式
+	rewardFloat := new(big.Float)
+	_, success := rewardFloat.SetString(task.RewardAmount)
+	if !success {
+		return errors.New("invalid reward amount format")
+	}
+	// 检查是否为正数
+	if rewardFloat.Cmp(big.NewFloat(0)) <= 0 {
 		return errors.New("reward amount must be positive")
 	}
 

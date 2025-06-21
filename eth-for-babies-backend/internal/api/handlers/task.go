@@ -1,16 +1,18 @@
 package handlers
 
 import (
+	"fmt"
+	"log"
+	"math/big"
 	"net/http"
 	"strconv"
 	"time"
-	"math/big"
-	"fmt"
 
 	"eth-for-babies-backend/internal/models"
 	"eth-for-babies-backend/internal/utils"
 	"eth-for-babies-backend/pkg/blockchain"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -141,38 +143,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		task.Status = "in_progress"
 	}
 
-	// 1. 首先与区块链合约交互
-	if h.contractManager != nil {
-		// 将奖励金额转换为wei
-		rewardWei, success := new(big.Int).SetString(req.RewardAmount, 10)
-		if !success {
-			// 如果不是wei单位，尝试解析为ETH并转换
-			rewardFloat := new(big.Float)
-			rewardFloat.SetString(req.RewardAmount)
-			ethToWei := new(big.Float).SetInt(big.NewInt(1000000000000000000)) // 1 ETH = 10^18 wei
-			rewardFloat.Mul(rewardFloat, ethToWei)
-			rewardWei, _ = rewardFloat.Int(nil)
-		}
-
-		// 调用合约创建任务
-		contractTaskID, err := h.contractManager.CreateTask(
-			utils.SanitizeString(req.Title),
-			utils.SanitizeString(req.Description),
-			rewardWei,
-		)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"error":   fmt.Sprintf("Failed to create task on blockchain: %v", err),
-			})
-			return
-		}
-
-		// 将合约任务ID存储到任务中
-		task.ContractTaskID = &contractTaskID
-	}
-
-	// 2. 区块链交互成功后，保存到数据库
+	// 先保存到数据库
 	if err := h.db.Create(&task).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -184,10 +155,43 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	// 预加载关联数据
 	h.db.Preload("AssignedChild").First(&task, task.ID)
 
+	// 立即返回响应
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"data":    task,
 	})
+
+	// 异步处理区块链交互
+	go func() {
+		if h.contractManager != nil {
+			// 将奖励金额转换为wei
+			rewardWei, success := new(big.Int).SetString(req.RewardAmount, 10)
+			if !success {
+				// 如果不是wei单位，尝试解析为ETH并转换
+				rewardFloat := new(big.Float)
+				rewardFloat.SetString(req.RewardAmount)
+				ethToWei := new(big.Float).SetInt(big.NewInt(1000000000000000000)) // 1 ETH = 10^18 wei
+				rewardFloat.Mul(rewardFloat, ethToWei)
+				rewardWei, _ = rewardFloat.Int(nil)
+			}
+
+			// 调用合约创建任务
+			contractTaskID, err := h.contractManager.CreateTask(
+				utils.SanitizeString(req.Title),
+				utils.SanitizeString(req.Description),
+				rewardWei,
+			)
+
+			if err != nil {
+				log.Printf("Failed to create task on blockchain: %v", err)
+				return
+			}
+
+			// 更新数据库中的任务，添加合约任务ID
+			h.db.Model(&task).Update("contract_task_id", contractTaskID)
+			log.Printf("Task %d successfully created on blockchain with ID %d", task.ID, contractTaskID)
+		}
+	}()
 }
 
 // GetTasks 获取任务列表
@@ -420,10 +424,41 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 			})
 			return
 		}
+
+		// 保存原来的状态，用于判断是否为新分配
+		wasUnassigned := task.AssignedChildID == nil
+
+		// 更新任务分配
 		task.AssignedChildID = req.AssignedChildID
+
 		// 如果分配给了孩子且状态是pending，改为in_progress
 		if task.Status == "pending" {
 			task.Status = "in_progress"
+		}
+
+		// 如果是新分配的任务，且任务有关联的区块链任务ID，则调用区块链合约
+		if wasUnassigned && h.contractManager != nil && task.ContractTaskID != nil {
+			// 获取孩子的钱包地址
+			childWalletAddress := child.WalletAddress
+			if childWalletAddress == "" {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"success": false,
+					"error":   "Child wallet address not found",
+				})
+				return
+			}
+
+			// 调用区块链合约的AssignTask方法
+			err := h.contractManager.AssignTask(*task.ContractTaskID, common.HexToAddress(childWalletAddress))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"success": false,
+					"error":   fmt.Sprintf("Failed to assign task on blockchain: %v", err),
+				})
+				return
+			}
+
+			fmt.Printf("Successfully assigned task %d on blockchain to %s\n", *task.ContractTaskID, childWalletAddress)
 		}
 	}
 	if req.DueDate != "" {
@@ -545,6 +580,23 @@ func (h *TaskHandler) CompleteTask(c *gin.Context) {
 		return
 	}
 
+	// 如果有区块链任务ID，调用区块链合约的CompleteTask方法
+	if h.contractManager != nil && task.ContractTaskID != nil {
+		err := h.contractManager.CompleteTask(*task.ContractTaskID)
+		if err != nil {
+			// 记录错误但不使API调用失败，因为数据库中的任务已更新
+			log.Printf("Warning: Failed to complete task on blockchain: %v", err)
+			c.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"data":    task,
+				"warning": fmt.Sprintf("Task marked as complete in database but blockchain update failed: %v", err),
+			})
+			return
+		}
+
+		fmt.Printf("Successfully completed task %d on blockchain\n", *task.ContractTaskID)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    task,
@@ -659,12 +711,20 @@ func (h *TaskHandler) ApproveTask(c *gin.Context) {
 		rewardAmount := new(big.Int)
 		rewardAmount, ok := rewardAmount.SetString(task.RewardAmount, 10)
 		if !ok {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"error":   "Invalid reward amount format",
-			})
-			return
+			// 如果不是wei单位，尝试解析为ETH并转换
+			rewardFloat := new(big.Float)
+			_, success := rewardFloat.SetString(task.RewardAmount)
+			if !success {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"success": false,
+					"error":   "Invalid reward amount format",
+				})
+				return
+			}
+			ethToWei := new(big.Float).SetInt(big.NewInt(1000000000000000000)) // 1 ETH = 10^18 wei
+			rewardFloat.Mul(rewardFloat, ethToWei)
+			rewardAmount, _ = rewardFloat.Int(nil)
 		}
 
 		// 在区块链上approve任务（合约会自动将ETH转账给子账户）
