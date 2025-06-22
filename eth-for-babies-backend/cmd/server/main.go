@@ -14,7 +14,7 @@ import (
 
 func main() {
 	log.Println("Starting Family Task Chain Backend...")
-	
+
 	// 加载环境变量
 	if err := godotenv.Load(); err != nil {
 		log.Println("Warning: .env file not found")
@@ -35,6 +35,10 @@ func main() {
 
 	// 初始化区块链客户端
 	var contractManager *blockchain.ContractManager
+	log.Printf("BlockchainRPCURL: %s", cfg.BlockchainRPCURL)
+	log.Printf("PrivateKey exists: %t", cfg.PrivateKey != "")
+	log.Printf("TaskContractAddress: %s", cfg.TaskContractAddress)
+
 	if cfg.BlockchainRPCURL != "" && cfg.PrivateKey != "" {
 		ethClient, err := blockchain.NewEthClient(cfg.BlockchainRPCURL, cfg.PrivateKey)
 		if err != nil {

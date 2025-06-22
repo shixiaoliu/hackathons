@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -164,6 +165,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 
 	// 异步处理区块链交互
 	go func() {
+		log.Printf("contract manager: %v", h.contractManager)
 		if h.contractManager != nil {
 			// 将奖励金额转换为wei
 			rewardWei, success := new(big.Int).SetString(req.RewardAmount, 10)
@@ -610,7 +612,8 @@ func (h *TaskHandler) CompleteTask(c *gin.Context) {
 	// 如果有区块链任务ID，调用区块链合约的CompleteTask方法
 	if h.contractManager != nil && task.ContractTaskID != nil {
 		// 使用child的私钥完成任务
-		childPrivateKey := "73145d7944d19c30bdee6b4142a40551a5825de661092cca3a9c192c45ce70a2"
+		childPrivateKey := os.Getenv("BLOCKCHAIN_PRIVATE_KEY_CHILD")
+		log.Printf("child private key: %s", childPrivateKey)
 		err := h.contractManager.CompleteTaskWithChildKey(*task.ContractTaskID, childPrivateKey)
 		if err != nil {
 			// 记录错误但不使API调用失败，因为数据库中的任务已更新
