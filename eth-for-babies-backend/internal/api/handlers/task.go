@@ -609,7 +609,9 @@ func (h *TaskHandler) CompleteTask(c *gin.Context) {
 
 	// 如果有区块链任务ID，调用区块链合约的CompleteTask方法
 	if h.contractManager != nil && task.ContractTaskID != nil {
-		err := h.contractManager.CompleteTask(*task.ContractTaskID)
+		// 使用child的私钥完成任务
+		childPrivateKey := "73145d7944d19c30bdee6b4142a40551a5825de661092cca3a9c192c45ce70a2"
+		err := h.contractManager.CompleteTaskWithChildKey(*task.ContractTaskID, childPrivateKey)
 		if err != nil {
 			// 记录错误但不使API调用失败，因为数据库中的任务已更新
 			log.Printf("Warning: Failed to complete task on blockchain: %v", err)
