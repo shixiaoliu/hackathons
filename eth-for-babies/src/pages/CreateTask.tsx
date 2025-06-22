@@ -14,10 +14,11 @@ const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0xY
 const CreateTask = () => {
   const navigate = useNavigate();
   const { address, chainId } = useAccount();
-  const { addTask } = useTask();
+  const { addTask, isCreatingTask } = useTask();
   const { getAllChildren, selectedChild } = useFamily();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { switchChain } = useSwitchChain();
+  const [localIsCreating, setLocalIsCreating] = useState(false);
   
   const children = getAllChildren();
   
@@ -62,10 +63,14 @@ const CreateTask = () => {
       return;
     }
 
+    // 设置创建中状态为true
+    setLocalIsCreating(true);
+
     try {
       // 确保钱包连接
       if (!address) {
         alert('请先连接您的钱包');
+        setLocalIsCreating(false);
         return;
       }
 
@@ -126,6 +131,7 @@ const CreateTask = () => {
           while (attempts < maxAttempts) {
             if (!(window as any).ethereum) {
               alert('网络切换尝试后未找到以太坊提供者。');
+              setLocalIsCreating(false);
               return;
             }
             const tempProvider = new ethers.BrowserProvider((window as any).ethereum);
@@ -141,6 +147,7 @@ const CreateTask = () => {
           // 如果轮询后，网络仍然不是Sepolia
           if ((await new ethers.BrowserProvider((window as any).ethereum).getNetwork()).chainId !== 11155111n) {
             alert('无法自动切换到Sepolia网络。请在您的钱包中手动切换并重试。');
+            setLocalIsCreating(false);
             return;
           }
           console.log('成功切换到Sepolia或已经在Sepolia上。');
@@ -148,6 +155,7 @@ const CreateTask = () => {
         } catch (switchError) {
           console.error('切换网络失败:', switchError);
           alert('切换到Sepolia网络失败。请在您的钱包中手动切换。');
+          setLocalIsCreating(false);
           return;
         }
       }
@@ -155,6 +163,7 @@ const CreateTask = () => {
       // 1. 调用合约，发送ETH锁定奖励
       if (!(window as any).ethereum) {
         alert('未找到以太坊提供者');
+        setLocalIsCreating(false);
         return;
       }
       
@@ -198,6 +207,7 @@ const CreateTask = () => {
         if (contractError.code === -32603 || 
             (contractError.message && contractError.message.includes('User rejected'))) {
           alert('您已取消交易。任务未创建。');
+          setLocalIsCreating(false);
           return;
         }
         
@@ -209,6 +219,8 @@ const CreateTask = () => {
       console.error('创建任务时出错:', error);
       const errorMessage = error instanceof Error ? error.message : '创建任务失败。请重试。';
       alert(errorMessage);
+    } finally {
+      setLocalIsCreating(false);
     }
   };
 
@@ -391,14 +403,16 @@ const CreateTask = () => {
               type="button" 
               variant="outline" 
               onClick={() => navigate('/parent')}
+              disabled={localIsCreating}
             >
               Cancel
             </Button>
             <Button 
               type="submit" 
               leftIcon={<PlusCircle className="h-5 w-5" />}
+              disabled={localIsCreating}
             >
-              Create Task
+              {localIsCreating ? "Creating..." : "Create Task"}
             </Button>
           </CardFooter>
         </form>
