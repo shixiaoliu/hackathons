@@ -140,6 +140,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 
 	// 如果分配给了孩子，状态改为进行中
 	if req.AssignedChildID != nil {
+		log.Printf("assigned child id: %d", *req.AssignedChildID)
 		task.Status = "in_progress"
 	}
 
