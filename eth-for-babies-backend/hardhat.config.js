@@ -8,7 +8,7 @@ module.exports = {
   networks: {
     sepolia: {
       url: process.env.BLOCKCHAIN_RPC_URL,
-      accounts: [process.env.BLOCKCHAIN_PRIVATE_KEY], // 推荐用 .env 管理私钥
+      accounts: [process.env.BLOCKCHAIN_PRIVATE_KEY_PARENT, process.env.BLOCKCHAIN_PRIVATE_KEY_CHILD], // 推荐用 .env 管理私钥
       chainId: 11155111
     },
   }
