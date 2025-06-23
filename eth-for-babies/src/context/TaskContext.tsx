@@ -290,6 +290,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         const response = await taskApi.approve(taskIdNumber);
         if (response.success) {
           console.log('任务已成功批准');
+          alert('任务已成功批准');
         } else {
           console.error('批准任务失败:', response.error);
           // 失败时重新从后端获取数据
@@ -299,6 +300,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         const response = await taskApi.reject(taskIdNumber);
         if (response.success) {
           console.log('任务已成功拒绝');
+          alert('任务已成功拒绝');
         } else {
           console.error('拒绝任务失败:', response.error);
           // 失败时重新从后端获取数据
