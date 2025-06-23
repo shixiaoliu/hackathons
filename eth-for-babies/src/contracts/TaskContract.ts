@@ -30,10 +30,12 @@ export const TaskContractABI = [
 // Example code to interact with the contract
 export const getTaskContract = async (provider: ethers.BrowserProvider, contractAddress: string) => {
   const signer = await provider.getSigner();
+  const signerAddress = await signer.getAddress();
   const network = await provider.getNetwork();
   
   console.log('Current network chainId:', network.chainId);
   console.log('Full network object:', network);
+  console.log('Using signer address:', signerAddress);
 
   // 检查是否在 Sepolia 网络上
   if (network.chainId !== 11155111n) { // Sepolia 的 chainId
@@ -73,10 +75,13 @@ export const getTaskContract = async (provider: ethers.BrowserProvider, contract
         // 等待网络切换完成
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // 重新获取网络信息
+        // 重新获取网络信息和签名者
         const newProvider = new ethers.BrowserProvider(ethereum);
         const newSigner = await newProvider.getSigner();
+        const newSignerAddress = await newSigner.getAddress();
         const newNetwork = await newProvider.getNetwork();
+        
+        console.log('After network switch, using signer address:', newSignerAddress);
         
         if (newNetwork.chainId === 11155111n) {
           console.log('Successfully switched to Sepolia network');
@@ -100,8 +105,20 @@ export const createTask = async (
   rewardAmount: string
 ) => {
   const contract = await contractPromise;
+  
+  // 获取当前连接的钱包地址
+  const provider = new ethers.BrowserProvider((window as any).ethereum);
+  const accounts = await provider.send("eth_requestAccounts", []);
+  const currentAddress = accounts[0];
+  
+  console.log("Transaction will be sent from address:", currentAddress);
+  
+  // 确保合约使用正确的钱包地址
+  const signer = await provider.getSigner(currentAddress);
+  const contractWithSigner = contract.connect(signer);
+  
   const reward = ethers.parseEther(rewardAmount);
-  const tx = await contract.createTask(
+  const tx = await contractWithSigner.createTask(
     title,
     description,
     reward,

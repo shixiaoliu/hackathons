@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount, useSwitchChain } from 'wagmi';
 import { Upload, X, Calendar, PlusCircle, Award, Users } from 'lucide-react';
@@ -19,6 +19,28 @@ const CreateTask = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { switchChain } = useSwitchChain();
   const [localIsCreating, setLocalIsCreating] = useState(false);
+  const [currentProvider, setCurrentProvider] = useState<any>(null);
+  
+  // 获取当前钱包地址
+  useEffect(() => {
+    const checkWallet = async () => {
+      if ((window as any).ethereum) {
+        try {
+          const provider = new ethers.BrowserProvider((window as any).ethereum);
+          const signer = await provider.getSigner();
+          const signerAddress = await signer.getAddress();
+          setCurrentProvider({
+            providerAddress: signerAddress,
+            wagmiAddress: address
+          });
+        } catch (err) {
+          console.error("获取钱包地址失败:", err);
+        }
+      }
+    };
+    
+    checkWallet();
+  }, [address]);
   
   const children = getAllChildren();
   
@@ -27,7 +49,7 @@ const CreateTask = () => {
     description: '',
     deadline: '',
     difficulty: 'easy',
-    reward: '0.01',
+    reward: '0.001',
     completionCriteria: '',
   });
   
@@ -168,11 +190,26 @@ const CreateTask = () => {
       }
       
       // 提示用户将要创建交易
-      alert(`您将创建一个任务，并锁定 ${formData.reward} ETH 作为奖励。请在钱包中确认交易。`);
+      alert(`您将使用钱包地址 ${address} 创建一个任务，并锁定 ${formData.reward} ETH 作为奖励。请在钱包中确认交易。`);
       
       try {
+        // 直接使用Wagmi提供的地址
+        console.log("使用Wagmi地址进行交易:", address);
+        
         // ethers v6: 使用 BrowserProvider
         const provider = new ethers.BrowserProvider((window as any).ethereum);
+        
+        // 确保使用正确的钱包地址
+        const accounts = await provider.send("eth_requestAccounts", []);
+        console.log("当前连接的钱包账户:", accounts);
+        
+        // 如果Wagmi地址不在已连接账户列表中，给出警告
+        if (!accounts.map((a: string) => a.toLowerCase()).includes(address.toLowerCase())) {
+          alert(`警告：您的Wagmi钱包地址 (${address}) 不在当前连接的账户列表中。请在MetaMask中切换到正确的账户，然后重试。`);
+          setLocalIsCreating(false);
+          return;
+        }
+        
         const contractPromise = getTaskContract(provider, TASK_CONTRACT_ADDRESS);
         
         // 调用合约
@@ -193,7 +230,7 @@ const CreateTask = () => {
           deadline: formData.deadline,
           difficulty: formData.difficulty as 'easy' | 'medium' | 'hard',
           completionCriteria: formData.completionCriteria,
-          createdBy: address,
+          createdBy: address, // 使用Wagmi地址
           assignedChildId: selectedChild?.id || undefined,
           assignedTo: selectedChild?.walletAddress || undefined
         });
@@ -229,6 +266,46 @@ const CreateTask = () => {
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Task</h1>
         <p className="text-gray-600">Define a task for your child to complete and earn rewards</p>
+        
+        {/* 钱包地址调试信息 */}
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <h3 className="text-sm font-medium text-blue-800">钱包连接信息</h3>
+          <p className="text-xs mt-1">Wagmi 钱包地址: {address || '未连接'}</p>
+          {currentProvider && (
+            <>
+              <p className="text-xs mt-1">Provider 钱包地址: {currentProvider.providerAddress}</p>
+              {currentProvider.providerAddress !== address && (
+                <div className="mt-2 p-2 bg-red-50 border border-red-300 rounded-md">
+                  <p className="text-xs text-red-500 font-bold">
+                    警告：检测到钱包地址不匹配！
+                  </p>
+                  <p className="text-xs mt-1 text-red-500">
+                    请在MetaMask扩展中切换到地址为 {address} 的账户，然后刷新页面。
+                  </p>
+                  <button 
+                    className="mt-2 px-3 py-1 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                    onClick={async () => {
+                      try {
+                        // 请求用户切换账户
+                        await (window as any).ethereum.request({
+                          method: 'wallet_requestPermissions',
+                          params: [{ eth_accounts: {} }]
+                        });
+                        // 刷新页面
+                        window.location.reload();
+                      } catch (err) {
+                        console.error("请求切换账户失败:", err);
+                        alert("请手动在MetaMask中切换到正确的账户");
+                      }
+                    }}
+                  >
+                    切换钱包账户
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
       
       <Card>
