@@ -169,12 +169,18 @@ func (cm *ContractManager) CreateTask(title, description string, reward *big.Int
 	// Set the value to be sent with the transaction (must equal reward)
 	auth.Value = reward
 
+	// Add log for task creation
+	log.Printf("Creating task with title: %s, description: %s, reward: %s",
+		title, description, reward.String())
+
 	tx, err := cm.taskRegistry.CreateTask(auth, title, description, reward)
+	log.Printf("create task	tx: %v", tx)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create task: %v", err)
 	}
 
 	// Wait for transaction to be mined
+	log.Printf("Waiting for transaction %s to be mined", tx.Hash().Hex())
 	receipt, err := cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
 	if err != nil {
 		return 0, fmt.Errorf("error waiting for transaction: %v", err)
