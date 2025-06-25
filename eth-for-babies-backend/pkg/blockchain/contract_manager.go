@@ -291,7 +291,7 @@ func (cm *ContractManager) RejectTask(taskID uint64) error {
 	// The smart contract will refund the reward from its balance to the parent
 	auth.Value = big.NewInt(0)
 
-	// 使用生成的绑定方法调用合约
+	// 直接使用生成的RejectTask方法
 	tx, err := cm.taskRegistry.RejectTask(auth, big.NewInt(int64(taskID)))
 	if err != nil {
 		return fmt.Errorf("failed to reject task: %v", err)
