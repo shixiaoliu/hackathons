@@ -276,6 +276,36 @@ func (cm *ContractManager) ApproveTask(taskID uint64, reward *big.Int) error {
 	return nil
 }
 
+// RejectTask rejects a completed task and refunds the reward to the parent
+func (cm *ContractManager) RejectTask(taskID uint64) error {
+	if cm.taskRegistry == nil {
+		return fmt.Errorf("TaskRegistry contract not initialized")
+	}
+
+	auth, err := cm.client.GetAuth()
+	if err != nil {
+		return fmt.Errorf("failed to create auth: %v", err)
+	}
+
+	// Do not set auth.Value as the reward is already locked in the contract
+	// The smart contract will refund the reward from its balance to the parent
+	auth.Value = big.NewInt(0)
+
+	// 使用生成的绑定方法调用合约
+	tx, err := cm.taskRegistry.RejectTask(auth, big.NewInt(int64(taskID)))
+	if err != nil {
+		return fmt.Errorf("failed to reject task: %v", err)
+	}
+
+	// Wait for transaction to be mined
+	_, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
+	if err != nil {
+		return fmt.Errorf("error waiting for transaction: %v", err)
+	}
+
+	return nil
+}
+
 // CompleteTaskWithChildKey marks a task as completed using the child's private key
 func (cm *ContractManager) CompleteTaskWithChildKey(taskID uint64, childPrivateKey string) error {
 	if cm.taskRegistry == nil {
@@ -329,20 +359,20 @@ func (cm *ContractManager) GetTask(taskID uint64) (Task, error) {
 		return Task{}, fmt.Errorf("TaskRegistry contract not initialized")
 	}
 
-	task, err := cm.taskRegistry.GetTask(&bind.CallOpts{}, big.NewInt(int64(taskID)))
+	id, creator, assignedTo, title, description, reward, completed, approved, err := cm.taskRegistry.GetTask(&bind.CallOpts{}, big.NewInt(int64(taskID)))
 	if err != nil {
 		return Task{}, fmt.Errorf("failed to get task: %v", err)
 	}
 
 	return Task{
-		ID:          task.Id.Uint64(),
-		Creator:     task.Creator,
-		AssignedTo:  task.AssignedTo,
-		Title:       task.Title,
-		Description: task.Description,
-		Reward:      task.Reward,
-		Completed:   task.Completed,
-		Approved:    task.Approved,
+		ID:          id.Uint64(),
+		Creator:     creator,
+		AssignedTo:  assignedTo,
+		Title:       title,
+		Description: description,
+		Reward:      reward,
+		Completed:   completed,
+		Approved:    approved,
 	}, nil
 }
 

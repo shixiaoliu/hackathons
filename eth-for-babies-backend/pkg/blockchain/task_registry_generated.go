@@ -29,21 +29,9 @@ var (
 	_ = abi.ConvertType
 )
 
-// TaskRegistryTask is an auto generated low-level Go binding around an user-defined struct.
-type TaskRegistryTask struct {
-	Id          *big.Int
-	Creator     common.Address
-	AssignedTo  common.Address
-	Title       string
-	Description string
-	Reward      *big.Int
-	Completed   bool
-	Approved    bool
-}
-
 // TaskRegistryMetaData contains all meta data concerning the TaskRegistry contract.
 var TaskRegistryMetaData = &bind.MetaData{
-	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"approvedBy\",\"type\":\"address\"}],\"name\":\"TaskApproved\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"assignedTo\",\"type\":\"address\"}],\"name\":\"TaskAssigned\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"creator\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"title\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"reward\",\"type\":\"uint256\"}],\"name\":\"TaskCreated\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"}],\"name\":\"approveTask\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"childAddress\",\"type\":\"address\"}],\"name\":\"assignTask\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"}],\"name\":\"completeTask\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"title\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"description\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"reward\",\"type\":\"uint256\"}],\"name\":\"createTask\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"}],\"name\":\"getTask\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"creator\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"assignedTo\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"title\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"description\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"reward\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"completed\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"internalType\":\"structTaskRegistry.Task\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"taskCount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"tasks\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"creator\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"assignedTo\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"title\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"description\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"reward\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"completed\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"approvedBy\",\"type\":\"address\"}],\"name\":\"TaskApproved\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"assignedTo\",\"type\":\"address\"}],\"name\":\"TaskAssigned\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"completedBy\",\"type\":\"address\"}],\"name\":\"TaskCompleted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"creator\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"title\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"reward\",\"type\":\"uint256\"}],\"name\":\"TaskCreated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"RewardTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"rejectedBy\",\"type\":\"address\"}],\"name\":\"TaskRejected\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"childAddress\",\"type\":\"address\"}],\"name\":\"assignTask\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"}],\"name\":\"approveTask\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"}],\"name\":\"rejectTask\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"}],\"name\":\"completeTask\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"title\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"description\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"reward\",\"type\":\"uint256\"}],\"name\":\"createTask\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"taskId\",\"type\":\"uint256\"}],\"name\":\"getTask\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"taskCount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"tasks\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"id\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"creator\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"assignedTo\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"title\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"description\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"reward\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"completed\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"approved\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
 }
 
 // TaskRegistryABI is the input ABI used to generate the binding from.
@@ -194,64 +182,40 @@ func (_TaskRegistry *TaskRegistryTransactorRaw) Transact(opts *bind.TransactOpts
 
 // GetTask is a free data retrieval call binding the contract method 0x1d65e77e.
 //
-// Solidity: function getTask(uint256 taskId) view returns((uint256,address,address,string,string,uint256,bool,bool))
-func (_TaskRegistry *TaskRegistryCaller) GetTask(opts *bind.CallOpts, taskId *big.Int) (TaskRegistryTask, error) {
+// Solidity: function getTask(uint256 taskId) view returns(uint256, address, address, string, string, uint256, bool, bool)
+func (_TaskRegistry *TaskRegistryCaller) GetTask(opts *bind.CallOpts, taskId *big.Int) (*big.Int, common.Address, common.Address, string, string, *big.Int, bool, bool, error) {
 	var out []interface{}
 	err := _TaskRegistry.contract.Call(opts, &out, "getTask", taskId)
 
 	if err != nil {
-		return *new(TaskRegistryTask), err
+		return *new(*big.Int), *new(common.Address), *new(common.Address), *new(string), *new(string), *new(*big.Int), *new(bool), *new(bool), err
 	}
 
-	out0 := *abi.ConvertType(out[0], new(TaskRegistryTask)).(*TaskRegistryTask)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out1 := *abi.ConvertType(out[1], new(common.Address)).(*common.Address)
+	out2 := *abi.ConvertType(out[2], new(common.Address)).(*common.Address)
+	out3 := *abi.ConvertType(out[3], new(string)).(*string)
+	out4 := *abi.ConvertType(out[4], new(string)).(*string)
+	out5 := *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
+	out6 := *abi.ConvertType(out[6], new(bool)).(*bool)
+	out7 := *abi.ConvertType(out[7], new(bool)).(*bool)
 
-	return out0, err
+	return out0, out1, out2, out3, out4, out5, out6, out7, err
 
 }
 
 // GetTask is a free data retrieval call binding the contract method 0x1d65e77e.
 //
-// Solidity: function getTask(uint256 taskId) view returns((uint256,address,address,string,string,uint256,bool,bool))
-func (_TaskRegistry *TaskRegistrySession) GetTask(taskId *big.Int) (TaskRegistryTask, error) {
+// Solidity: function getTask(uint256 taskId) view returns(uint256, address, address, string, string, uint256, bool, bool)
+func (_TaskRegistry *TaskRegistrySession) GetTask(taskId *big.Int) (*big.Int, common.Address, common.Address, string, string, *big.Int, bool, bool, error) {
 	return _TaskRegistry.Contract.GetTask(&_TaskRegistry.CallOpts, taskId)
 }
 
 // GetTask is a free data retrieval call binding the contract method 0x1d65e77e.
 //
-// Solidity: function getTask(uint256 taskId) view returns((uint256,address,address,string,string,uint256,bool,bool))
-func (_TaskRegistry *TaskRegistryCallerSession) GetTask(taskId *big.Int) (TaskRegistryTask, error) {
+// Solidity: function getTask(uint256 taskId) view returns(uint256, address, address, string, string, uint256, bool, bool)
+func (_TaskRegistry *TaskRegistryCallerSession) GetTask(taskId *big.Int) (*big.Int, common.Address, common.Address, string, string, *big.Int, bool, bool, error) {
 	return _TaskRegistry.Contract.GetTask(&_TaskRegistry.CallOpts, taskId)
-}
-
-// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
-//
-// Solidity: function owner() view returns(address)
-func (_TaskRegistry *TaskRegistryCaller) Owner(opts *bind.CallOpts) (common.Address, error) {
-	var out []interface{}
-	err := _TaskRegistry.contract.Call(opts, &out, "owner")
-
-	if err != nil {
-		return *new(common.Address), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
-
-	return out0, err
-
-}
-
-// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
-//
-// Solidity: function owner() view returns(address)
-func (_TaskRegistry *TaskRegistrySession) Owner() (common.Address, error) {
-	return _TaskRegistry.Contract.Owner(&_TaskRegistry.CallOpts)
-}
-
-// Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
-//
-// Solidity: function owner() view returns(address)
-func (_TaskRegistry *TaskRegistryCallerSession) Owner() (common.Address, error) {
-	return _TaskRegistry.Contract.Owner(&_TaskRegistry.CallOpts)
 }
 
 // TaskCount is a free data retrieval call binding the contract method 0xb6cb58a5.
@@ -425,23 +389,198 @@ func (_TaskRegistry *TaskRegistryTransactorSession) CompleteTask(taskId *big.Int
 
 // CreateTask is a paid mutator transaction binding the contract method 0x41a4e30a.
 //
-// Solidity: function createTask(string title, string description, uint256 reward) payable returns(uint256)
+// Solidity: function createTask(string title, string description, uint256 reward) returns(uint256)
 func (_TaskRegistry *TaskRegistryTransactor) CreateTask(opts *bind.TransactOpts, title string, description string, reward *big.Int) (*types.Transaction, error) {
 	return _TaskRegistry.contract.Transact(opts, "createTask", title, description, reward)
 }
 
 // CreateTask is a paid mutator transaction binding the contract method 0x41a4e30a.
 //
-// Solidity: function createTask(string title, string description, uint256 reward) payable returns(uint256)
+// Solidity: function createTask(string title, string description, uint256 reward) returns(uint256)
 func (_TaskRegistry *TaskRegistrySession) CreateTask(title string, description string, reward *big.Int) (*types.Transaction, error) {
 	return _TaskRegistry.Contract.CreateTask(&_TaskRegistry.TransactOpts, title, description, reward)
 }
 
 // CreateTask is a paid mutator transaction binding the contract method 0x41a4e30a.
 //
-// Solidity: function createTask(string title, string description, uint256 reward) payable returns(uint256)
+// Solidity: function createTask(string title, string description, uint256 reward) returns(uint256)
 func (_TaskRegistry *TaskRegistryTransactorSession) CreateTask(title string, description string, reward *big.Int) (*types.Transaction, error) {
 	return _TaskRegistry.Contract.CreateTask(&_TaskRegistry.TransactOpts, title, description, reward)
+}
+
+// RejectTask is a paid mutator transaction binding the contract method 0x7d81b40b.
+//
+// Solidity: function rejectTask(uint256 taskId) returns()
+func (_TaskRegistry *TaskRegistryTransactor) RejectTask(opts *bind.TransactOpts, taskId *big.Int) (*types.Transaction, error) {
+	return _TaskRegistry.contract.Transact(opts, "rejectTask", taskId)
+}
+
+// RejectTask is a paid mutator transaction binding the contract method 0x7d81b40b.
+//
+// Solidity: function rejectTask(uint256 taskId) returns()
+func (_TaskRegistry *TaskRegistrySession) RejectTask(taskId *big.Int) (*types.Transaction, error) {
+	return _TaskRegistry.Contract.RejectTask(&_TaskRegistry.TransactOpts, taskId)
+}
+
+// RejectTask is a paid mutator transaction binding the contract method 0x7d81b40b.
+//
+// Solidity: function rejectTask(uint256 taskId) returns()
+func (_TaskRegistry *TaskRegistryTransactorSession) RejectTask(taskId *big.Int) (*types.Transaction, error) {
+	return _TaskRegistry.Contract.RejectTask(&_TaskRegistry.TransactOpts, taskId)
+}
+
+// TaskRegistryRewardTransferredIterator is returned from FilterRewardTransferred and is used to iterate over the raw logs and unpacked data for RewardTransferred events raised by the TaskRegistry contract.
+type TaskRegistryRewardTransferredIterator struct {
+	Event *TaskRegistryRewardTransferred // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *TaskRegistryRewardTransferredIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(TaskRegistryRewardTransferred)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(TaskRegistryRewardTransferred)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *TaskRegistryRewardTransferredIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *TaskRegistryRewardTransferredIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// TaskRegistryRewardTransferred represents a RewardTransferred event raised by the TaskRegistry contract.
+type TaskRegistryRewardTransferred struct {
+	TaskId    *big.Int
+	Recipient common.Address
+	Amount    *big.Int
+	Raw       types.Log // Blockchain specific contextual infos
+}
+
+// FilterRewardTransferred is a free log retrieval operation binding the contract event 0x99f2f3325e35634c09536d4983b1b2b0c9313e74f2b74508c7a1a521f6fce9ab.
+//
+// Solidity: event RewardTransferred(uint256 indexed taskId, address indexed recipient, uint256 amount)
+func (_TaskRegistry *TaskRegistryFilterer) FilterRewardTransferred(opts *bind.FilterOpts, taskId []*big.Int, recipient []common.Address) (*TaskRegistryRewardTransferredIterator, error) {
+
+	var taskIdRule []interface{}
+	for _, taskIdItem := range taskId {
+		taskIdRule = append(taskIdRule, taskIdItem)
+	}
+	var recipientRule []interface{}
+	for _, recipientItem := range recipient {
+		recipientRule = append(recipientRule, recipientItem)
+	}
+
+	logs, sub, err := _TaskRegistry.contract.FilterLogs(opts, "RewardTransferred", taskIdRule, recipientRule)
+	if err != nil {
+		return nil, err
+	}
+	return &TaskRegistryRewardTransferredIterator{contract: _TaskRegistry.contract, event: "RewardTransferred", logs: logs, sub: sub}, nil
+}
+
+// WatchRewardTransferred is a free log subscription operation binding the contract event 0x99f2f3325e35634c09536d4983b1b2b0c9313e74f2b74508c7a1a521f6fce9ab.
+//
+// Solidity: event RewardTransferred(uint256 indexed taskId, address indexed recipient, uint256 amount)
+func (_TaskRegistry *TaskRegistryFilterer) WatchRewardTransferred(opts *bind.WatchOpts, sink chan<- *TaskRegistryRewardTransferred, taskId []*big.Int, recipient []common.Address) (event.Subscription, error) {
+
+	var taskIdRule []interface{}
+	for _, taskIdItem := range taskId {
+		taskIdRule = append(taskIdRule, taskIdItem)
+	}
+	var recipientRule []interface{}
+	for _, recipientItem := range recipient {
+		recipientRule = append(recipientRule, recipientItem)
+	}
+
+	logs, sub, err := _TaskRegistry.contract.WatchLogs(opts, "RewardTransferred", taskIdRule, recipientRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(TaskRegistryRewardTransferred)
+				if err := _TaskRegistry.contract.UnpackLog(event, "RewardTransferred", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseRewardTransferred is a log parse operation binding the contract event 0x99f2f3325e35634c09536d4983b1b2b0c9313e74f2b74508c7a1a521f6fce9ab.
+//
+// Solidity: event RewardTransferred(uint256 indexed taskId, address indexed recipient, uint256 amount)
+func (_TaskRegistry *TaskRegistryFilterer) ParseRewardTransferred(log types.Log) (*TaskRegistryRewardTransferred, error) {
+	event := new(TaskRegistryRewardTransferred)
+	if err := _TaskRegistry.contract.UnpackLog(event, "RewardTransferred", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
 }
 
 // TaskRegistryTaskApprovedIterator is returned from FilterTaskApproved and is used to iterate over the raw logs and unpacked data for TaskApproved events raised by the TaskRegistry contract.
@@ -750,6 +889,159 @@ func (_TaskRegistry *TaskRegistryFilterer) ParseTaskAssigned(log types.Log) (*Ta
 	return event, nil
 }
 
+// TaskRegistryTaskCompletedIterator is returned from FilterTaskCompleted and is used to iterate over the raw logs and unpacked data for TaskCompleted events raised by the TaskRegistry contract.
+type TaskRegistryTaskCompletedIterator struct {
+	Event *TaskRegistryTaskCompleted // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *TaskRegistryTaskCompletedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(TaskRegistryTaskCompleted)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(TaskRegistryTaskCompleted)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *TaskRegistryTaskCompletedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *TaskRegistryTaskCompletedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// TaskRegistryTaskCompleted represents a TaskCompleted event raised by the TaskRegistry contract.
+type TaskRegistryTaskCompleted struct {
+	TaskId      *big.Int
+	CompletedBy common.Address
+	Raw         types.Log // Blockchain specific contextual infos
+}
+
+// FilterTaskCompleted is a free log retrieval operation binding the contract event 0xbb5889c77948badf90e8a5c73d55265e5f5d6e4837a79a78c5669691b897faed.
+//
+// Solidity: event TaskCompleted(uint256 indexed taskId, address indexed completedBy)
+func (_TaskRegistry *TaskRegistryFilterer) FilterTaskCompleted(opts *bind.FilterOpts, taskId []*big.Int, completedBy []common.Address) (*TaskRegistryTaskCompletedIterator, error) {
+
+	var taskIdRule []interface{}
+	for _, taskIdItem := range taskId {
+		taskIdRule = append(taskIdRule, taskIdItem)
+	}
+	var completedByRule []interface{}
+	for _, completedByItem := range completedBy {
+		completedByRule = append(completedByRule, completedByItem)
+	}
+
+	logs, sub, err := _TaskRegistry.contract.FilterLogs(opts, "TaskCompleted", taskIdRule, completedByRule)
+	if err != nil {
+		return nil, err
+	}
+	return &TaskRegistryTaskCompletedIterator{contract: _TaskRegistry.contract, event: "TaskCompleted", logs: logs, sub: sub}, nil
+}
+
+// WatchTaskCompleted is a free log subscription operation binding the contract event 0xbb5889c77948badf90e8a5c73d55265e5f5d6e4837a79a78c5669691b897faed.
+//
+// Solidity: event TaskCompleted(uint256 indexed taskId, address indexed completedBy)
+func (_TaskRegistry *TaskRegistryFilterer) WatchTaskCompleted(opts *bind.WatchOpts, sink chan<- *TaskRegistryTaskCompleted, taskId []*big.Int, completedBy []common.Address) (event.Subscription, error) {
+
+	var taskIdRule []interface{}
+	for _, taskIdItem := range taskId {
+		taskIdRule = append(taskIdRule, taskIdItem)
+	}
+	var completedByRule []interface{}
+	for _, completedByItem := range completedBy {
+		completedByRule = append(completedByRule, completedByItem)
+	}
+
+	logs, sub, err := _TaskRegistry.contract.WatchLogs(opts, "TaskCompleted", taskIdRule, completedByRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(TaskRegistryTaskCompleted)
+				if err := _TaskRegistry.contract.UnpackLog(event, "TaskCompleted", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseTaskCompleted is a log parse operation binding the contract event 0xbb5889c77948badf90e8a5c73d55265e5f5d6e4837a79a78c5669691b897faed.
+//
+// Solidity: event TaskCompleted(uint256 indexed taskId, address indexed completedBy)
+func (_TaskRegistry *TaskRegistryFilterer) ParseTaskCompleted(log types.Log) (*TaskRegistryTaskCompleted, error) {
+	event := new(TaskRegistryTaskCompleted)
+	if err := _TaskRegistry.contract.UnpackLog(event, "TaskCompleted", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
 // TaskRegistryTaskCreatedIterator is returned from FilterTaskCreated and is used to iterate over the raw logs and unpacked data for TaskCreated events raised by the TaskRegistry contract.
 type TaskRegistryTaskCreatedIterator struct {
 	Event *TaskRegistryTaskCreated // Event containing the contract specifics and raw log
@@ -899,6 +1191,159 @@ func (_TaskRegistry *TaskRegistryFilterer) WatchTaskCreated(opts *bind.WatchOpts
 func (_TaskRegistry *TaskRegistryFilterer) ParseTaskCreated(log types.Log) (*TaskRegistryTaskCreated, error) {
 	event := new(TaskRegistryTaskCreated)
 	if err := _TaskRegistry.contract.UnpackLog(event, "TaskCreated", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// TaskRegistryTaskRejectedIterator is returned from FilterTaskRejected and is used to iterate over the raw logs and unpacked data for TaskRejected events raised by the TaskRegistry contract.
+type TaskRegistryTaskRejectedIterator struct {
+	Event *TaskRegistryTaskRejected // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *TaskRegistryTaskRejectedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(TaskRegistryTaskRejected)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(TaskRegistryTaskRejected)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *TaskRegistryTaskRejectedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *TaskRegistryTaskRejectedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// TaskRegistryTaskRejected represents a TaskRejected event raised by the TaskRegistry contract.
+type TaskRegistryTaskRejected struct {
+	TaskId     *big.Int
+	RejectedBy common.Address
+	Raw        types.Log // Blockchain specific contextual infos
+}
+
+// FilterTaskRejected is a free log retrieval operation binding the contract event 0xae1c93c6393c5abab2eaef81c691beeb381335c7913caabf8feaa0b24bd03cc0.
+//
+// Solidity: event TaskRejected(uint256 indexed taskId, address indexed rejectedBy)
+func (_TaskRegistry *TaskRegistryFilterer) FilterTaskRejected(opts *bind.FilterOpts, taskId []*big.Int, rejectedBy []common.Address) (*TaskRegistryTaskRejectedIterator, error) {
+
+	var taskIdRule []interface{}
+	for _, taskIdItem := range taskId {
+		taskIdRule = append(taskIdRule, taskIdItem)
+	}
+	var rejectedByRule []interface{}
+	for _, rejectedByItem := range rejectedBy {
+		rejectedByRule = append(rejectedByRule, rejectedByItem)
+	}
+
+	logs, sub, err := _TaskRegistry.contract.FilterLogs(opts, "TaskRejected", taskIdRule, rejectedByRule)
+	if err != nil {
+		return nil, err
+	}
+	return &TaskRegistryTaskRejectedIterator{contract: _TaskRegistry.contract, event: "TaskRejected", logs: logs, sub: sub}, nil
+}
+
+// WatchTaskRejected is a free log subscription operation binding the contract event 0xae1c93c6393c5abab2eaef81c691beeb381335c7913caabf8feaa0b24bd03cc0.
+//
+// Solidity: event TaskRejected(uint256 indexed taskId, address indexed rejectedBy)
+func (_TaskRegistry *TaskRegistryFilterer) WatchTaskRejected(opts *bind.WatchOpts, sink chan<- *TaskRegistryTaskRejected, taskId []*big.Int, rejectedBy []common.Address) (event.Subscription, error) {
+
+	var taskIdRule []interface{}
+	for _, taskIdItem := range taskId {
+		taskIdRule = append(taskIdRule, taskIdItem)
+	}
+	var rejectedByRule []interface{}
+	for _, rejectedByItem := range rejectedBy {
+		rejectedByRule = append(rejectedByRule, rejectedByItem)
+	}
+
+	logs, sub, err := _TaskRegistry.contract.WatchLogs(opts, "TaskRejected", taskIdRule, rejectedByRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(TaskRegistryTaskRejected)
+				if err := _TaskRegistry.contract.UnpackLog(event, "TaskRejected", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseTaskRejected is a log parse operation binding the contract event 0xae1c93c6393c5abab2eaef81c691beeb381335c7913caabf8feaa0b24bd03cc0.
+//
+// Solidity: event TaskRejected(uint256 indexed taskId, address indexed rejectedBy)
+func (_TaskRegistry *TaskRegistryFilterer) ParseTaskRejected(log types.Log) (*TaskRegistryTaskRejected, error) {
+	event := new(TaskRegistryTaskRejected)
+	if err := _TaskRegistry.contract.UnpackLog(event, "TaskRejected", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log

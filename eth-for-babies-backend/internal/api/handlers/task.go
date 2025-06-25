@@ -861,6 +861,14 @@ func (h *TaskHandler) RejectTask(c *gin.Context) {
 		return
 	}
 
+	// 开始事务
+	tx := h.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	// 更新任务状态
 	now := time.Now()
 	task.Status = "rejected"
@@ -869,7 +877,8 @@ func (h *TaskHandler) RejectTask(c *gin.Context) {
 		task.RejectionReason = &req.Reason
 	}
 
-	if err := h.db.Save(&task).Error; err != nil {
+	if err := tx.Save(&task).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   "Failed to reject task",
@@ -877,8 +886,32 @@ func (h *TaskHandler) RejectTask(c *gin.Context) {
 		return
 	}
 
+	// 如果有区块链管理器，进行链上操作（智能合约会自动处理ETH退款）
+	if h.contractManager != nil && task.ContractTaskID != nil {
+		// 调用区块链上的reject任务方法（合约会自动将ETH退还给父账户）
+		err := h.contractManager.RejectTask(*task.ContractTaskID)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   fmt.Sprintf("Failed to reject task on blockchain: %v", err),
+			})
+			return
+		}
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to commit transaction",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    task,
+		"message": "Task rejected and reward refunded to parent",
 	})
 }
