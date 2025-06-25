@@ -15,6 +15,7 @@ contract TaskRegistry {
         uint256 reward;
         bool completed;
         bool approved;
+        bool rejected;
     }
 
     mapping(uint256 => Task) public tasks;
@@ -32,6 +33,7 @@ contract TaskRegistry {
     event TaskCompleted(uint256 indexed taskId, address indexed completedBy);
     event TaskApproved(uint256 indexed taskId, address indexed approvedBy);
     event RewardTransferred(uint256 indexed taskId, address indexed recipient, uint256 amount);
+    event TaskRejected(uint256 indexed taskId, address indexed rejectedBy);
 
     /**
      * @dev Creates a new task
@@ -46,6 +48,7 @@ contract TaskRegistry {
             title,
             description,
             reward,
+            false,
             false,
             false
         );
@@ -102,10 +105,29 @@ contract TaskRegistry {
     }
 
     /**
+     * @dev Rejects a completed task and refunds the reward to the creator
+     */
+    function rejectTask(uint256 taskId) public {
+        require(tasks[taskId].creator == msg.sender, "Only task creator can reject the task");
+        require(tasks[taskId].completed, "Task not completed yet");
+        require(!tasks[taskId].approved, "Task already approved");
+        require(!tasks[taskId].rejected, "Task already rejected");
+        
+        tasks[taskId].rejected = true;
+        
+        // Refund reward to creator
+        address payable creatorAddress = payable(tasks[taskId].creator);
+        creatorAddress.transfer(tasks[taskId].reward);
+        
+        emit TaskRejected(taskId, msg.sender);
+        emit RewardTransferred(taskId, creatorAddress, tasks[taskId].reward);
+    }
+
+    /**
      * @dev Retrieves a task by ID
      */
     function getTask(uint256 taskId) public view returns (
-        uint256, address, address, string memory, string memory, uint256, bool, bool
+        uint256, address, address, string memory, string memory, uint256, bool, bool, bool
     ) {
         Task memory task = tasks[taskId];
         return (
@@ -116,7 +138,8 @@ contract TaskRegistry {
             task.description,
             task.reward,
             task.completed,
-            task.approved
+            task.approved,
+            task.rejected
         );
     }
 

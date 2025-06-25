@@ -9,8 +9,6 @@ import { useFamily } from '../context/FamilyContext';
 import { ethers } from 'ethers';
 import { getTaskContract, createTask as createTaskOnChain } from '../contracts/TaskContract';
 
-const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0xYourContractAddressHere';
-
 const CreateTask = () => {
   const navigate = useNavigate();
   const { address, chainId } = useAccount();
