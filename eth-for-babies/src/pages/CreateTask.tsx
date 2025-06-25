@@ -182,75 +182,33 @@ const CreateTask = () => {
         }
       }
 
-      // 1. 调用合约，发送ETH锁定奖励
+      // 检查以太坊提供者
       if (!(window as any).ethereum) {
         alert('未找到以太坊提供者');
         setLocalIsCreating(false);
         return;
       }
-      
-      // 提示用户将要创建交易
-      alert(`您将使用钱包地址 ${address} 创建一个任务，并锁定 ${formData.reward} ETH 作为奖励。请在钱包中确认交易。`);
-      
+
       try {
-        // 直接使用Wagmi提供的地址
-        console.log("使用Wagmi地址进行交易:", address);
-        
-        // ethers v6: 使用 BrowserProvider
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
-        
-        // 确保使用正确的钱包地址
-        const accounts = await provider.send("eth_requestAccounts", []);
-        console.log("当前连接的钱包账户:", accounts);
-        
-        // 如果Wagmi地址不在已连接账户列表中，给出警告
-        if (!accounts.map((a: string) => a.toLowerCase()).includes(address.toLowerCase())) {
-          alert(`警告：您的Wagmi钱包地址 (${address}) 不在当前连接的账户列表中。请在MetaMask中切换到正确的账户，然后重试。`);
-          setLocalIsCreating(false);
-          return;
-        }
-        
-        const contractPromise = getTaskContract(provider, TASK_CONTRACT_ADDRESS);
-        
-        // 调用合约
-        const txReceipt = await createTaskOnChain(
-          contractPromise,
-          formData.title,
-          formData.description,
-          formData.reward
-        );
-        
-        console.log('区块链交易成功:', txReceipt);
-        
-        // 2. 合约成功后再调用后端API
-        await addTask({
+        // 直接调用后端API，让后端处理区块链交互
+        const result = await addTask({
           title: formData.title,
           description: formData.description,
           reward: formData.reward,
           deadline: formData.deadline,
           difficulty: formData.difficulty as 'easy' | 'medium' | 'hard',
           completionCriteria: formData.completionCriteria,
-          createdBy: address, // 使用Wagmi地址
+          createdBy: address,
           assignedChildId: selectedChild?.id || undefined,
           assignedTo: selectedChild?.walletAddress || undefined
         });
 
         alert('任务创建成功！');
         navigate('/parent');
-      } catch (contractError: any) {
-        console.error('创建任务合约调用失败:', contractError);
-        
-        // 检查是否是用户拒绝交易
-        if (contractError.code === -32603 || 
-            (contractError.message && contractError.message.includes('User rejected'))) {
-          alert('您已取消交易。任务未创建。');
-          setLocalIsCreating(false);
-          return;
-        }
-        
-        // 其他合约错误
-        alert('创建任务失败: ' + (contractError.message || '未知错误'));
-        throw contractError;
+      } catch (apiError: any) {
+        console.error('创建任务失败:', apiError);
+        alert('创建任务失败: ' + (apiError.message || '未知错误'));
+        throw apiError;
       }
     } catch (error) {
       console.error('创建任务时出错:', error);
