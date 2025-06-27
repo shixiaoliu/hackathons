@@ -231,14 +231,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           {((connectionMode === 'wallet' && isWalletConnected) || 
             (connectionMode === 'manual' && manualAddress && /^0x[a-fA-F0-9]{40}$/.test(manualAddress))) && (
             <>
-              {/* 新增签名说明 */}
-              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-                <p className="font-medium mb-1">关于钱包签名</p>
-                <p>点击登录后，您的钱包将请求您签名一条消息，以验证您是钱包的所有者。</p>
-                <p className="mt-1">这不会花费任何 Gas 费用，也不会发起任何区块链交易。</p>
-                <p className="mt-1">如果您拒绝签名，系统将提供备用登录选项（仅用于测试）。</p>
-              </div>
-              
               <button
                 onClick={handleLogin}
                 disabled={isLoading}
