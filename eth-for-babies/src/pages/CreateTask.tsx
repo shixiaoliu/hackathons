@@ -7,17 +7,21 @@ import Card, { CardBody, CardFooter } from '../components/common/Card';
 import { useTask } from '../context/TaskContext';
 import { useFamily } from '../context/FamilyContext';
 import { ethers } from 'ethers';
-import { getTaskContract, createTask as createTaskOnChain } from '../contracts/TaskContract';
+import { getTaskContract, createTask as createTaskOnChain, TaskContractABI } from '../contracts/TaskContract';
+
+// Get contract address from environment variables
+const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x123456789...'; // Replace placeholder with actual fallback address
 
 const CreateTask = () => {
   const navigate = useNavigate();
   const { address, chainId } = useAccount();
-  const { addTask, isCreatingTask } = useTask();
+  const { addTask } = useTask();
   const { getAllChildren, selectedChild } = useFamily();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { switchChain } = useSwitchChain();
   const [localIsCreating, setLocalIsCreating] = useState(false);
   const [currentProvider, setCurrentProvider] = useState<any>(null);
+  const [contractTaskId, setContractTaskId] = useState<number | null>(null);
   
   // 获取当前钱包地址
   useEffect(() => {
@@ -188,7 +192,64 @@ const CreateTask = () => {
       }
 
       try {
-        // 直接调用后端API，让后端处理区块链交互
+        // 1. 直接与智能合约交互创建任务
+        console.log('开始与合约交互，创建任务...');
+        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        const signer = await provider.getSigner();
+        
+        // 创建合约实例
+        const taskContract = new ethers.Contract(
+          TASK_CONTRACT_ADDRESS,
+          TaskContractABI,
+          signer
+        );
+        
+        // 将奖励金额转换为wei
+        const rewardWei = ethers.parseEther(formData.reward);
+        
+        // 调用合约创建任务
+        console.log('调用合约创建任务:', {
+          title: formData.title,
+          description: formData.description,
+          reward: rewardWei.toString()
+        });
+        
+        // 调用合约方法，并发送ETH
+        const tx = await taskContract.createTask(
+          formData.title,
+          formData.description,
+          rewardWei,
+          { value: rewardWei }
+        );
+        
+        console.log('交易已发送:', tx.hash);
+        
+        // 等待交易被确认
+        const receipt = await tx.wait();
+        console.log('交易已确认:', receipt);
+        
+        // 解析事件日志获取任务ID
+        const taskCreatedEvent = receipt.logs
+          .map((log: any) => {
+            try {
+              return taskContract.interface.parseLog({
+                topics: log.topics as string[],
+                data: log.data
+              });
+            } catch (e) {
+              return null;
+            }
+          })
+          .find((event: any) => event && event.name === 'TaskCreated');
+        
+        let contractTaskId = null;
+        if (taskCreatedEvent) {
+          contractTaskId = taskCreatedEvent.args.taskId.toString();
+          console.log('从区块链获取到任务ID:', contractTaskId);
+          setContractTaskId(Number(contractTaskId));
+        }
+        
+        // 2. 然后调用后端API，让后端存储任务信息并关联区块链任务ID
         const result = await addTask({
           title: formData.title,
           description: formData.description,
@@ -198,8 +259,27 @@ const CreateTask = () => {
           completionCriteria: formData.completionCriteria,
           createdBy: address,
           assignedChildId: selectedChild?.id || undefined,
-          assignedTo: selectedChild?.walletAddress || undefined
+          assignedTo: selectedChild?.walletAddress || undefined,
+          contractTaskId: contractTaskId // 将区块链任务ID传递给后端
         });
+
+        // 3. 如果选中了子账户，分配任务给子账户
+        if (selectedChild && selectedChild.walletAddress && contractTaskId) {
+          try {
+            // 调用合约的assignTask方法
+            const assignTx = await taskContract.assignTask(
+              contractTaskId,
+              selectedChild.walletAddress
+            );
+            
+            console.log('分配任务交易已发送:', assignTx.hash);
+            await assignTx.wait();
+            console.log('成功分配任务给子账户:', selectedChild.walletAddress);
+          } catch (assignError) {
+            console.error('分配任务给子账户失败:', assignError);
+            // 不阻止流程继续，因为后端会处理任务分配的数据库记录
+          }
+        }
 
         alert('任务创建成功！');
         navigate('/parent');

@@ -20,6 +20,7 @@ export interface Task {
   updatedAt: string;
   completionCriteria: string;
   imageUrl?: string;
+  contractTaskId?: string; // Add blockchain contract task ID
   submissionProof?: {
     description: string;
     imageUrl?: string;
@@ -176,7 +177,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         assigned_child_id: taskData.assignedChildId ? parseInt(taskData.assignedChildId) : undefined,
         due_date: formattedDueDate,
         created_by: creatorAddress,
-        status: 'pending' as const
+        status: 'pending' as const,
+        contract_task_id: taskData.contractTaskId ? Number(taskData.contractTaskId) : undefined // Add contract task ID
       };
       
       console.log('Sending API data:', apiTaskData);
@@ -197,7 +199,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
           createdBy: response.data.created_by,
           createdAt: response.data.created_at,
           updatedAt: response.data.updated_at,
-          completionCriteria: taskData.completionCriteria
+          completionCriteria: taskData.completionCriteria,
+          contractTaskId: response.data.contract_task_id?.toString() // Add contract task ID to response
         };
         setTasks(prev => [...prev, newTask]);
         console.log('Task added via API:', newTask);

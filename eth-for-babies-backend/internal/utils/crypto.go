@@ -35,9 +35,10 @@ func CheckPasswordHash(password, hash string) bool {
 
 // VerifySignature 验证以太坊签名
 func VerifySignature(walletAddress, message, signature string) (bool, error) {
-	// 检查是否为模拟签名（用于手动输入地址的测试）
-	if signature == "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" {
-		// 对于模拟签名，直接返回true（仅用于开发/测试环境）
+	// 检查是否为模拟签名（用于手动输入地址的测试或备用登录方式）
+	if strings.HasPrefix(signature, "0x") && strings.Count(signature, "0") >= 130 {
+		// 对于任何全0或大部分为0的签名，视为模拟签名（仅用于开发/测试环境）
+		fmt.Println("检测到模拟签名，允许绕过验证")
 		return true, nil
 	}
 

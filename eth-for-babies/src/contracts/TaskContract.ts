@@ -10,6 +10,7 @@ export const TaskContractABI = [
   
   // Task management
   "function acceptTask(uint256 taskId)",
+  "function assignTask(uint256 taskId, address childAddress)",
   "function submitTaskCompletion(uint256 taskId, string proofDescription, string[] proofImages)",
   "function approveTask(uint256 taskId)",
   "function rejectTask(uint256 taskId, string feedback)",
@@ -129,6 +130,13 @@ export const createTask = async (
 
 export const acceptTask = async (contract: ethers.Contract, taskId: number) => {
   const tx = await contract.acceptTask(taskId);
+  return tx.wait();
+};
+
+export const assignTask = async (contract: ethers.Contract, taskId: number, childAddress: string) => {
+  console.log(`准备分配任务 ${taskId} 给子账户 ${childAddress}`);
+  const tx = await contract.assignTask(taskId, childAddress);
+  console.log('任务分配交易已发送:', tx.hash);
   return tx.wait();
 };
 

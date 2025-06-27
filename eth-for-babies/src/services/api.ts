@@ -63,6 +63,7 @@ interface Task {
   status: 'pending' | 'in_progress' | 'completed' | 'approved' | 'rejected';
   assigned_child_id?: number;
   created_by: string;
+  contract_task_id?: number;
   due_date?: string;
   created_at: string;
   updated_at: string;

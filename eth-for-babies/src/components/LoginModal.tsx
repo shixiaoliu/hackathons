@@ -99,6 +99,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                     <br/>3. 如果问题持续存在，请尝试清除浏览器缓存并重试
                   </p>
                 )}
+                {error.includes('用户拒绝签名') && (
+                  <p className="text-sm mt-1">
+                    您拒绝了签名请求。要继续登录，您需要签名以验证钱包所有权。
+                    <br/>
+                    <button 
+                      onClick={handleLogin}
+                      className="mt-2 px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                    >
+                      重新尝试登录
+                    </button>
+                    <button 
+                      onClick={() => {
+                        clearError();
+                        setConnectionMode('manual');
+                      }}
+                      className="mt-2 ml-2 px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                    >
+                      使用手动输入方式
+                    </button>
+                  </p>
+                )}
                 {error.includes('Failed to update nonce') && (
                   <p className="text-sm mt-1">
                     服务器更新nonce失败，我们正在尝试使用一种替代方法登录。请重试登录。
@@ -209,25 +230,35 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           {/* 登录按钮 */}
           {((connectionMode === 'wallet' && isWalletConnected) || 
             (connectionMode === 'manual' && manualAddress && /^0x[a-fA-F0-9]{40}$/.test(manualAddress))) && (
-            <button
-              onClick={handleLogin}
-              disabled={isLoading}
-              className="w-full py-3 px-4 rounded-md flex justify-center items-center font-medium text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              style={{
-                backgroundColor: isLoading ? '#4B5563' : '#4F46E5',
-                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
-              }}
-            >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  登录中...
-                </div>
-              ) : '登录'}
-            </button>
+            <>
+              {/* 新增签名说明 */}
+              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                <p className="font-medium mb-1">关于钱包签名</p>
+                <p>点击登录后，您的钱包将请求您签名一条消息，以验证您是钱包的所有者。</p>
+                <p className="mt-1">这不会花费任何 Gas 费用，也不会发起任何区块链交易。</p>
+                <p className="mt-1">如果您拒绝签名，系统将提供备用登录选项（仅用于测试）。</p>
+              </div>
+              
+              <button
+                onClick={handleLogin}
+                disabled={isLoading}
+                className="w-full py-3 px-4 rounded-md flex justify-center items-center font-medium text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                style={{
+                  backgroundColor: isLoading ? '#4B5563' : '#4F46E5',
+                  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+                }}
+              >
+                {isLoading ? (
+                  <div className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    登录中...
+                  </div>
+                ) : '登录'}
+              </button>
+            </>
           )}
 
           {connectionMode === 'wallet' && !isWalletConnected && (
