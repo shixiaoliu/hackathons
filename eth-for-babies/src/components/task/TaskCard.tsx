@@ -16,7 +16,14 @@ interface TaskCardProps {
 }
 
 const TaskCard = ({ task, onClick, onTakeTask, onCompleteTask, showTakeButton = false, actionButtons, isParentDashboard = false }: TaskCardProps) => {
-  const isOverdue = new Date(task.deadline) < new Date() && task.status === 'open';
+  // Check if the task is past its deadline regardless of status
+  const isOverdue = new Date(task.deadline) < new Date();
+  
+  // Only show as expired if it's open or in-progress and past deadline
+  const isExpired = isOverdue && (task.status === 'open' || task.status === 'in-progress');
+  
+  // Check if task is in a final state (completed, approved, rejected)
+  const isFinalized = ['completed', 'approved', 'rejected'].includes(task.status);
   
   const statusColors = {
     'open': 'bg-blue-100 text-blue-800',
@@ -24,6 +31,7 @@ const TaskCard = ({ task, onClick, onTakeTask, onCompleteTask, showTakeButton = 
     'completed': 'bg-orange-100 text-orange-800',
     'approved': 'bg-green-100 text-green-800',
     'rejected': 'bg-red-100 text-red-800',
+    'expired': 'bg-gray-100 text-gray-800',
   };
   
   const difficultyColors = {
@@ -32,11 +40,14 @@ const TaskCard = ({ task, onClick, onTakeTask, onCompleteTask, showTakeButton = 
     'hard': 'bg-red-100 text-red-800',
   };
 
+  // Determine the effective status to display
+  const displayStatus = isExpired ? 'expired' : task.status;
+
   return (
     <Card 
-      hoverable 
-      onClick={onClick} 
-      className={`h-full transition-all duration-300 ${isOverdue ? 'border-red-300 border' : ''}`}
+      hoverable={!isExpired} 
+      onClick={isExpired ? undefined : onClick} 
+      className={`h-full transition-all duration-300 ${isExpired ? 'border-red-300 border opacity-70' : ''}`}
     >
       {task.imageUrl && (
         <div className="h-40 overflow-hidden">
@@ -60,10 +71,10 @@ const TaskCard = ({ task, onClick, onTakeTask, onCompleteTask, showTakeButton = 
         
         <div className="flex items-center text-sm text-gray-500 mb-2">
           <Clock className="h-4 w-4 mr-1" />
-          <span className={isOverdue ? 'text-red-500 font-medium' : ''}>
-            {isOverdue 
+          <span className={isOverdue && !isFinalized ? 'text-red-500 font-medium' : ''}>
+            {isOverdue && !isFinalized
               ? 'Overdue by ' + formatDistanceToNow(new Date(task.deadline))
-              : formatDistanceToNow(new Date(task.deadline)) + ' left'}
+              : formatDistanceToNow(new Date(task.deadline)) + (isFinalized ? '' : ' left')}
           </span>
         </div>
         
@@ -75,12 +86,12 @@ const TaskCard = ({ task, onClick, onTakeTask, onCompleteTask, showTakeButton = 
       
       <CardFooter className="flex flex-col py-3 bg-gray-50">
         <div className="flex justify-between items-center w-full">
-          <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[task.status]}`}>
-            {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+          <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[displayStatus]}`}>
+            {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
           </span>
           
           <div className="flex items-center gap-2">
-            {showTakeButton && task.status === 'open' && onTakeTask && (
+            {showTakeButton && task.status === 'open' && !isExpired && onTakeTask && (
               <Button 
                 size="sm" 
                 onClick={(e) => {
@@ -92,7 +103,7 @@ const TaskCard = ({ task, onClick, onTakeTask, onCompleteTask, showTakeButton = 
               </Button>
             )}
             
-            {!isParentDashboard && task.status === 'in-progress' && task.assignedTo && (
+            {!isParentDashboard && task.status === 'in-progress' && !isExpired && task.assignedTo && (
               <Button 
                 size="sm"
                 variant="success" 
@@ -107,13 +118,6 @@ const TaskCard = ({ task, onClick, onTakeTask, onCompleteTask, showTakeButton = 
               >
                 Complete
               </Button>
-            )}
-            
-            {isOverdue && (
-              <div className="flex items-center text-xs text-red-500">
-                <AlertTriangle className="h-3 w-3 mr-1" />
-                Overdue
-              </div>
             )}
             
             {actionButtons}
