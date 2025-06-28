@@ -1,38 +1,180 @@
-# ETH for Babies 项目
+# ETH for Babies
 
-一个基于以太坊的家庭任务管理和奖励系统，帮助家长通过区块链技术激励孩子完成任务。
+<p align="center">
+  <img src="eth-for-babies/public/logo.png" alt="ETH for Babies Logo" width="200" height="200">
+</p>
 
-## 🚀 快速启动
+## 📖 项目介绍与愿景
 
-### 前提条件
+ETH for Babies 是一个基于以太坊区块链的家庭任务管理和奖励系统，旨在通过区块链技术培养孩子的责任感和金融素养。
 
-确保您的系统已安装以下软件：
+### 🌟 核心理念
+
+- **区块链教育**: 让孩子在完成家务任务的同时，自然地了解区块链和加密货币的基础知识
+- **激励机制**: 通过智能合约自动执行的奖励系统，激励孩子按时完成任务
+- **家庭协作**: 增强家庭成员之间的互动，让家长和孩子共同参与到任务的设定和完成过程中
+- **金融素养**: 培养孩子对数字资产的理解和管理能力，为未来的金融世界做准备
+
+### 💡 主要功能
+
+- **任务管理**: 家长可以创建、分配和跟踪家务任务
+- **区块链奖励**: 任务完成后通过智能合约自动发放ETH奖励
+- **成长记录**: 记录孩子的任务完成历史和获得的奖励
+- **钱包集成**: 与MetaMask等主流钱包无缝集成，让孩子学习管理自己的数字资产
+
+### 🔮 未来展望
+
+ETH for Babies 项目有着广阔的发展空间，以下是我们规划的一些有趣功能和玩法：
+
+- **NFT成就系统**: 
+  - 完成特定类型任务可获得独特的NFT徽章
+  - 设计季节性收藏NFT，鼓励孩子持续参与
+  - 允许孩子自己设计和铸造NFT作为任务完成证明
+
+- **游戏化教育模块**:
+  - 通过互动游戏教授区块链基础知识
+  - 设计虚拟"区块链城市"，让孩子在游戏中理解区块链运作
+  - 加入区块链知识问答，答对可获得额外奖励
+
+- **家庭DAO治理**:
+  - 创建家庭专属DAO，让孩子参与家庭决策投票
+  - 使用代币投票系统决定家庭活动、周末计划或晚餐选择
+  - 教导孩子理解去中心化组织和民主决策过程
+
+- **技能树与成长路径**:
+  - 设计不同领域的技能树（家务、学习、创意等）
+  - 完成特定技能路径解锁更高级任务和奖励
+  - 生成可视化成长报告，展示孩子的进步历程
+
+- **社交与竞争元素**:
+  - 允许不同家庭之间安全地比较和竞争
+  - 创建社区排行榜，展示完成任务最多的孩子
+  - 组织家庭间协作任务，培养团队合作精神
+
+- **DeFi教育功能**:
+  - 简化版的储蓄和投资功能，教导孩子理财知识
+  - 设置时间锁定的储蓄合约，鼓励长期储蓄习惯
+  - 通过简单的收益率计算器教导复利概念
+
+- **多链集成与跨链体验**:
+  - 扩展到多个区块链网络，让孩子了解不同区块链特性
+  - 提供简化的跨链操作体验
+  - 在不同链上设置不同类型的任务和奖励
+
+- **实物奖励集成**:
+  - 允许用代币兑换实物玩具或书籍
+  - 开发NFC/QR码系统，连接数字资产与实物奖品
+  - 创建家庭专属"商店"，设置实物奖励兑换机制，家长购买给孩子
+
+- **亲子共创模式**:
+  - 设计父母与孩子共同完成的任务类型
+  - 创建家庭协作NFT，需要所有家庭成员贡献才能完成
+  - 开发亲子互动挑战，增强家庭纽带
+
+- **区块链身份与声誉系统**:
+  - 为孩子创建去中心化身份(DID)，记录成长历程
+  - 建立可验证的技能证明，可用于未来学习和发展
+  - 开发声誉系统，奖励长期坚持和诚信行为
+
+- **跨代际财富教育**:
+  - 设计祖父母参与的任务和奖励机制
+  - 创建家族传承代币，教导长期价值观念
+  - 开发模拟遗产规划工具，教导财富传承概念
+
+这些创新功能将帮助ETH for Babies不仅成为一个任务管理工具，更成为孩子了解区块链、金融知识和责任感的综合教育平台。
+
+## 🚀 安装与使用指南
+
+### 系统要求
 
 - **Go** (1.19+) - 后端开发
 - **Node.js** (16+) - 前端开发
 - **Yarn** - 包管理器
-- **Git** - 版本控制
+- **MetaMask** - 以太坊钱包
+- **Sepolia测试网** - 用于开发测试
 
-### 一键启动
+### 快速启动
 
-使用提供的启动脚本可以同时启动前端和后端服务：
+使用一键启动脚本同时运行前端和后端服务：
 
 ```bash
+# 克隆仓库
+git clone https://github.com/yourusername/eth-for-babies.git
+cd eth-for-babies
+
 # 启动所有服务
 ./start.sh
 ```
 
-启动后，您可以访问：
-
+启动后，访问：
 - **前端应用**: http://localhost:5173
 - **后端 API**: http://localhost:8080
-- **健康检查**: http://localhost:8080/health
+
+### 手动安装步骤
+
+#### 1. 后端设置
+
+```bash
+cd eth-for-babies-backend
+
+# 安装依赖
+go mod download
+
+# 配置环境变量
+cp .env.example .env
+# 编辑.env文件，设置必要的配置项
+
+# 启动后端服务
+go run cmd/server/main.go
+```
+
+#### 2. 前端设置
+
+```bash
+cd eth-for-babies
+
+# 安装依赖
+yarn install
+
+# 配置环境变量
+cp .env.example .env
+# 编辑.env文件，设置必要的配置项，包括WalletConnect projectId
+
+# 启动开发服务器
+yarn dev
+```
+
+#### 3. 钱包配置
+
+1. 安装MetaMask浏览器扩展
+2. 创建或导入钱包
+3. 连接到Sepolia测试网
+4. 获取测试网ETH (可从水龙头获取)
 
 ### 停止服务
 
 ```bash
-# 停止所有服务
 ./stop.sh
+```
+
+### 故障排除
+
+如遇到问题，请尝试：
+
+1. 检查日志文件 `logs/backend.log` 和 `logs/frontend.log`
+2. 确保MetaMask已连接到Sepolia测试网
+3. 验证环境变量配置是否正确
+4. 重新安装依赖
+
+```bash
+# 重新安装Go依赖
+cd eth-for-babies-backend
+go mod tidy
+
+# 重新安装前端依赖
+cd eth-for-babies
+rm -rf node_modules
+yarn install
 ```
 
 ## 📁 项目结构
@@ -40,205 +182,12 @@
 ```
 .
 ├── eth-for-babies/              # 前端项目 (React + TypeScript)
-│   ├── src/
-│   │   ├── components/          # React 组件
-│   │   ├── pages/              # 页面组件
-│   │   ├── hooks/              # 自定义 Hooks
-│   │   ├── services/           # API 服务
-│   │   ├── types/              # TypeScript 类型定义
-│   │   └── utils/              # 工具函数
-│   ├── package.json
-│   └── vite.config.ts
-│
 ├── eth-for-babies-backend/      # 后端项目 (Go + Gin)
-│   ├── cmd/server/             # 应用入口
-│   ├── internal/
-│   │   ├── api/                # API 路由和处理器
-│   │   ├── config/             # 配置管理
-│   │   ├── models/             # 数据模型
-│   │   ├── repository/         # 数据访问层
-│   │   ├── services/           # 业务逻辑层
-│   │   └── utils/              # 工具函数
-│   ├── go.mod
-│   └── README.md
-│
-├── logs/                        # 运行日志 (自动创建)
-│   ├── backend.log             # 后端日志
-│   ├── frontend.log            # 前端日志
-│   ├── backend.pid             # 后端进程 ID
-│   └── frontend.pid            # 前端进程 ID
-│
+├── logs/                        # 运行日志
 ├── start.sh                     # 启动脚本
-├── stop.sh                      # 停止脚本
-└── README.md                    # 项目说明
+└── stop.sh                      # 停止脚本
 ```
-
-## 🛠️ 手动启动（开发模式）
-
-如果您需要单独启动某个服务或进行开发调试：
-
-### 启动后端
-
-```bash
-cd eth-for-babies-backend
-
-# 安装依赖
-go mod download
-
-# 启动开发服务器
-go run cmd/server/main.go
-
-# 或者构建后运行
-go build -o main cmd/server/main.go
-./main
-```
-
-### 启动前端
-
-```bash
-cd eth-for-babies
-
-# 安装依赖
-yarn install
-
-# 启动开发服务器
-yarn dev
-
-# 构建生产版本
-yarn build
-```
-
-## 🔧 配置
-
-### 后端配置
-
-复制环境配置文件并根据需要修改：
-
-```bash
-cd eth-for-babies-backend
-cp .env.example .env
-```
-
-主要配置项：
-
-```env
-# 服务器配置
-PORT=8080
-ENVIRONMENT=development
-
-# 数据库配置
-DB_DRIVER=sqlite
-DB_DSN=./data/app.db
-
-# JWT 密钥
-JWT_SECRET=your-secret-key-change-in-production
-
-# 区块链配置
-BLOCKCHAIN_RPC_URL=http://localhost:8545
-BLOCKCHAIN_PRIVATE_KEY=your-private-key
-BLOCKCHAIN_CONTRACT_ADDRESS=your-contract-address
-BLOCKCHAIN_CHAIN_ID=1337
-```
-
-### 前端配置
-
-```bash
-cd eth-for-babies
-cp .env.example .env
-```
-
-## 📊 日志管理
-
-启动脚本会自动创建日志文件：
-
-```bash
-# 实时查看后端日志
-tail -f logs/backend.log
-
-# 实时查看前端日志
-tail -f logs/frontend.log
-
-# 清理所有日志
-rm -rf logs/
-```
-
-## 🐛 故障排除
-
-### 端口冲突
-
-如果遇到端口被占用的错误：
-
-```bash
-# 查看端口占用情况
-lsof -i :8080  # 后端端口
-lsof -i :5173  # 前端端口
-
-# 杀死占用端口的进程
-kill -9 <PID>
-
-# 或使用停止脚本清理
-./stop.sh
-```
-
-### 依赖问题
-
-```bash
-# 重新安装 Go 依赖
-cd eth-for-babies-backend
-go mod tidy
-go mod download
-
-# 重新安装前端依赖
-cd eth-for-babies
-rm -rf node_modules yarn.lock
-yarn install
-```
-
-### 权限问题
-
-```bash
-# 确保脚本有执行权限
-chmod +x start.sh stop.sh
-```
-
-## 🚀 部署
-
-### Docker 部署
-
-后端项目包含 Docker 配置：
-
-```bash
-cd eth-for-babies-backend
-
-# 构建镜像
-docker build -t eth-for-babies-backend .
-
-# 运行容器
-docker run -p 8080:8080 eth-for-babies-backend
-```
-
-### 生产环境
-
-1. 设置环境变量为生产模式
-2. 配置反向代理（如 Nginx）
-3. 设置 HTTPS 证书
-4. 配置数据库（PostgreSQL 推荐）
-5. 设置监控和日志收集
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
 
 ## 📄 许可证
 
 MIT License
-
----
-
-**快速命令参考：**
-
-```bash
-./start.sh          # 启动所有服务
-./stop.sh           # 停止所有服务
-tail -f logs/*.log  # 查看日志
-```
