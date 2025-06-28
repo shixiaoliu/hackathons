@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Routes, Route } from 'react-router-dom';
 import { useAccount } from 'wagmi';
-import { PlusCircle, Filter, AlertCircle, Users } from 'lucide-react';
+import { PlusCircle, Filter, AlertCircle, Users, RefreshCw } from 'lucide-react';
 import Button from '../components/common/Button';
 import { mockTasks } from '../data/mockTasks';
 import TaskCard from '../components/task/TaskCard';
@@ -18,7 +18,8 @@ const ParentDashboard = () => {
   const [filter, setFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('tasks');
   const { children, selectedChild } = useFamily();
-  const { tasks, getTasksForParent, approveTask, rejectTask } = useTask();
+  const { tasks, getTasksForParent, approveTask, rejectTask, refreshTasks } = useTask();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // 获取当前用户的钱包地址（优先使用user.wallet_address，其次使用wagmi的address）
   const currentWalletAddress = user?.wallet_address || address;
@@ -66,6 +67,13 @@ const ParentDashboard = () => {
     rejectTask(taskId);
   };
   
+  // 处理刷新任务
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshTasks();
+    setTimeout(() => setIsRefreshing(false), 500); // 提供视觉反馈
+  };
+  
   const pendingReviewCount = parentTasks.filter(task => task.status === 'completed').length;
 
   return (
@@ -84,6 +92,13 @@ const ParentDashboard = () => {
             </div>
             
             <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-3">
+              <Button 
+                onClick={handleRefresh}
+                variant="secondary"
+                leftIcon={<RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />}
+              >
+                刷新数据
+              </Button>
               <Button 
                 onClick={() => navigate('/create-task')}
                 leftIcon={<PlusCircle className="h-5 w-5" />}

@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
-import { Filter, Wallet, History, Clock, User } from 'lucide-react';
+import { Filter, Wallet, History, Clock, User, RefreshCw } from 'lucide-react';
 import TaskCard from '../components/task/TaskCard';
 import Card, { CardBody, CardHeader } from '../components/common/Card';
 import { formatDistanceToNow } from '../utils/dateUtils';
 import { useFamily } from '../context/FamilyContext';
 import { useTask } from '../context/TaskContext';
 import { useAuthContext } from '../context/AuthContext';
+import Button from '../components/common/Button';
 
 const ChildDashboard = () => {
   const navigate = useNavigate();
   const { address } = useAccount();
   const { user } = useAuthContext();
   const { currentChild, loginAsChild, getAllChildren, findChildByAddress } = useFamily();
-  const { tasks, assignTask, getTasksForChild, getAvailableTasks, submitTask } = useTask();
+  const { tasks, assignTask, getTasksForChild, getAvailableTasks, submitTask, refreshTasks } = useTask();
   const [filter, setFilter] = useState('available');
   const [showChildSelector, setShowChildSelector] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 获取当前用户的钱包地址（优先使用user.wallet_address，其次使用wagmi的address）
   const currentWalletAddress = user?.wallet_address || address;
@@ -26,6 +28,13 @@ const ChildDashboard = () => {
   console.log('[ChildDashboard] currentChild:', currentChild);
   console.log('[ChildDashboard] getAllChildren():', getAllChildren());
   console.log('[ChildDashboard] tasks:', tasks);
+
+  // 处理刷新任务
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshTasks();
+    setTimeout(() => setIsRefreshing(false), 500); // 提供视觉反馈
+  };
 
   // 如果没有当前child，显示child选择器
   if (!currentChild && currentWalletAddress) {
@@ -143,6 +152,14 @@ const ChildDashboard = () => {
             <p className="text-gray-600">Find tasks, earn rewards</p>
           </div>
           <div className="flex items-center space-x-3">
+            <Button 
+              onClick={handleRefresh}
+              variant="secondary"
+              leftIcon={<RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />}
+              size="sm"
+            >
+              刷新数据
+            </Button>
             <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
               {currentChild.avatar ? (
                 <img src={currentChild.avatar} alt={currentChild.name} className="w-12 h-12 rounded-full" />
