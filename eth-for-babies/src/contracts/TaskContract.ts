@@ -10,7 +10,7 @@ interface TaskContract extends ethers.BaseContract {
   assignTask(taskId: number, childAddress: string): Promise<ethers.ContractTransactionResponse>;
   completeTask(taskId: number): Promise<ethers.ContractTransactionResponse>;
   approveTask(taskId: number): Promise<ethers.ContractTransactionResponse>;
-  rejectTask(taskId: number, feedback: string): Promise<ethers.ContractTransactionResponse>;
+  rejectTask(taskId: number): Promise<ethers.ContractTransactionResponse>;
   getTask(taskId: number): Promise<any>;
   getTasksByCreator(creator: string): Promise<number[]>;
   getTasksByAssignee(assignee: string): Promise<number[]>;
@@ -26,7 +26,7 @@ export const TaskContractABI = [
   "function assignTask(uint256 taskId, address childAddress)",
   "function completeTask(uint256 taskId)",
   "function approveTask(uint256 taskId)",
-  "function rejectTask(uint256 taskId, string feedback)",
+  "function rejectTask(uint256 taskId)",
   
   // View functions
   "function getTask(uint256 taskId) view returns (tuple(uint256 id, string title, string description, uint256 deadline, uint8 difficulty, uint256 reward, uint8 status, address createdBy, address assignedTo, string completionCriteria, uint256 createdAt, uint256 updatedAt))",
@@ -204,9 +204,8 @@ export const approveTask = async (
 
 export const rejectTask = async (
   contract: TaskContract,
-  taskId: number,
-  feedback: string
+  taskId: number
 ) => {
-  const tx = await contract.rejectTask(taskId, feedback);
+  const tx = await contract.rejectTask(taskId);
   return tx.wait();
 };

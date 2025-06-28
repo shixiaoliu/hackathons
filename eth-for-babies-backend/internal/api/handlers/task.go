@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"log"
-	"math/big"
 	"net/http"
 	"strconv"
 	"time"
@@ -663,40 +662,6 @@ func (h *TaskHandler) ApproveTask(c *gin.Context) {
 		}
 	}
 
-	// 如果有区块链管理器，进行链上操作（智能合约会自动处理ETH转账）
-	if h.contractManager != nil && task.ContractTaskID != nil {
-		// 解析奖励金额
-		rewardAmount := new(big.Int)
-		rewardAmount, ok := rewardAmount.SetString(task.RewardAmount, 10)
-		if !ok {
-			// 如果不是wei单位，尝试解析为ETH并转换
-			rewardFloat := new(big.Float)
-			_, success := rewardFloat.SetString(task.RewardAmount)
-			if !success {
-				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"success": false,
-					"error":   "Invalid reward amount format",
-				})
-				return
-			}
-			ethToWei := new(big.Float).SetInt(big.NewInt(1000000000000000000)) // 1 ETH = 10^18 wei
-			rewardFloat.Mul(rewardFloat, ethToWei)
-			rewardAmount, _ = rewardFloat.Int(nil)
-		}
-
-		// 在区块链上approve任务（合约会自动将ETH转账给子账户）
-		err := h.contractManager.ApproveTask(*task.ContractTaskID, rewardAmount)
-		if err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"error":   fmt.Sprintf("Failed to approve task on blockchain: %v", err),
-			})
-			return
-		}
-	}
-
 	// 提交事务
 	if err := tx.Commit().Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -810,20 +775,6 @@ func (h *TaskHandler) RejectTask(c *gin.Context) {
 			"error":   "Failed to reject task",
 		})
 		return
-	}
-
-	// 如果有区块链管理器，进行链上操作（智能合约会自动处理ETH退款）
-	if h.contractManager != nil && task.ContractTaskID != nil {
-		// 调用区块链上的reject任务方法（合约会自动将ETH退还给父账户）
-		err := h.contractManager.RejectTask(*task.ContractTaskID)
-		if err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"error":   fmt.Sprintf("Failed to reject task on blockchain: %v", err),
-			})
-			return
-		}
 	}
 
 	// 提交事务

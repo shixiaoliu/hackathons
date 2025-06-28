@@ -553,17 +553,215 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const approveTask = async (taskId: string) => {
-    // 调用updateTask更新状态
-    await updateTask(taskId, { status: 'approved' });
-    // 刷新数据确保同步
-    await refreshTasks();
+    try {
+      // 获取任务信息
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) {
+        console.error('找不到任务:', taskId);
+        alert('找不到任务');
+        return;
+      }
+      
+      const taskIdNumber = parseInt(taskId);
+      if (isNaN(taskIdNumber)) {
+        console.error('无效的任务ID:', taskId);
+        alert('无效的任务ID');
+        return;
+      }
+      
+      console.log('==== 批准任务 ====');
+      console.log('任务ID:', taskIdNumber);
+      console.log('任务标题:', task.title);
+      console.log('当前状态:', task.status);
+      console.log('合约任务ID:', task.contractTaskId);
+      console.log('合约任务ID类型:', typeof task.contractTaskId);
+
+      // 检查以太坊提供者
+      if (!(window as any).ethereum) {
+        alert('未找到以太坊提供者，请安装MetaMask');
+        return;
+      }
+
+      // 检查是否有合约任务ID
+      if (!task.contractTaskId) {
+        console.warn('任务没有关联的区块链合约ID，只更新数据库');
+      } else {
+        // 与智能合约交互，批准任务
+        try {
+          console.log('开始与合约交互，批准任务...');
+          const provider = new ethers.BrowserProvider((window as any).ethereum);
+
+          // 检查网络是否为Sepolia
+          const network = await provider.getNetwork();
+          console.log('当前网络:', network.name, '链ID:', network.chainId.toString());
+          
+          if (network.chainId !== 11155111n) {
+            console.log('当前不在Sepolia网络，尝试切换...');
+            try {
+              await (window as any).ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0xaa36a7' }] // Sepolia chainId
+              });
+              console.log('已切换到Sepolia网络');
+            } catch (switchError) {
+              console.error('切换网络失败:', switchError);
+              alert('请在钱包中手动切换到Sepolia测试网络');
+              return;
+            }
+          }
+
+          const signer = await provider.getSigner();
+          const signerAddress = await signer.getAddress();
+          console.log('签名者地址:', signerAddress);
+          
+          // 创建合约实例
+          const taskContract = new ethers.Contract(
+            TASK_CONTRACT_ADDRESS,
+            TaskContractABI,
+            signer
+          );
+          
+          // 检查合约方法
+          console.log('合约方法:', Object.keys(taskContract.interface));
+          
+          console.log('调用合约批准任务:', {
+            taskId: Number(task.contractTaskId)
+          });
+          
+          // 调用合约方法批准任务
+          const tx = await taskContract.approveTask(
+            Number(task.contractTaskId)
+          );
+          
+          console.log('交易已发送:', tx.hash);
+          
+          // 等待交易被确认
+          const receipt = await tx.wait();
+          console.log('交易已确认:', receipt);
+          
+          console.log('成功在区块链上批准任务');
+        } catch (contractError) {
+          console.error('与智能合约交互时出错:', contractError);
+          alert(`与智能合约交互失败: ${contractError instanceof Error ? contractError.message : '未知错误'}`);
+          return;
+        }
+      }
+
+      // 调用后端API更新状态
+      await updateTask(taskId, { status: 'approved' });
+      
+      // 刷新数据确保同步
+      await refreshTasks();
+    } catch (error) {
+      console.error('批准任务时发生错误:', error);
+      alert('批准任务失败，请重试');
+    }
   };
 
   const rejectTask = async (taskId: string) => {
-    // 调用updateTask更新状态
-    await updateTask(taskId, { status: 'rejected' });
-    // 刷新数据确保同步
-    await refreshTasks();
+    try {
+      // 获取任务信息
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) {
+        console.error('找不到任务:', taskId);
+        alert('找不到任务');
+        return;
+      }
+      
+      const taskIdNumber = parseInt(taskId);
+      if (isNaN(taskIdNumber)) {
+        console.error('无效的任务ID:', taskId);
+        alert('无效的任务ID');
+        return;
+      }
+      
+      console.log('==== 拒绝任务 ====');
+      console.log('任务ID:', taskIdNumber);
+      console.log('任务标题:', task.title);
+      console.log('当前状态:', task.status);
+      console.log('合约任务ID:', task.contractTaskId);
+      console.log('合约任务ID类型:', typeof task.contractTaskId);
+
+      // 检查以太坊提供者
+      if (!(window as any).ethereum) {
+        alert('未找到以太坊提供者，请安装MetaMask');
+        return;
+      }
+
+      // 检查是否有合约任务ID
+      if (!task.contractTaskId) {
+        console.warn('任务没有关联的区块链合约ID，只更新数据库');
+      } else {
+        // 与智能合约交互，拒绝任务
+        try {
+          console.log('开始与合约交互，拒绝任务...');
+          const provider = new ethers.BrowserProvider((window as any).ethereum);
+
+          // 检查网络是否为Sepolia
+          const network = await provider.getNetwork();
+          console.log('当前网络:', network.name, '链ID:', network.chainId.toString());
+          
+          if (network.chainId !== 11155111n) {
+            console.log('当前不在Sepolia网络，尝试切换...');
+            try {
+              await (window as any).ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0xaa36a7' }] // Sepolia chainId
+              });
+              console.log('已切换到Sepolia网络');
+            } catch (switchError) {
+              console.error('切换网络失败:', switchError);
+              alert('请在钱包中手动切换到Sepolia测试网络');
+              return;
+            }
+          }
+
+          const signer = await provider.getSigner();
+          const signerAddress = await signer.getAddress();
+          console.log('签名者地址:', signerAddress);
+          
+          // 创建合约实例
+          const taskContract = new ethers.Contract(
+            TASK_CONTRACT_ADDRESS,
+            TaskContractABI,
+            signer
+          );
+          
+          // 检查合约方法
+          console.log('合约方法:', Object.keys(taskContract.interface));
+          
+          console.log('调用合约拒绝任务:', {
+            taskId: Number(task.contractTaskId)
+          });
+          
+          // 调用合约方法拒绝任务
+          const tx = await taskContract.rejectTask(
+            Number(task.contractTaskId)
+          );
+          
+          console.log('交易已发送:', tx.hash);
+          
+          // 等待交易被确认
+          const receipt = await tx.wait();
+          console.log('交易已确认:', receipt);
+          
+          console.log('成功在区块链上拒绝任务');
+        } catch (contractError) {
+          console.error('与智能合约交互时出错:', contractError);
+          alert(`与智能合约交互失败: ${contractError instanceof Error ? contractError.message : '未知错误'}`);
+          return;
+        }
+      }
+
+      // 调用后端API更新状态
+      await updateTask(taskId, { status: 'rejected' });
+      
+      // 刷新数据确保同步
+      await refreshTasks();
+    } catch (error) {
+      console.error('拒绝任务时发生错误:', error);
+      alert('拒绝任务失败，请重试');
+    }
   };
 
   const getTasksForChild = (childWalletAddress: string): Task[] => {

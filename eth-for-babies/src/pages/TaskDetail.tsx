@@ -332,12 +332,16 @@ const TaskDetail = () => {
             {/* Parent actions - 移动到右下角 */}
             {isParent && task.status === 'completed' && (
               <div className="flex justify-end mt-4 space-x-2">
-                <Button onClick={() => approveTask(task.id)}>
+                <Button onClick={() => approveTask(task.id)}
+                       disabled={!task.contractTaskId}
+                       title={!task.contractTaskId ? "此任务没有关联的区块链合约ID，无法在区块链上批准" : "批准任务并在区块链上转移奖励"}>
                   Approve
                 </Button>
                 <Button 
                   variant="secondary"
                   onClick={() => rejectTask(task.id)}
+                  disabled={!task.contractTaskId}
+                  title={!task.contractTaskId ? "此任务没有关联的区块链合约ID，无法在区块链上拒绝" : "拒绝任务并在区块链上退回奖励"}
                 >
                   Reject
                 </Button>
