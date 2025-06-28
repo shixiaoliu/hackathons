@@ -190,6 +190,13 @@ const CreateTask = () => {
         setLocalIsCreating(false);
         return;
       }
+      
+      // 检查是否有MetaMask
+      if (!((window as any).ethereum.isMetaMask)) {
+        alert('请使用MetaMask钱包进行交易。如果已安装MetaMask，请确保它是您的默认钱包。');
+        setLocalIsCreating(false);
+        return;
+      }
 
       try {
         // 1. 直接与智能合约交互创建任务
