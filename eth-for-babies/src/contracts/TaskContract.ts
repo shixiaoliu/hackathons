@@ -8,7 +8,7 @@ interface TaskContract extends ethers.BaseContract {
   createTask(title: string, description: string, reward: ethers.BigNumberish, options?: {value: ethers.BigNumberish}): Promise<ethers.ContractTransactionResponse>;
   acceptTask(taskId: number): Promise<ethers.ContractTransactionResponse>;
   assignTask(taskId: number, childAddress: string): Promise<ethers.ContractTransactionResponse>;
-  submitTaskCompletion(taskId: number, proofDescription: string, proofImages: string[]): Promise<ethers.ContractTransactionResponse>;
+  completeTask(taskId: number): Promise<ethers.ContractTransactionResponse>;
   approveTask(taskId: number): Promise<ethers.ContractTransactionResponse>;
   rejectTask(taskId: number, feedback: string): Promise<ethers.ContractTransactionResponse>;
   getTask(taskId: number): Promise<any>;
@@ -24,7 +24,7 @@ export const TaskContractABI = [
   // Task management
   "function acceptTask(uint256 taskId)",
   "function assignTask(uint256 taskId, address childAddress)",
-  "function submitTaskCompletion(uint256 taskId, string proofDescription, string[] proofImages)",
+  "function completeTask(uint256 taskId)",
   "function approveTask(uint256 taskId)",
   "function rejectTask(uint256 taskId, string feedback)",
   
@@ -40,19 +40,6 @@ export const TaskContractABI = [
   "event TaskApproved(uint256 indexed taskId, address indexed approver, address indexed assignee, uint256 reward)",
   "event TaskRejected(uint256 indexed taskId, address indexed approver, string feedback)"
 ];
-
-// Define the type for our Task Contract
-interface TaskContract extends ethers.BaseContract {
-  createTask(title: string, description: string, reward: ethers.BigNumberish, options?: {value: ethers.BigNumberish}): Promise<ethers.ContractTransactionResponse>;
-  acceptTask(taskId: number): Promise<ethers.ContractTransactionResponse>;
-  assignTask(taskId: number, childAddress: string): Promise<ethers.ContractTransactionResponse>;
-  submitTaskCompletion(taskId: number, proofDescription: string, proofImages: string[]): Promise<ethers.ContractTransactionResponse>;
-  approveTask(taskId: number): Promise<ethers.ContractTransactionResponse>;
-  rejectTask(taskId: number, feedback: string): Promise<ethers.ContractTransactionResponse>;
-  getTask(taskId: number): Promise<any>;
-  getTasksByCreator(creator: string): Promise<number[]>;
-  getTasksByAssignee(assignee: string): Promise<number[]>;
-}
 
 // Example code to interact with the contract
 export const getTaskContract = async (provider: ethers.BrowserProvider, contractAddress: string): Promise<TaskContract> => {
@@ -199,13 +186,11 @@ export const assignTask = async (contract: TaskContract, taskId: number, childAd
   return tx.wait();
 };
 
-export const submitTaskCompletion = async (
+export const completeTask = async (
   contract: TaskContract,
-  taskId: number,
-  description: string,
-  imageUrls: string[]
+  taskId: number
 ) => {
-  const tx = await contract.submitTaskCompletion(taskId, description, imageUrls);
+  const tx = await contract.completeTask(taskId);
   return tx.wait();
 };
 

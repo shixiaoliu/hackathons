@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/big"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -554,26 +553,6 @@ func (h *TaskHandler) CompleteTask(c *gin.Context) {
 			"error":   "Failed to complete task",
 		})
 		return
-	}
-
-	// 如果有区块链任务ID，调用区块链合约的CompleteTask方法
-	if h.contractManager != nil && task.ContractTaskID != nil {
-		// 使用child的私钥完成任务
-		childPrivateKey := os.Getenv("BLOCKCHAIN_PRIVATE_KEY_CHILD")
-		log.Printf("child private key: %s", childPrivateKey)
-		err := h.contractManager.CompleteTaskWithChildKey(*task.ContractTaskID, childPrivateKey)
-		if err != nil {
-			// 记录错误但不使API调用失败，因为数据库中的任务已更新
-			log.Printf("Warning: Failed to complete task on blockchain: %v", err)
-			c.JSON(http.StatusOK, gin.H{
-				"success": true,
-				"data":    task,
-				"warning": fmt.Sprintf("Task marked as complete in database but blockchain update failed: %v", err),
-			})
-			return
-		}
-
-		fmt.Printf("Successfully completed task %d on blockchain\n", *task.ContractTaskID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

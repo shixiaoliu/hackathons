@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useUserRole } from '../context/UserRoleContext';
 import { useTask } from '../context/TaskContext';
@@ -8,6 +8,11 @@ import { Clock, Award, ChevronLeft, Calendar, User, CheckCircle, AlertTriangle }
 import Button from '../components/common/Button';
 import Card, { CardBody, CardHeader, CardFooter } from '../components/common/Card';
 import { formatDateTime, formatDate } from '../utils/dateUtils';
+import { ethers } from 'ethers';
+import { TaskContractABI } from '../contracts/TaskContract';
+
+// Get contract address from environment variables
+const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x123456789...'; // Replace placeholder with actual fallback address
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,9 +21,20 @@ const TaskDetail = () => {
   const { tasks, assignTask, submitTask, approveTask, rejectTask } = useTask();
   const { user } = useAuthContext();
   const { address } = useAccount();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [contractError, setContractError] = useState<string | null>(null);
   
   // 从TaskContext中查找任务而不是mockTasks
   const task = tasks.find(task => task.id === id);
+  
+  // 检查任务的合约ID
+  useEffect(() => {
+    if (task && !task.contractTaskId) {
+      setContractError('此任务没有关联的区块链合约ID，无法在区块链上完成任务。');
+    } else {
+      setContractError(null);
+    }
+  }, [task]);
   
   if (!task) {
     return (
@@ -40,7 +56,7 @@ const TaskDetail = () => {
     task.assignedTo.toLowerCase() === address.toLowerCase();
   
   const canAcceptTask = isChild && task.status === 'open';
-  const canSubmitTask = isChild && task.status === 'in-progress';
+  const canSubmitTask = isChild && task.status === 'in-progress' && isAssignedToCurrentUser;
 
   // 添加调试信息
   console.log('[TaskDetail Debug] userRole:', userRole);
@@ -51,6 +67,29 @@ const TaskDetail = () => {
   console.log('[TaskDetail Debug] current address:', address);
   console.log('[TaskDetail Debug] isAssignedToCurrentUser:', isAssignedToCurrentUser);
   console.log('[TaskDetail Debug] canSubmitTask:', canSubmitTask);
+  console.log('[TaskDetail Debug] contractTaskId:', task.contractTaskId);
+  console.log('[TaskDetail Debug] contractTaskId type:', typeof task.contractTaskId);
+
+  // 处理任务提交
+  const handleTaskSubmit = async () => {
+    if (!task.contractTaskId) {
+      alert('此任务没有关联的区块链合约ID，无法在区块链上完成任务。请联系父母重新创建任务。');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const proof = {
+        description: '任务已完成',
+        submittedAt: new Date().toISOString()
+      };
+      await submitTask(task.id, proof);
+    } catch (error) {
+      console.error('提交任务失败:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -73,6 +112,16 @@ const TaskDetail = () => {
               alt={task.title} 
               className="w-full h-full object-cover"
             />
+          </div>
+        )}
+        
+        {/* 合约错误警告 */}
+        {contractError && canSubmitTask && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 m-4">
+            <div className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2" />
+              <span className="text-yellow-700 font-medium">{contractError}</span>
+            </div>
           </div>
         )}
         
@@ -126,6 +175,19 @@ const TaskDetail = () => {
             </div>
           )}
           
+          {/* 权限警告 */}
+          {canSubmitTask === false && task.status === 'in-progress' && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center">
+                <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2" />
+                <span className="text-yellow-700 font-medium">
+                  只有被分配的孩子 ({task.assignedTo?.slice(0, 6)}...{task.assignedTo?.slice(-4)}) 
+                  可以完成这个任务。当前钱包地址: {address?.slice(0, 6)}...{address?.slice(-4)}
+                </span>
+              </div>
+            </div>
+          )}
+          
           {/* Task description */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Description</h3>
@@ -161,6 +223,12 @@ const TaskDetail = () => {
                   <span className="text-gray-500">Reward:</span>
                   <span className="text-primary-600 font-medium">{task.reward} ETH</span>
                 </div>
+                {task.contractTaskId && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Contract Task ID:</span>
+                    <span className="text-gray-900">{task.contractTaskId}</span>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -248,15 +316,13 @@ const TaskDetail = () => {
                 )}
                 
                 {canSubmitTask && (
-                  <Button onClick={() => {
-                    const proof = {
-                      description: '任务已完成',
-                      submittedAt: new Date().toISOString()
-                    };
-                    submitTask(task.id, proof);
-                    // 提交后留在当前页面，或导航到子仪表板
-                    // navigate('/child');
-                  }}>
+                  <Button 
+                    onClick={handleTaskSubmit}
+                    isLoading={isSubmitting}
+                    disabled={!task.contractTaskId || !isAssignedToCurrentUser}
+                    title={!task.contractTaskId ? "此任务没有关联的区块链合约ID" : 
+                           !isAssignedToCurrentUser ? "只有被分配的孩子才能完成任务" : ""}
+                  >
                     Complete Task
                   </Button>
                 )}

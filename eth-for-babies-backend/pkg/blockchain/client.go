@@ -104,48 +104,6 @@ func (ec *EthClient) GetAuth() (*bind.TransactOpts, error) {
 	return auth, nil
 }
 
-// CreateAuthWithPrivateKey creates a new transactor using the provided private key
-func (ec *EthClient) CreateAuthWithPrivateKey(privateKeyHex string) (*bind.TransactOpts, error) {
-	// Parse private key
-	privateKey, err := crypto.HexToECDSA(privateKeyHex)
-	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %v", err)
-	}
-
-	// Get public key and address from private key
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("error casting public key to ECDSA")
-	}
-	address := crypto.PubkeyToAddress(*publicKeyECDSA)
-
-	// Get nonce for the address
-	nonce, err := ec.client.PendingNonceAt(context.Background(), address)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get nonce: %v", err)
-	}
-
-	// Get gas price
-	gasPrice, err := ec.client.SuggestGasPrice(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("failed to suggest gas price: %v", err)
-	}
-
-	// Create auth
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, ec.chainID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create keyed transactor: %v", err)
-	}
-
-	auth.Nonce = big.NewInt(int64(nonce))
-	auth.Value = big.NewInt(0)      // in wei
-	auth.GasLimit = uint64(3000000) // in units
-	auth.GasPrice = gasPrice
-
-	return auth, nil
-}
-
 // SendTransaction sends a raw transaction to the blockchain
 func (ec *EthClient) SendTransaction(to common.Address, value *big.Int, data []byte) (*types.Transaction, error) {
 	nonce, err := ec.client.PendingNonceAt(context.Background(), ec.address)

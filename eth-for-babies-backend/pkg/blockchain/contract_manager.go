@@ -306,32 +306,6 @@ func (cm *ContractManager) RejectTask(taskID uint64) error {
 	return nil
 }
 
-// CompleteTaskWithChildKey marks a task as completed using the child's private key
-func (cm *ContractManager) CompleteTaskWithChildKey(taskID uint64, childPrivateKey string) error {
-	if cm.taskRegistry == nil {
-		return fmt.Errorf("TaskRegistry contract not initialized")
-	}
-
-	// Create auth using child's private key
-	auth, err := cm.client.CreateAuthWithPrivateKey(childPrivateKey)
-	if err != nil {
-		return fmt.Errorf("failed to create auth with child private key: %v", err)
-	}
-
-	tx, err := cm.taskRegistry.CompleteTask(auth, big.NewInt(int64(taskID)))
-	if err != nil {
-		return fmt.Errorf("failed to complete task: %v", err)
-	}
-
-	// Wait for transaction to be mined
-	_, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
-	if err != nil {
-		return fmt.Errorf("error waiting for transaction: %v", err)
-	}
-
-	return nil
-}
-
 // TransferETH transfers ETH from the contract manager's account to a specified address
 func (cm *ContractManager) TransferETH(to common.Address, amount *big.Int) (*types.Transaction, error) {
 	if cm.client == nil {

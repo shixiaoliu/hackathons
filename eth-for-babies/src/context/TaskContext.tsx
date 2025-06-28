@@ -4,6 +4,11 @@ import { useAuthContext } from './AuthContext';
 import { taskApi, childApi, apiClient, ApiResponse } from '../services/api';
 import type { Task as ApiTask, Child as ApiChild } from '../services/api';
 import { mockTasks } from '../data/mockTasks';
+import { ethers } from 'ethers';
+import { TaskContractABI } from '../contracts/TaskContract';
+
+// Get contract address from environment variables
+const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x123456789...'; // Replace placeholder with actual fallback address
 
 export interface Task {
   id: string;
@@ -93,7 +98,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
               createdBy: apiTask.created_by,
               createdAt: apiTask.created_at,
               updatedAt: apiTask.updated_at,
-              completionCriteria: apiTask.description // 使用description作为完成标准
+              completionCriteria: apiTask.description, // 使用description作为完成标准
+              contractTaskId: apiTask.contract_task_id ? apiTask.contract_task_id.toString() : undefined // 添加合约任务ID
             };
           });
           console.log('[TaskContext] 成功获取任务:', apiTasks.length, '个任务');
@@ -340,6 +346,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
 
   const submitTask = async (taskId: string, proof: Task['submissionProof']) => {
     console.log('提交任务前状态:', tasks.find(t => t.id === taskId)?.status);
+    console.log('使用的合约地址:', TASK_CONTRACT_ADDRESS);
     
     if (!proof) {
       console.error('提交证明不能为空');
@@ -367,7 +374,81 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
       console.log('任务ID:', taskIdNumber);
       console.log('任务标题:', task.title);
       console.log('当前状态:', task.status);
-      
+      console.log('合约任务ID:', task.contractTaskId);
+      console.log('合约任务ID类型:', typeof task.contractTaskId);
+      console.log('合约任务ID类型:', typeof task.contractTaskId);
+
+      // 检查以太坊提供者
+      if (!(window as any).ethereum) {
+        alert('未找到以太坊提供者，请安装MetaMask');
+        return;
+      }
+
+      // 检查是否有合约任务ID
+      if (!task.contractTaskId) {
+        console.warn('任务没有关联的区块链合约ID，只更新数据库');
+      } else {
+        // 1. 直接与智能合约交互，提交任务完成证明
+        try {
+          console.log('开始与合约交互，提交任务完成证明...');
+          const provider = new ethers.BrowserProvider((window as any).ethereum);
+
+          // 检查网络是否为Sepolia
+          const network = await provider.getNetwork();
+          console.log('当前网络:', network.name, '链ID:', network.chainId.toString());
+          
+          if (network.chainId !== 11155111n) {
+            console.log('当前不在Sepolia网络，尝试切换...');
+            try {
+              await (window as any).ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0xaa36a7' }] // Sepolia chainId
+              });
+              console.log('已切换到Sepolia网络');
+            } catch (switchError) {
+              console.error('切换网络失败:', switchError);
+              alert('请在钱包中手动切换到Sepolia测试网络');
+              return;
+            }
+          }
+
+          const signer = await provider.getSigner();
+          const signerAddress = await signer.getAddress();
+          console.log('签名者地址:', signerAddress);
+          
+          // 创建合约实例
+          const taskContract = new ethers.Contract(
+            TASK_CONTRACT_ADDRESS,
+            TaskContractABI,
+            signer
+          );
+          
+          // 检查合约方法
+          console.log('合约方法:', Object.keys(taskContract.interface));
+          
+          console.log('调用合约提交任务完成:', {
+            taskId: Number(task.contractTaskId)
+          });
+          
+          // 调用合约方法提交任务
+          const tx = await taskContract.completeTask(
+            Number(task.contractTaskId)
+          );
+          
+          console.log('交易已发送:', tx.hash);
+          
+          // 等待交易被确认
+          const receipt = await tx.wait();
+          console.log('交易已确认:', receipt);
+          
+          console.log('成功在区块链上提交任务完成证明');
+        } catch (contractError) {
+          console.error('与智能合约交互时出错:', contractError);
+          alert(`与智能合约交互失败: ${contractError instanceof Error ? contractError.message : '未知错误'}`);
+          return;
+        }
+      }
+
       // 从localStorage获取认证令牌
       const token = localStorage.getItem('auth_token');
       if (!token) {
