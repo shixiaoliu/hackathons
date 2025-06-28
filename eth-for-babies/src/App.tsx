@@ -16,8 +16,9 @@ import { TaskProvider } from './context/TaskContext';
 
 function App() {
   const { isConnected } = useAccount();
-  const { isAuthenticated, user } = useAuthContext();
+  const { isAuthenticated, user, isLoading } = useAuthContext();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   // 检查是否需要显示登录模态框
   const shouldShowLogin = isConnected && !isAuthenticated;
@@ -29,11 +30,27 @@ function App() {
     }
   }, [shouldShowLogin]);
 
+  // 确保认证状态已经检查完毕
+  useEffect(() => {
+    if (!isLoading) {
+      setAuthChecked(true);
+    }
+  }, [isLoading]);
+
   // 根据用户角色决定重定向
   const getDefaultRoute = () => {
     if (!isAuthenticated || !user) return '/';
     return user.role === 'parent' ? '/parent' : '/child';
   };
+
+  // 如果认证状态仍在加载中，显示加载状态
+  if (!authChecked) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
     <UserRoleProvider>
