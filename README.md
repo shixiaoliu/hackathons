@@ -1,9 +1,5 @@
 # ETH for Babies
 
-<p align="center">
-  <img src="eth-for-babies/public/logo.png" alt="ETH for Babies Logo" width="200" height="200">
-</p>
-
 ## 📖 项目介绍与愿景
 
 ETH for Babies 是一个基于以太坊区块链的家庭任务管理和奖励系统，旨在通过区块链技术培养孩子的责任感和金融素养。
