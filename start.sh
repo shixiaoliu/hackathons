@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# ETH for Babies 项目启动脚本
+# familyChain 项目启动脚本
 # 同时启动前端和后端服务
 
-echo "🚀 启动 ETH for Babies 项目..."
+echo "🚀 启动 familyChain 项目..."
 echo "================================"
 
 # 检查是否安装了必要的依赖
@@ -32,8 +32,8 @@ echo ""
 
 # 获取脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_DIR="$SCRIPT_DIR/eth-for-babies-backend"
-FRONTEND_DIR="$SCRIPT_DIR/eth-for-babies"
+BACKEND_DIR="$SCRIPT_DIR/familyChain-backend"
+FRONTEND_DIR="$SCRIPT_DIR/familyChain"
 
 # 检查项目目录是否存在
 if [ ! -d "$BACKEND_DIR" ]; then
