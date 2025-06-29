@@ -18,6 +18,9 @@ familyChain 是一个基于以太坊区块链的家庭任务管理和奖励系�
 - **成长记录**: 记录孩子的任务完成历史和获得的奖励
 - **钱包集成**: 与MetaMask等主流钱包无缝集成，让孩子学习管理自己的数字资产
 
+### 思维导图
+![familyChain](/familyChain-data/FamilyChain.png)
+
 ### 🔮 未来展望
 
 familyChain 项目有着广阔的发展空间，以下是我们规划的一些有趣功能和玩法：
