@@ -9,6 +9,7 @@ import { useFamily } from '../context/FamilyContext';
 import { useAuthContext } from '../context/AuthContext';
 import ChildLoginModal from '../components/auth/ChildLoginModal';
 import { ApiTest } from '../components/ApiTest';
+import { LoginModal } from '../components/LoginModal';
 
 interface HomeProps {
   onLoginClick?: () => void;
@@ -22,6 +23,7 @@ const Home: React.FC<HomeProps> = ({ onLoginClick }) => {
   const { getAllChildren, loginAsChild } = useFamily();
   const [showChildLoginModal, setShowChildLoginModal] = useState(false);
   const [showApiTest, setShowApiTest] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // 获取当前用户的钱包地址（优先使用user.wallet_address，其次使用wagmi的address）
   const currentWalletAddress = user?.wallet_address || address;
@@ -65,6 +67,13 @@ const Home: React.FC<HomeProps> = ({ onLoginClick }) => {
       {/* Hero Section */}
       <section className="text-center py-12 md:py-20">
         <div className="flex justify-end mb-4">
+          <button
+            onClick={() => setShowLoginModal(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors mr-2"
+          >
+            <User className="w-4 h-4" />
+            登录
+          </button>
           <button
             onClick={() => setShowApiTest(true)}
             className="flex items-center gap-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
@@ -261,6 +270,12 @@ const Home: React.FC<HomeProps> = ({ onLoginClick }) => {
       <ApiTest
         isOpen={showApiTest}
         onClose={() => setShowApiTest(false)}
+      />
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
       />
     </div>
   );
