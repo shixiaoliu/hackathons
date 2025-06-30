@@ -1,0 +1,285 @@
+import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import { rewardApi, exchangeApi } from '../services/api';
+import { Reward, Exchange } from '../types/reward';
+import { useAuthContext } from './AuthContext';
+import { useFamily } from './FamilyContext';
+
+// 定义上下文类型
+interface RewardContextType {
+  rewards: Reward[];
+  exchanges: Exchange[];
+  loading: boolean;
+  error: string | null;
+  fetchRewards: () => Promise<void>;
+  createReward: (rewardData: {
+    name: string;
+    description: string;
+    image_url: string;
+    token_price: number;
+    stock: number;
+  }) => Promise<Reward | null>;
+  updateReward: (id: number, data: Partial<Reward>) => Promise<boolean>;
+  deleteReward: (id: number) => Promise<boolean>;
+  fetchExchanges: () => Promise<void>;
+  approveExchange: (id: number, notes?: string) => Promise<boolean>;
+  cancelExchange: (id: number, notes?: string) => Promise<boolean>;
+}
+
+// 创建上下文
+export const RewardContext = createContext<RewardContextType | undefined>(undefined);
+
+// 提供者组件
+export const RewardProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [exchanges, setExchanges] = useState<Exchange[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { user } = useAuthContext();
+  const { selectedFamily } = useFamily();
+
+  // 获取家庭奖品列表
+  const fetchRewards = async () => {
+    if (!selectedFamily || !selectedFamily.id) {
+      console.log('没有选择家庭，无法获取奖品列表');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await rewardApi.getAll(parseInt(selectedFamily.id));
+      if (response.success) {
+        // 确保即使返回的数据为null或undefined也将rewards设置为空数组
+        setRewards(response.data || []);
+      } else {
+        // 当出现404错误时，表示没有奖品记录，将rewards设置为空数组
+        if (response.status === 404) {
+          console.log('奖品列表为空');
+          setRewards([]);
+        } else {
+          console.error('获取奖品列表返回错误:', response.error);
+          setError(response.error || '获取奖品列表失败');
+        }
+      }
+    } catch (err: any) {
+      console.error('获取奖品列表出错:', err);
+      // 当出现异常时，如果是404错误，表示没有奖品记录，将rewards设置为空数组
+      if (err.response && err.response.status === 404) {
+        console.log('奖品列表为空 (404)');
+        setRewards([]);
+      } else {
+        setError('获取奖品列表时发生错误');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 创建新奖品
+  const createReward = async (rewardData: {
+    name: string;
+    description: string;
+    image_url: string;
+    token_price: number;
+    stock: number;
+  }): Promise<Reward | null> => {
+    if (!selectedFamily || !selectedFamily.id) {
+      setError('没有选择家庭，无法创建奖品');
+      return null;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await rewardApi.create(parseInt(selectedFamily.id), rewardData);
+      if (response.success && response.data) {
+        // 添加到列表
+        setRewards(prev => [...prev, response.data as Reward]);
+        return response.data;
+      } else {
+        setError(response.error || '创建奖品失败');
+        return null;
+      }
+    } catch (err) {
+      console.error('创建奖品出错:', err);
+      setError('创建奖品时发生错误');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 更新奖品
+  const updateReward = async (id: number, data: Partial<Reward>): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await rewardApi.update(id, data);
+      if (response.success && response.data) {
+        // 更新列表
+        setRewards(prev => prev.map(reward => 
+          reward.id === id ? { ...reward, ...response.data as Reward } : reward
+        ));
+        return true;
+      } else {
+        setError(response.error || '更新奖品失败');
+        return false;
+      }
+    } catch (err) {
+      console.error('更新奖品出错:', err);
+      setError('更新奖品时发生错误');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 删除奖品
+  const deleteReward = async (id: number): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await rewardApi.delete(id);
+      if (response.success) {
+        // 从列表中移除
+        setRewards(prev => prev.filter(reward => reward.id !== id));
+        return true;
+      } else {
+        setError(response.error || '删除奖品失败');
+        return false;
+      }
+    } catch (err) {
+      console.error('删除奖品出错:', err);
+      setError('删除奖品时发生错误');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 获取兑换请求列表
+  const fetchExchanges = async () => {
+    if (!selectedFamily || !selectedFamily.id) {
+      console.log('没有选择家庭，无法获取兑换请求');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await exchangeApi.getByFamily(parseInt(selectedFamily.id));
+      if (response.success) {
+        // 确保即使返回的数据为null或undefined也将exchanges设置为空数组
+        setExchanges(response.data || []);
+      } else {
+        // 当出现404错误时，表示没有兑换记录，将exchanges设置为空数组
+        if (response.status === 404) {
+          console.log('兑换请求列表为空');
+          setExchanges([]);
+        } else {
+          console.error('获取兑换请求列表返回错误:', response.error);
+          setError(response.error || '获取兑换请求列表失败');
+        }
+      }
+    } catch (err: any) {
+      console.error('获取兑换请求列表出错:', err);
+      // 当出现异常时，如果是404错误，表示没有兑换记录，将exchanges设置为空数组
+      if (err.response && err.response.status === 404) {
+        console.log('兑换请求列表为空 (404)');
+        setExchanges([]);
+      } else {
+        setError('获取兑换请求列表时发生错误');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 批准兑换请求
+  const approveExchange = async (id: number, notes?: string): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await exchangeApi.approve(id, notes);
+      if (response.success && response.data) {
+        // 更新列表
+        setExchanges(prev => prev.map(exchange => 
+          exchange.id === id ? { ...exchange, status: 'completed', notes: notes || exchange.notes } : exchange
+        ));
+        return true;
+      } else {
+        setError(response.error || '批准兑换请求失败');
+        return false;
+      }
+    } catch (err) {
+      console.error('批准兑换请求出错:', err);
+      setError('批准兑换请求时发生错误');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 取消兑换请求
+  const cancelExchange = async (id: number, notes?: string): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await exchangeApi.cancel(id, notes);
+      if (response.success && response.data) {
+        // 更新列表
+        setExchanges(prev => prev.map(exchange => 
+          exchange.id === id ? { ...exchange, status: 'cancelled', notes: notes || exchange.notes } : exchange
+        ));
+        return true;
+      } else {
+        setError(response.error || '取消兑换请求失败');
+        return false;
+      }
+    } catch (err) {
+      console.error('取消兑换请求出错:', err);
+      setError('取消兑换请求时发生错误');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 当家庭变更时，获取奖品和兑换列表
+  useEffect(() => {
+    if (selectedFamily?.id && user) {
+      fetchRewards();
+      fetchExchanges();
+    }
+  }, [selectedFamily?.id, user]);
+
+  const contextValue: RewardContextType = {
+    rewards,
+    exchanges,
+    loading,
+    error,
+    fetchRewards,
+    createReward,
+    updateReward,
+    deleteReward,
+    fetchExchanges,
+    approveExchange,
+    cancelExchange
+  };
+
+  return (
+    <RewardContext.Provider value={contextValue}>
+      {children}
+    </RewardContext.Provider>
+  );
+};
+
+// 自定义Hook，方便组件使用此上下文
+export const useReward = () => {
+  const context = React.useContext(RewardContext);
+  if (context === undefined) {
+    throw new Error('useReward must be used within a RewardProvider');
+  }
+  return context;
+}; 

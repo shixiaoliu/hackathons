@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Routes, Route } from 'react-router-dom';
 import { useAccount } from 'wagmi';
-import { PlusCircle, Filter, AlertCircle, Users, RefreshCw } from 'lucide-react';
+import { PlusCircle, Filter, AlertCircle, Users, RefreshCw, Gift } from 'lucide-react';
 import Button from '../components/common/Button';
 import { mockTasks } from '../data/mockTasks';
 import TaskCard from '../components/task/TaskCard';
@@ -74,6 +74,11 @@ const ParentDashboard = () => {
     setTimeout(() => setIsRefreshing(false), 500); // 提供视觉反馈
   };
   
+  // 处理奖品管理
+  const handleRewardManagement = () => {
+    navigate('/rewards');
+  };
+  
   const pendingReviewCount = parentTasks.filter(task => task.status === 'completed').length;
 
   return (
@@ -98,6 +103,13 @@ const ParentDashboard = () => {
                 leftIcon={<RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />}
               >
                 刷新数据
+              </Button>
+              <Button 
+                onClick={handleRewardManagement}
+                variant="secondary"
+                leftIcon={<Gift className="h-5 w-5" />}
+              >
+                奖品管理
               </Button>
               <Button 
                 onClick={() => navigate('/create-task')}

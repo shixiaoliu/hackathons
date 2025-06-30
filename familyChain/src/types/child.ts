@@ -12,6 +12,7 @@ export interface Child {
 
 export interface Family {
   id: string;
+  name: string;
   parentAddress: string;
   children: Child[];
   createdAt: string;

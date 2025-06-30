@@ -8,11 +8,13 @@ import ChildDashboard from './pages/ChildDashboard';
 import TaskDetail from './pages/TaskDetail';
 import CreateTask from './pages/CreateTask';
 import SubmitTask from './pages/SubmitTask';
+import RewardManagement from './pages/RewardManagement';
 import { LoginModal } from './components/LoginModal';
 import { useAuthContext } from './context/AuthContext';
 import { UserRoleProvider } from './context/UserRoleContext';
 import { FamilyProvider } from './context/FamilyContext';
 import { TaskProvider } from './context/TaskContext';
+import { RewardProvider } from './context/RewardContext';
 
 function App() {
   const { isConnected } = useAccount();
@@ -56,58 +58,68 @@ function App() {
     <UserRoleProvider>
       <FamilyProvider>
         <TaskProvider>
-          <Layout>
-            <Routes>
-              <Route 
-                path="/" 
-                element={ 
-                    <Home onLoginClick={() => setShowLoginModal(true)} />
-                } 
+          <RewardProvider>
+            <Layout>
+              <Routes>
+                <Route 
+                  path="/" 
+                  element={ 
+                      <Home onLoginClick={() => setShowLoginModal(true)} />
+                  } 
+                />
+                <Route 
+                  path="/parent/*" 
+                  element={
+                    isAuthenticated && user?.role === 'parent' ? 
+                      <ParentDashboard /> : 
+                      <Navigate to="/" />
+                  } 
+                />
+                <Route 
+                  path="/child/*" 
+                  element={
+                    isAuthenticated && user?.role === 'child' ? 
+                      <ChildDashboard /> : 
+                      <Navigate to="/" />
+                  } 
+                />
+                <Route 
+                  path="/task/:id" 
+                  element={isAuthenticated ? <TaskDetail /> : <Navigate to="/" />} 
+                />
+                <Route 
+                  path="/create-task" 
+                  element={
+                    isAuthenticated && user?.role === 'parent' ? 
+                      <CreateTask /> : 
+                      <Navigate to="/" />
+                  } 
+                />
+                <Route 
+                  path="/submit-task/:id" 
+                  element={
+                    isAuthenticated && user?.role === 'child' ? 
+                      <SubmitTask /> : 
+                      <Navigate to="/" />
+                  } 
+                />
+                <Route 
+                  path="/rewards" 
+                  element={
+                    isAuthenticated && user?.role === 'parent' ? 
+                      <RewardManagement /> : 
+                      <Navigate to="/" />
+                  } 
+                />
+              </Routes>
+              
+              {/* 登录模态框 */}
+              <LoginModal 
+                isOpen={shouldShowLogin || showLoginModal}
+                onClose={() => setShowLoginModal(false)}
               />
-              <Route 
-                path="/parent/*" 
-                element={
-                  isAuthenticated && user?.role === 'parent' ? 
-                    <ParentDashboard /> : 
-                    <Navigate to="/" />
-                } 
-              />
-              <Route 
-                path="/child/*" 
-                element={
-                  isAuthenticated && user?.role === 'child' ? 
-                    <ChildDashboard /> : 
-                    <Navigate to="/" />
-                } 
-              />
-              <Route 
-                path="/task/:id" 
-                element={isAuthenticated ? <TaskDetail /> : <Navigate to="/" />} 
-              />
-              <Route 
-                path="/create-task" 
-                element={
-                  isAuthenticated && user?.role === 'parent' ? 
-                    <CreateTask /> : 
-                    <Navigate to="/" />
-                } 
-              />
-              <Route 
-                path="/submit-task/:id" 
-                element={
-                  isAuthenticated && user?.role === 'child' ? 
-                    <SubmitTask /> : 
-                    <Navigate to="/" />
-                } 
-              />
-            </Routes>
-            
-            {/* 登录模态框 */}
-            <LoginModal 
-              isOpen={shouldShowLogin || showLoginModal}
-              onClose={() => setShowLoginModal(false)}
-            />
-          </Layout>
+            </Layout>
+          </RewardProvider>
         </TaskProvider>
       </FamilyProvider>
     </UserRoleProvider>

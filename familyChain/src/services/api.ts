@@ -69,6 +69,38 @@ interface Task {
   updated_at: string;
 }
 
+// 奖品相关类型
+interface Reward {
+  id: number;
+  family_id: number;
+  name: string;
+  description: string;
+  image_url: string;
+  token_price: number;
+  created_by: number;
+  active: boolean;
+  stock: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// 兑换记录相关类型
+interface Exchange {
+  id: number;
+  reward_id: number;
+  child_id: number;
+  token_amount: number;
+  status: 'pending' | 'completed' | 'cancelled';
+  exchange_date: string;
+  completed_date?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  reward_name?: string;
+  reward_image?: string;
+  child_name?: string;
+}
+
 // HTTP 请求工具函数
 class ApiClient {
   private baseURL: string;
@@ -524,4 +556,61 @@ export const contractApi = {
 
 // 导出 API 客户端
 export { apiClient };
-export type { ApiResponse, User, Family, Child, Task };
+export type { ApiResponse, User, Family, Child, Task, Reward, Exchange };
+
+// 奖品相关 API
+export const rewardApi = {
+  // 创建奖品
+  create: (familyId: number, rewardData: {
+    name: string;
+    description: string;
+    image_url: string;
+    token_price: number;
+    stock: number;
+  }) => apiClient.post<Reward>(`/rewards/family/${familyId}`, rewardData),
+
+  // 获取家庭奖品列表
+  getAll: (familyId: number, activeOnly: boolean = true) => {
+    const query = activeOnly ? '?active_only=true' : '?active_only=false';
+    return apiClient.get<Reward[]>(`/rewards/family/${familyId}${query}`);
+  },
+
+  // 获取奖品详情
+  getById: (id: number) => apiClient.get<Reward>(`/rewards/${id}`),
+
+  // 更新奖品信息
+  update: (id: number, data: Partial<Reward>) =>
+    apiClient.put<Reward>(`/rewards/${id}`, data),
+
+  // 删除奖品
+  delete: (id: number) => apiClient.delete(`/rewards/${id}`),
+};
+
+// 兑换相关 API
+export const exchangeApi = {
+  // 兑换奖品
+  create: (data: { reward_id: number; notes?: string }) =>
+    apiClient.post<Exchange>('/exchanges', data),
+
+  // 获取孩子的兑换记录
+  getByChild: () => apiClient.get<Exchange[]>('/exchanges/my'),
+
+  // 获取家庭的兑换记录
+  getByFamily: (familyId: number) =>
+    apiClient.get<Exchange[]>(`/families/${familyId}/exchanges`),
+
+  // 获取兑换详情
+  getById: (id: number) => apiClient.get<Exchange>(`/exchanges/${id}`),
+
+  // 更新兑换状态
+  updateStatus: (id: number, status: 'pending' | 'completed' | 'cancelled', notes?: string) =>
+    apiClient.put<Exchange>(`/exchanges/${id}`, { status, notes }),
+
+  // 批准兑换
+  approve: (id: number, notes?: string) =>
+    apiClient.put<Exchange>(`/exchanges/${id}`, { status: 'completed', notes }),
+
+  // 取消兑换
+  cancel: (id: number, notes?: string) =>
+    apiClient.put<Exchange>(`/exchanges/${id}`, { status: 'cancelled', notes }),
+};

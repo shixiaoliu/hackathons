@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Menu, Home, Award, ChevronDown } from 'lucide-react';
+import { Menu, Home, Award, ChevronDown, Gift } from 'lucide-react';
 import { useState } from 'react';
 import { useUserRole } from '../../context/UserRoleContext';
 
@@ -57,6 +57,21 @@ const Navbar = () => {
               </Link>
             )}
             
+            {/* 奖品管理链接 - 仅家长可见 */}
+            {userRole === 'parent' && (
+              <Link 
+                to="/rewards" 
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  location.pathname.includes('/rewards') 
+                    ? 'text-primary-600 bg-primary-50' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Gift className="inline-block mr-1 h-4 w-4" />
+                奖品管理
+              </Link>
+            )}
+            
             <div className="ml-4">
               <ConnectButton />
             </div>
@@ -102,6 +117,22 @@ const Navbar = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Dashboard
+              </Link>
+            )}
+            
+            {/* 奖品管理链接 - 仅家长可见 */}
+            {userRole === 'parent' && (
+              <Link 
+                to="/rewards" 
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  location.pathname.includes('/rewards') 
+                    ? 'text-primary-600 bg-primary-50' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Gift className="inline-block mr-1 h-4 w-4" />
+                奖品管理
               </Link>
             )}
             

@@ -17,6 +17,8 @@ interface FamilyContextType {
   loginAsChild: (walletAddress: string) => Child | null;
   getAllChildren: () => Child[];
   findChildByAddress: (address: string) => Child | null;
+  selectedFamily: Family | null;
+  selectFamily: (familyId: string) => void;
 }
 
 const FamilyContext = createContext<FamilyContextType | undefined>(undefined);
@@ -25,6 +27,7 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
   const { address } = useAccount();
   const { user, isAuthenticated } = useAuthContext();
   const [family, setFamily] = useState<Family | null>(null);
+  const [selectedFamily, setSelectedFamily] = useState<Family | null>(null);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [isParent, setIsParent] = useState(false);
   const [currentChild, setCurrentChild] = useState<Child | null>(null);
@@ -39,6 +42,7 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
     } else {
       // 清除状态
       setFamily(null);
+      setSelectedFamily(null);
       setCurrentChild(null);
       setSelectedChild(null);
       setIsParent(false);
@@ -98,23 +102,30 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
             
             console.log('[FamilyContext] 过滤后的children数据:', children);
             
-            setFamily({
+            const familyData = {
               id: currentFamily.id.toString(),
+              name: currentFamily.name, // 添加name字段
               parentAddress: currentFamily.parent_address,
               createdAt: currentFamily.created_at,
               children
-            });
+            };
+            
+            setFamily(familyData);
+            setSelectedFamily(familyData); // 自动选择家庭
             setAllChildren(children);
           } else {
             console.error('[FamilyContext] 加载children失败，使用模拟数据:', childrenResponse.error);
             // 如果加载children失败，使用模拟数据
             const mockChildren = getAllChildrenFromStorage();
-            setFamily({
+            const familyData = {
               id: currentFamily.id.toString(),
+              name: currentFamily.name, // 添加name字段
               parentAddress: currentFamily.parent_address,
               createdAt: currentFamily.created_at,
               children: mockChildren
-            });
+            };
+            setFamily(familyData);
+            setSelectedFamily(familyData); // 自动选择家庭
             setAllChildren(mockChildren);
           }
         }
@@ -232,6 +243,12 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
     const child = family?.children.find(c => c.id === childId);
     setSelectedChild(child || null);
   };
+  
+  const selectFamily = (familyId: string) => {
+    if (family && family.id === familyId) {
+      setSelectedFamily(family);
+    }
+  };
 
   const updateChild = async (childId: string, updates: Partial<Child>) => {
     try {
@@ -312,7 +329,9 @@ export const FamilyProvider = ({ children }: { children: ReactNode }) => {
       currentChild,
       loginAsChild,
       getAllChildren,
-      findChildByAddress
+      findChildByAddress,
+      selectedFamily,
+      selectFamily
     }}>
       {children}
     </FamilyContext.Provider>
@@ -331,7 +350,8 @@ function createNewFamily(address: string): Family {
     id: Date.now().toString(),
     parentAddress: address,
     children: [],
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    name: '我的家庭', // 添加默认名称
   };
 }
 

@@ -41,42 +41,46 @@ func (s *RewardService) CreateReward(ctx context.Context, userID uint, familyID 
 	// 验证家庭是否存在
 	// TODO: 检查用户是否是该家庭的家长
 
-	// 创建链上奖品记录
-	familyIdBig := new(big.Int).SetUint64(uint64(familyID))
-	tokenPriceBig := new(big.Int).SetInt64(int64(req.TokenPrice))
-	stockBig := new(big.Int).SetInt64(int64(req.Stock))
+	// 临时跳过区块链调用，直接创建数据库记录
+	// 以下区块链调用代码暂时注释掉
+	/*
+		// 创建链上奖品记录
+		familyIdBig := new(big.Int).SetUint64(uint64(familyID))
+		tokenPriceBig := new(big.Int).SetInt64(int64(req.TokenPrice))
+		stockBig := new(big.Int).SetInt64(int64(req.Stock))
 
-	txOpts, err := s.contractClient.GetTransactOpts(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get transaction options: %w", err)
-	}
+		txOpts, err := s.contractClient.GetTransactOpts(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get transaction options: %w", err)
+		}
 
-	tx, err := s.contractClient.RewardRegistry.CreateReward(
-		txOpts,
-		familyIdBig,
-		req.Name,
-		req.Description,
-		req.ImageURL,
-		tokenPriceBig,
-		stockBig,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create reward on chain: %w", err)
-	}
+		tx, err := s.contractClient.RewardRegistry.CreateReward(
+			txOpts,
+			familyIdBig,
+			req.Name,
+			req.Description,
+			req.ImageURL,
+			tokenPriceBig,
+			stockBig,
+		)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create reward on chain: %w", err)
+		}
 
-	// 等待交易确认
-	_, err = s.contractClient.WaitForTxReceipt(ctx, tx.Hash())
-	if err != nil {
-		return 0, fmt.Errorf("transaction failed: %w", err)
-	}
+		// 等待交易确认
+		_, err = s.contractClient.WaitForTxReceipt(ctx, tx.Hash())
+		if err != nil {
+			return 0, fmt.Errorf("transaction failed: %w", err)
+		}
 
-	// 获取链上奖品ID（可以从事件中解析）
-	// 简化处理，这里使用奖品计数作为ID
-	callOpts := &bind.CallOpts{Context: ctx}
-	rewardCount, err := s.contractClient.RewardRegistry.RewardCount(callOpts)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get reward count: %w", err)
-	}
+		// 获取链上奖品ID（可以从事件中解析）
+		// 简化处理，这里使用奖品计数作为ID
+		callOpts := &bind.CallOpts{Context: ctx}
+		rewardCount, err := s.contractClient.RewardRegistry.RewardCount(callOpts)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get reward count: %w", err)
+		}
+	*/
 
 	// 创建数据库记录
 	reward := &models.Reward{
@@ -94,7 +98,8 @@ func (s *RewardService) CreateReward(ctx context.Context, userID uint, familyID 
 		return 0, fmt.Errorf("failed to create reward in database: %w", err)
 	}
 
-	return uint(rewardCount.Uint64()), nil
+	// 返回奖品ID
+	return reward.ID, nil
 }
 
 // GetReward 获取奖品详情
