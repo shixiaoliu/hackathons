@@ -1,6 +1,9 @@
 package blockchain
 
 import (
+	"context"
+	"crypto/ecdsa"
+	"eth-for-babies-backend/internal/config"
 	"fmt"
 	"log"
 	"math/big"
@@ -9,36 +12,46 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 // ContractManager manages interactions with smart contracts
 type ContractManager struct {
-	client *EthClient
-	// Contract instances
-	taskRegistry   *TaskRegistry
-	familyRegistry *FamilyRegistry
-	rewardToken    *RewardToken
-	// Contract addresses
-	taskRegistryAddress   common.Address
-	familyRegistryAddress common.Address
-	rewardTokenAddress    common.Address
+	client           *ethclient.Client
+	privateKey       *ecdsa.PrivateKey
+	chainID          *big.Int
+	TaskRegistry     *TaskRegistry
+	FamilyRegistry   *FamilyRegistry
+	RewardToken      *RewardToken
+	RewardRegistry   *RewardRegistry
+	taskAddress      common.Address
+	familyAddress    common.Address
+	tokenAddress     common.Address
+	rewardRegAddress common.Address
 }
 
 // NewContractManager creates a new contract manager
-func NewContractManager(client *EthClient, addresses map[string]string) (*ContractManager, error) {
-	manager := &ContractManager{
-		client: client,
-	}
+func NewContractManager(config *config.BlockchainConfig) (*ContractManager, error) {
+	manager := &ContractManager{}
 
 	// Set contract addresses if provided
-	if taskAddr, ok := addresses["TaskRegistry"]; ok {
-		manager.taskRegistryAddress = common.HexToAddress(taskAddr)
+	if config.TaskRegistryAddress != "" {
+		manager.taskAddress = common.HexToAddress(config.TaskRegistryAddress)
 	}
-	if familyAddr, ok := addresses["FamilyRegistry"]; ok {
-		manager.familyRegistryAddress = common.HexToAddress(familyAddr)
+	if config.FamilyRegistryAddress != "" {
+		manager.familyAddress = common.HexToAddress(config.FamilyRegistryAddress)
 	}
-	if tokenAddr, ok := addresses["RewardToken"]; ok {
-		manager.rewardTokenAddress = common.HexToAddress(tokenAddr)
+	if config.RewardTokenAddress != "" {
+		manager.tokenAddress = common.HexToAddress(config.RewardTokenAddress)
+	}
+	if config.RewardRegistryAddress != "" {
+		rewardRegAddress := common.HexToAddress(config.RewardRegistryAddress)
+		rewardRegistry, err := NewRewardRegistry(rewardRegAddress, config.Client)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize reward registry contract: %v", err)
+		}
+		manager.RewardRegistry = rewardRegistry
+		manager.rewardRegAddress = rewardRegAddress
 	}
 
 	// Initialize contract instances
@@ -52,33 +65,33 @@ func NewContractManager(client *EthClient, addresses map[string]string) (*Contra
 
 // initializeContracts initializes contract instances
 func (cm *ContractManager) initializeContracts() error {
-	ethClient := cm.client.GetClient()
+	ethClient := cm.client
 
 	// Initialize TaskRegistry if address is set
-	if cm.taskRegistryAddress != (common.Address{}) {
-		taskRegistry, err := NewTaskRegistry(cm.taskRegistryAddress, ethClient)
+	if cm.taskAddress != (common.Address{}) {
+		taskRegistry, err := NewTaskRegistry(cm.taskAddress, ethClient)
 		if err != nil {
 			return fmt.Errorf("failed to initialize TaskRegistry contract: %v", err)
 		}
-		cm.taskRegistry = taskRegistry
+		cm.TaskRegistry = taskRegistry
 	}
 
 	// Initialize FamilyRegistry if address is set
-	if cm.familyRegistryAddress != (common.Address{}) {
-		familyRegistry, err := NewFamilyRegistry(cm.familyRegistryAddress, ethClient)
+	if cm.familyAddress != (common.Address{}) {
+		familyRegistry, err := NewFamilyRegistry(cm.familyAddress, ethClient)
 		if err != nil {
 			return fmt.Errorf("failed to initialize FamilyRegistry contract: %v", err)
 		}
-		cm.familyRegistry = familyRegistry
+		cm.FamilyRegistry = familyRegistry
 	}
 
 	// Initialize RewardToken if address is set
-	if cm.rewardTokenAddress != (common.Address{}) {
-		rewardToken, err := NewRewardToken(cm.rewardTokenAddress, ethClient)
+	if cm.tokenAddress != (common.Address{}) {
+		rewardToken, err := NewRewardToken(cm.tokenAddress, ethClient)
 		if err != nil {
 			return fmt.Errorf("failed to initialize RewardToken contract: %v", err)
 		}
-		cm.rewardToken = rewardToken
+		cm.RewardToken = rewardToken
 	}
 
 	return nil
@@ -91,7 +104,7 @@ func (cm *ContractManager) DeployContracts() error {
 		return fmt.Errorf("failed to create auth: %v", err)
 	}
 
-	ethClient := cm.client.GetClient()
+	ethClient := cm.client
 
 	// Deploy TaskRegistry
 	log.Println("Deploying TaskRegistry contract...")
@@ -99,8 +112,8 @@ func (cm *ContractManager) DeployContracts() error {
 	if err != nil {
 		return fmt.Errorf("failed to deploy TaskRegistry: %v", err)
 	}
-	cm.taskRegistryAddress = taskRegistryAddress
-	cm.taskRegistry = taskRegistry
+	cm.taskAddress = taskRegistryAddress
+	cm.TaskRegistry = taskRegistry
 	log.Printf("TaskRegistry deployed at: %s", taskRegistryAddress.Hex())
 
 	// Wait for transaction to be mined
@@ -115,8 +128,8 @@ func (cm *ContractManager) DeployContracts() error {
 	if err != nil {
 		return fmt.Errorf("failed to deploy FamilyRegistry: %v", err)
 	}
-	cm.familyRegistryAddress = familyRegistryAddress
-	cm.familyRegistry = familyRegistry
+	cm.familyAddress = familyRegistryAddress
+	cm.FamilyRegistry = familyRegistry
 	log.Printf("FamilyRegistry deployed at: %s", familyRegistryAddress.Hex())
 
 	// Wait for transaction to be mined
@@ -131,8 +144,8 @@ func (cm *ContractManager) DeployContracts() error {
 	if err != nil {
 		return fmt.Errorf("failed to deploy RewardToken: %v", err)
 	}
-	cm.rewardTokenAddress = rewardTokenAddress
-	cm.rewardToken = rewardToken
+	cm.tokenAddress = rewardTokenAddress
+	cm.RewardToken = rewardToken
 	log.Printf("RewardToken deployed at: %s", rewardTokenAddress.Hex())
 
 	// Wait for transaction to be mined
@@ -147,9 +160,9 @@ func (cm *ContractManager) DeployContracts() error {
 // GetContractAddresses returns the addresses of all contracts
 func (cm *ContractManager) GetContractAddresses() map[string]string {
 	return map[string]string{
-		"TaskRegistry":   cm.taskRegistryAddress.Hex(),
-		"FamilyRegistry": cm.familyRegistryAddress.Hex(),
-		"RewardToken":    cm.rewardTokenAddress.Hex(),
+		"TaskRegistry":   cm.taskAddress.Hex(),
+		"FamilyRegistry": cm.familyAddress.Hex(),
+		"RewardToken":    cm.tokenAddress.Hex(),
 	}
 }
 
@@ -157,7 +170,7 @@ func (cm *ContractManager) GetContractAddresses() map[string]string {
 
 // CreateTask creates a new task in the TaskRegistry contract
 func (cm *ContractManager) CreateTask(title, description string, reward *big.Int) (uint64, error) {
-	if cm.taskRegistry == nil {
+	if cm.TaskRegistry == nil {
 		return 0, fmt.Errorf("TaskRegistry contract not initialized")
 	}
 
@@ -173,7 +186,7 @@ func (cm *ContractManager) CreateTask(title, description string, reward *big.Int
 	log.Printf("Creating task with title: %s, description: %s, reward: %s",
 		title, description, reward.String())
 
-	tx, err := cm.taskRegistry.CreateTask(auth, title, description, reward)
+	tx, err := cm.TaskRegistry.CreateTask(auth, title, description, reward)
 	log.Printf("create task	tx: %v", tx)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create task: %v", err)
@@ -188,7 +201,7 @@ func (cm *ContractManager) CreateTask(title, description string, reward *big.Int
 
 	// Parse task ID from logs
 	for _, log := range receipt.Logs {
-		event, err := cm.taskRegistry.ParseTaskCreated(*log)
+		event, err := cm.TaskRegistry.ParseTaskCreated(*log)
 		if err == nil {
 			return event.TaskId.Uint64(), nil
 		}
@@ -199,7 +212,7 @@ func (cm *ContractManager) CreateTask(title, description string, reward *big.Int
 
 // AssignTask assigns a task to a child
 func (cm *ContractManager) AssignTask(taskID uint64, childAddress common.Address) error {
-	if cm.taskRegistry == nil {
+	if cm.TaskRegistry == nil {
 		return fmt.Errorf("TaskRegistry contract not initialized")
 	}
 
@@ -208,7 +221,7 @@ func (cm *ContractManager) AssignTask(taskID uint64, childAddress common.Address
 		return fmt.Errorf("failed to create auth: %v", err)
 	}
 
-	tx, err := cm.taskRegistry.AssignTask(auth, big.NewInt(int64(taskID)), childAddress)
+	tx, err := cm.TaskRegistry.AssignTask(auth, big.NewInt(int64(taskID)), childAddress)
 	if err != nil {
 		return fmt.Errorf("failed to assign task: %v", err)
 	}
@@ -224,7 +237,7 @@ func (cm *ContractManager) AssignTask(taskID uint64, childAddress common.Address
 
 // CompleteTask marks a task as completed by the assigned child
 func (cm *ContractManager) CompleteTask(taskID uint64) error {
-	if cm.taskRegistry == nil {
+	if cm.TaskRegistry == nil {
 		return fmt.Errorf("TaskRegistry contract not initialized")
 	}
 
@@ -233,7 +246,7 @@ func (cm *ContractManager) CompleteTask(taskID uint64) error {
 		return fmt.Errorf("failed to create auth: %v", err)
 	}
 
-	tx, err := cm.taskRegistry.CompleteTask(auth, big.NewInt(int64(taskID)))
+	tx, err := cm.TaskRegistry.CompleteTask(auth, big.NewInt(int64(taskID)))
 	if err != nil {
 		return fmt.Errorf("failed to complete task: %v", err)
 	}
@@ -249,7 +262,7 @@ func (cm *ContractManager) CompleteTask(taskID uint64) error {
 
 // ApproveTask approves a completed task and transfers the reward
 func (cm *ContractManager) ApproveTask(taskID uint64, reward *big.Int) error {
-	if cm.taskRegistry == nil {
+	if cm.TaskRegistry == nil {
 		return fmt.Errorf("TaskRegistry contract not initialized")
 	}
 
@@ -262,7 +275,7 @@ func (cm *ContractManager) ApproveTask(taskID uint64, reward *big.Int) error {
 	// The smart contract will transfer the reward from its own balance to the child
 	auth.Value = big.NewInt(0)
 
-	tx, err := cm.taskRegistry.ApproveTask(auth, big.NewInt(int64(taskID)))
+	tx, err := cm.TaskRegistry.ApproveTask(auth, big.NewInt(int64(taskID)))
 	if err != nil {
 		return fmt.Errorf("failed to approve task: %v", err)
 	}
@@ -278,7 +291,7 @@ func (cm *ContractManager) ApproveTask(taskID uint64, reward *big.Int) error {
 
 // RejectTask rejects a completed task and refunds the reward to the parent
 func (cm *ContractManager) RejectTask(taskID uint64) error {
-	if cm.taskRegistry == nil {
+	if cm.TaskRegistry == nil {
 		return fmt.Errorf("TaskRegistry contract not initialized")
 	}
 
@@ -289,10 +302,10 @@ func (cm *ContractManager) RejectTask(taskID uint64) error {
 
 	// Do not set auth.Value as the reward is already locked in the contract
 	// The smart contract will refund the reward from its balance to the parent
-	auth.Value = big.NewInt(0)
+	auth.Value = big.Int{}
 
 	// 直接使用生成的RejectTask方法
-	tx, err := cm.taskRegistry.RejectTask(auth, big.NewInt(int64(taskID)))
+	tx, err := cm.TaskRegistry.RejectTask(auth, big.NewInt(int64(taskID)))
 	if err != nil {
 		return fmt.Errorf("failed to reject task: %v", err)
 	}
@@ -329,11 +342,11 @@ func (cm *ContractManager) TransferETH(to common.Address, amount *big.Int) (*typ
 
 // GetTask retrieves a task by ID
 func (cm *ContractManager) GetTask(taskID uint64) (Task, error) {
-	if cm.taskRegistry == nil {
+	if cm.TaskRegistry == nil {
 		return Task{}, fmt.Errorf("TaskRegistry contract not initialized")
 	}
 
-	id, creator, assignedTo, title, description, reward, completed, approved, err := cm.taskRegistry.GetTask(&bind.CallOpts{}, big.NewInt(int64(taskID)))
+	id, creator, assignedTo, title, description, reward, completed, approved, err := cm.TaskRegistry.GetTask(&bind.CallOpts{}, big.NewInt(int64(taskID)))
 	if err != nil {
 		return Task{}, fmt.Errorf("failed to get task: %v", err)
 	}
@@ -354,7 +367,7 @@ func (cm *ContractManager) GetTask(taskID uint64) (Task, error) {
 
 // CreateFamily creates a new family in the FamilyRegistry contract
 func (cm *ContractManager) CreateFamily(name string) (uint64, error) {
-	if cm.familyRegistry == nil {
+	if cm.FamilyRegistry == nil {
 		return 0, fmt.Errorf("FamilyRegistry contract not initialized")
 	}
 
@@ -363,7 +376,7 @@ func (cm *ContractManager) CreateFamily(name string) (uint64, error) {
 		return 0, fmt.Errorf("failed to create auth: %v", err)
 	}
 
-	tx, err := cm.familyRegistry.CreateFamily(auth, name)
+	tx, err := cm.FamilyRegistry.CreateFamily(auth, name)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create family: %v", err)
 	}
@@ -376,7 +389,7 @@ func (cm *ContractManager) CreateFamily(name string) (uint64, error) {
 
 	// Parse family ID from logs
 	for _, log := range receipt.Logs {
-		event, err := cm.familyRegistry.ParseFamilyCreated(*log)
+		event, err := cm.FamilyRegistry.ParseFamilyCreated(*log)
 		if err == nil {
 			return event.FamilyId.Uint64(), nil
 		}
@@ -387,7 +400,7 @@ func (cm *ContractManager) CreateFamily(name string) (uint64, error) {
 
 // AddChild adds a child to a family
 func (cm *ContractManager) AddChild(familyID uint64, childAddress common.Address, name string, age uint8) error {
-	if cm.familyRegistry == nil {
+	if cm.FamilyRegistry == nil {
 		return fmt.Errorf("FamilyRegistry contract not initialized")
 	}
 
@@ -396,7 +409,7 @@ func (cm *ContractManager) AddChild(familyID uint64, childAddress common.Address
 		return fmt.Errorf("failed to create auth: %v", err)
 	}
 
-	tx, err := cm.familyRegistry.AddChild(auth, big.NewInt(int64(familyID)), childAddress, name, age)
+	tx, err := cm.FamilyRegistry.AddChild(auth, big.NewInt(int64(familyID)), childAddress, name, age)
 	if err != nil {
 		return fmt.Errorf("failed to add child: %v", err)
 	}
@@ -464,4 +477,33 @@ func (fr *FamilyRegistry) AddChild(auth *bind.TransactOpts, familyID *big.Int, c
 // Placeholder method for parsing events
 func (fr *FamilyRegistry) ParseFamilyCreated(log types.Log) (*struct{ FamilyId *big.Int }, error) {
 	return &struct{ FamilyId *big.Int }{FamilyId: big.NewInt(0)}, nil
+}
+
+// GetChildTransactOpts 获取孩子账户的交易选项
+func (m *ContractManager) GetChildTransactOpts(ctx context.Context, childAddress common.Address) (*bind.TransactOpts, error) {
+	// 这个方法应该通过孩子的地址获取他们的私钥或使用特定的方法来签署交易
+	// 这里是一个简化的实现，实际使用中需要根据应用架构调整
+	// 在此简化实现中，我们使用管理员账户模拟孩子账户的交易
+
+	nonce, err := m.client.PendingNonceAt(ctx, childAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	gasPrice, err := m.client.SuggestGasPrice(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	auth, err := bind.NewKeyedTransactorWithChainID(m.privateKey, m.chainID)
+	if err != nil {
+		return nil, err
+	}
+
+	auth.Nonce = big.NewInt(int64(nonce))
+	auth.Value = big.NewInt(0)
+	auth.GasLimit = uint64(300000)
+	auth.GasPrice = gasPrice
+
+	return auth, nil
 }
