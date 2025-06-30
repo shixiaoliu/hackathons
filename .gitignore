@@ -49,7 +49,6 @@ dist-ssr/
 *.db
 *.sqlite
 *.sqlite3
-data/
 family_tasks.db
 family_task_chain.db
 
