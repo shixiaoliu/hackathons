@@ -8,6 +8,7 @@ import (
 	"eth-for-babies-backend/internal/config"
 	"eth-for-babies-backend/pkg/blockchain"
 
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -33,28 +34,32 @@ func main() {
 	}
 	log.Println("Database initialized successfully")
 
-	// 初始化区块链客户端
+	// 初始化区块链客户端和合约管理器
 	var contractManager *blockchain.ContractManager
-	log.Printf("BlockchainRPCURL: %s", cfg.BlockchainRPCURL)
-	log.Printf("PrivateKey exists: %t", cfg.PrivateKey != "")
-	log.Printf("TaskContractAddress: %s", cfg.TaskContractAddress)
+	if cfg.Blockchain.RPCURL != "" && cfg.Blockchain.PrivateKey != "" {
+		log.Println("Initializing blockchain client...")
 
-	if cfg.BlockchainRPCURL != "" && cfg.PrivateKey != "" {
-		ethClient, err := blockchain.NewEthClient(cfg.BlockchainRPCURL, cfg.PrivateKey)
+		// 连接以太坊节点
+		ethClient, err := ethclient.Dial(cfg.Blockchain.RPCURL)
 		if err != nil {
-			log.Printf("Warning: Failed to initialize blockchain client: %v", err)
+			log.Printf("Warning: Failed to connect to blockchain node: %v", err)
 			log.Println("Continuing without blockchain functionality...")
 		} else {
+			// 添加客户端到配置
+			cfg.Blockchain.Client = ethClient
+
 			// 初始化合约管理器
-			contractAddresses := map[string]string{
-				"TaskRegistry": cfg.TaskContractAddress,
-			}
-			contractManager, err = blockchain.NewContractManager(ethClient, contractAddresses)
+			contractManager, err = blockchain.NewContractManager(&cfg.Blockchain)
 			if err != nil {
 				log.Printf("Warning: Failed to initialize contract manager: %v", err)
 				log.Println("Continuing without blockchain functionality...")
 				contractManager = nil
 			} else {
+				log.Println("Contract addresses:")
+				log.Printf("  - Task Registry: %s", cfg.Blockchain.TaskRegistryAddress)
+				log.Printf("  - Family Registry: %s", cfg.Blockchain.FamilyRegistryAddress)
+				log.Printf("  - Reward Token: %s", cfg.Blockchain.RewardTokenAddress)
+				log.Printf("  - Reward Registry: %s", cfg.Blockchain.RewardRegistryAddress)
 				log.Println("Blockchain client and contract manager initialized successfully")
 			}
 		}

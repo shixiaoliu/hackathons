@@ -4,6 +4,8 @@ import (
 	"eth-for-babies-backend/internal/api/handlers"
 	"eth-for-babies-backend/internal/api/middleware"
 	"eth-for-babies-backend/internal/config"
+	"eth-for-babies-backend/internal/repository"
+	"eth-for-babies-backend/internal/services"
 	"eth-for-babies-backend/internal/utils"
 	"eth-for-babies-backend/pkg/blockchain"
 
@@ -22,12 +24,22 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config, contractManager *blockchain.Co
 	router.Use(middleware.CORSMiddleware())
 	router.Use(gin.Recovery())
 
+	// 创建仓库
+	rewardRepo := repository.NewRewardRepository(db)
+	exchangeRepo := repository.NewExchangeRepository(db)
+	childRepo := repository.NewChildRepository(db)
+
+	// 创建服务
+	rewardService := services.NewRewardService(rewardRepo, exchangeRepo, childRepo, contractManager)
+
 	// 创建处理器
 	authHandler := handlers.NewAuthHandler(db, jwtManager)
 	familyHandler := handlers.NewFamilyHandler(db)
 	childHandler := handlers.NewChildHandler(db)
 	taskHandler := handlers.NewTaskHandler(db, contractManager)
 	contractHandler := handlers.NewContractHandler(db)
+	rewardHandler := handlers.NewRewardHandler(rewardService)
+	exchangeHandler := handlers.NewExchangeHandler(rewardService)
 
 	// API v1 路由组
 	v1 := router.Group("/api/v1")
@@ -86,6 +98,28 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config, contractManager *blockchain.Co
 				contracts.POST("/transfer", contractHandler.Transfer)
 				contracts.GET("/transactions/:hash", contractHandler.GetTransactionStatus)
 			}
+
+			// 奖品管理路由
+			rewards := protected.Group("/families/:family_id/rewards")
+			{
+				rewards.POST("", middleware.RequireRole("parent"), rewardHandler.CreateReward)
+				rewards.GET("", rewardHandler.GetRewards)
+				rewards.GET("/:id", rewardHandler.GetRewardByID)
+				rewards.PUT("/:id", middleware.RequireRole("parent"), rewardHandler.UpdateReward)
+				rewards.DELETE("/:id", middleware.RequireRole("parent"), rewardHandler.DeleteReward)
+			}
+
+			// 兑换管理路由
+			exchanges := protected.Group("/exchanges")
+			{
+				exchanges.POST("", middleware.RequireRole("child"), exchangeHandler.ExchangeReward)
+				exchanges.GET("/my", middleware.RequireRole("child"), exchangeHandler.GetChildExchanges)
+				exchanges.GET("/:id", exchangeHandler.GetExchangeByID)
+				exchanges.PUT("/:id/status", middleware.RequireRole("parent"), exchangeHandler.UpdateExchangeStatus)
+			}
+
+			// 家庭兑换记录路由
+			protected.GET("/families/:family_id/exchanges", middleware.RequireRole("parent"), exchangeHandler.GetFamilyExchanges)
 		}
 
 		// 在 v1 路由组下添加健康检查路由

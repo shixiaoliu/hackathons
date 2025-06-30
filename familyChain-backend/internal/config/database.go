@@ -47,5 +47,7 @@ func autoMigrate(db *gorm.DB) error {
 		&models.Family{},
 		&models.Child{},
 		&models.Task{},
+		&models.Reward{},
+		&models.Exchange{},
 	)
 }
