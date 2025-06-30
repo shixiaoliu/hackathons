@@ -20,11 +20,11 @@ const RewardCard: React.FC<RewardCardProps> = ({ reward, onEdit, onDelete }) => 
       hoverable={false}
     >
       {/* 奖品图片 */}
-      <div className="relative w-full h-48 bg-gray-100 overflow-hidden">
+      <div className="relative w-full h-48 bg-gray-100 overflow-hidden flex items-center justify-center">
         <img 
           src={reward.image_url || defaultImage} 
           alt={reward.name} 
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = defaultImage;

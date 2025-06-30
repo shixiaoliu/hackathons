@@ -41,46 +41,9 @@ func (s *RewardService) CreateReward(ctx context.Context, userID uint, familyID 
 	// 验证家庭是否存在
 	// TODO: 检查用户是否是该家庭的家长
 
-	// 临时跳过区块链调用，直接创建数据库记录
-	// 以下区块链调用代码暂时注释掉
-	/*
-		// 创建链上奖品记录
-		familyIdBig := new(big.Int).SetUint64(uint64(familyID))
-		tokenPriceBig := new(big.Int).SetInt64(int64(req.TokenPrice))
-		stockBig := new(big.Int).SetInt64(int64(req.Stock))
-
-		txOpts, err := s.contractClient.GetTransactOpts(ctx)
-		if err != nil {
-			return 0, fmt.Errorf("failed to get transaction options: %w", err)
-		}
-
-		tx, err := s.contractClient.RewardRegistry.CreateReward(
-			txOpts,
-			familyIdBig,
-			req.Name,
-			req.Description,
-			req.ImageURL,
-			tokenPriceBig,
-			stockBig,
-		)
-		if err != nil {
-			return 0, fmt.Errorf("failed to create reward on chain: %w", err)
-		}
-
-		// 等待交易确认
-		_, err = s.contractClient.WaitForTxReceipt(ctx, tx.Hash())
-		if err != nil {
-			return 0, fmt.Errorf("transaction failed: %w", err)
-		}
-
-		// 获取链上奖品ID（可以从事件中解析）
-		// 简化处理，这里使用奖品计数作为ID
-		callOpts := &bind.CallOpts{Context: ctx}
-		rewardCount, err := s.contractClient.RewardRegistry.RewardCount(callOpts)
-		if err != nil {
-			return 0, fmt.Errorf("failed to get reward count: %w", err)
-		}
-	*/
+	// 添加详细日志
+	fmt.Printf("开始创建奖品 - 用户ID: %d, 家庭ID: %d, 奖品名称: %s\n", userID, familyID, req.Name)
+	fmt.Printf("请求数据详情: %+v\n", req)
 
 	// 创建数据库记录
 	reward := &models.Reward{
@@ -94,9 +57,14 @@ func (s *RewardService) CreateReward(ctx context.Context, userID uint, familyID 
 		Stock:       req.Stock,
 	}
 
+	fmt.Printf("准备保存到数据库的奖品记录: %+v\n", reward)
+
 	if err := s.rewardRepo.Create(reward); err != nil {
+		fmt.Printf("数据库创建奖品记录失败: %v\n", err)
 		return 0, fmt.Errorf("failed to create reward in database: %w", err)
 	}
+
+	fmt.Printf("奖品创建成功 - ID: %d\n", reward.ID)
 
 	// 返回奖品ID
 	return reward.ID, nil
@@ -117,70 +85,85 @@ func (s *RewardService) UpdateReward(ctx context.Context, id uint, req models.Re
 	// 检查奖品是否存在
 	reward, err := s.rewardRepo.GetByID(id)
 	if err != nil {
+		fmt.Printf("获取奖品失败: %v\n", err)
 		return fmt.Errorf("failed to get reward: %w", err)
 	}
 	if reward == nil {
+		fmt.Println("奖品不存在")
 		return fmt.Errorf("reward not found")
 	}
 
+	fmt.Printf("更新奖品ID: %d, 请求数据: %+v\n", id, req)
+
 	// TODO: 检查用户是否有权限更新奖品
 
-	// 更新链上奖品信息
-	rewardIdBig := new(big.Int).SetUint64(uint64(id))
-	tokenPriceBig := new(big.Int).SetInt64(int64(req.TokenPrice))
-	stockBig := new(big.Int).SetInt64(int64(req.Stock))
-	active := false
-	if req.Active != nil {
-		active = *req.Active
-	}
+	// 临时跳过区块链调用
+	/*
+		// 更新链上奖品信息
+		rewardIdBig := new(big.Int).SetUint64(uint64(id))
+		tokenPriceBig := new(big.Int).SetInt64(int64(req.TokenPrice))
+		stockBig := new(big.Int).SetInt64(int64(req.Stock))
+		active := false
+		if req.Active != nil {
+			active = *req.Active
+		}
 
-	txOpts, err := s.contractClient.GetTransactOpts(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get transaction options: %w", err)
-	}
+		txOpts, err := s.contractClient.GetTransactOpts(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get transaction options: %w", err)
+		}
 
-	tx, err := s.contractClient.RewardRegistry.UpdateReward(
-		txOpts,
-		rewardIdBig,
-		req.Name,
-		req.Description,
-		req.ImageURL,
-		tokenPriceBig,
-		stockBig,
-		active,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to update reward on chain: %w", err)
-	}
+		tx, err := s.contractClient.RewardRegistry.UpdateReward(
+			txOpts,
+			rewardIdBig,
+			req.Name,
+			req.Description,
+			req.ImageURL,
+			tokenPriceBig,
+			stockBig,
+			active,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to update reward on chain: %w", err)
+		}
 
-	// 等待交易确认
-	_, err = s.contractClient.WaitForTxReceipt(ctx, tx.Hash())
-	if err != nil {
-		return fmt.Errorf("transaction failed: %w", err)
-	}
+		// 等待交易确认
+		_, err = s.contractClient.WaitForTxReceipt(ctx, tx.Hash())
+		if err != nil {
+			return fmt.Errorf("transaction failed: %w", err)
+		}
+	*/
 
 	// 更新数据库记录
 	updates := make(map[string]interface{})
-	if req.Name != "" {
-		updates["name"] = req.Name
+	if req.Name != nil {
+		updates["name"] = *req.Name
 	}
-	if req.Description != "" {
-		updates["description"] = req.Description
+	if req.Description != nil {
+		updates["description"] = *req.Description
 	}
-	if req.ImageURL != "" {
-		updates["image_url"] = req.ImageURL
+	if req.ImageURL != nil {
+		updates["image_url"] = *req.ImageURL
 	}
-	if req.TokenPrice > 0 {
-		updates["token_price"] = req.TokenPrice
+	if req.TokenPrice != nil && *req.TokenPrice > 0 {
+		updates["token_price"] = *req.TokenPrice
 	}
-	if req.Stock >= 0 {
-		updates["stock"] = req.Stock
+	if req.Stock != nil && *req.Stock >= 0 {
+		updates["stock"] = *req.Stock
 	}
 	if req.Active != nil {
 		updates["active"] = *req.Active
 	}
 
-	return s.rewardRepo.Update(id, updates)
+	fmt.Printf("更新数据库记录: %+v\n", updates)
+	err = s.rewardRepo.Update(id, updates)
+	if err != nil {
+		fmt.Printf("更新奖品数据库记录失败: %v\n", err)
+		return fmt.Errorf("failed to update reward in database: %w", err)
+	}
+	fmt.Printf("奖品更新成功, ID: %d\n", id)
+
+	return nil
 }
 
 // ExchangeReward 兑换奖品

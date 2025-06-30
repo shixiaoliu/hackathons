@@ -64,11 +64,11 @@ const ExchangeCard: React.FC<ExchangeCardProps> = ({
         <div className="flex flex-col sm:flex-row gap-4">
           {/* 奖品图片 */}
           <div className="w-full sm:w-1/4">
-            <div className="relative w-full h-32 bg-gray-100 rounded-md overflow-hidden">
+            <div className="relative w-full h-32 bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
               <img 
                 src={exchange.reward_image || defaultImage} 
                 alt={exchange.reward_name || '奖品图片'} 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = defaultImage;

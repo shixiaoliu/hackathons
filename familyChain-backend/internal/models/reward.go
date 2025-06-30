@@ -28,10 +28,10 @@ type RewardCreateRequest struct {
 
 // RewardUpdateRequest 表示更新奖品的请求
 type RewardUpdateRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	ImageURL    string `json:"image_url"`
-	TokenPrice  int    `json:"token_price" binding:"min=1"`
-	Active      *bool  `json:"active"`
-	Stock       int    `json:"stock" binding:"min=0"`
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+	ImageURL    *string `json:"image_url"`
+	TokenPrice  *int    `json:"token_price" binding:"omitempty,min=1"`
+	Active      *bool   `json:"active"`
+	Stock       *int    `json:"stock" binding:"omitempty,min=0"`
 }

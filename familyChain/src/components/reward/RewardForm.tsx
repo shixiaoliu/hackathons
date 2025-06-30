@@ -46,6 +46,11 @@ const RewardForm: React.FC<RewardFormProps> = ({
       newErrors.stock = '库存不能为负数';
     }
     
+    // 恢复图片URL验证
+    if (!imageUrl.trim()) {
+      newErrors.imageUrl = '请上传图片或提供图片URL';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -58,14 +63,13 @@ const RewardForm: React.FC<RewardFormProps> = ({
       return;
     }
     
-    // 临时解决方案：使用固定的图片URL而不是上传的图片
-    // 这是因为后端区块链RewardRegistry未正确配置
-    const defaultImageUrl = 'https://placehold.co/400x300?text=奖品';
+    // 使用用户选择的图片或默认图片
+    const finalImageUrl = imageUrl || 'https://via.placeholder.com/400x300?text=%E5%A5%96%E5%93%81';
     
     onSubmit({
       name,
       description,
-      image_url: defaultImageUrl, // 使用默认图片URL
+      image_url: finalImageUrl,
       token_price: tokenPrice,
       stock
     });
@@ -168,7 +172,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
         <div className="mt-1 flex flex-col items-center space-y-2">
           {/* 预览区域 */}
           {previewImage ? (
-            <div className="relative w-full h-48 bg-gray-100 rounded-md overflow-hidden">
+            <div className="relative w-full h-48 bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
               <img
                 src={previewImage}
                 alt="奖品预览"
