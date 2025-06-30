@@ -105,13 +105,6 @@ const ParentDashboard = () => {
                 刷新数据
               </Button>
               <Button 
-                onClick={handleRewardManagement}
-                variant="secondary"
-                leftIcon={<Gift className="h-5 w-5" />}
-              >
-                奖品管理
-              </Button>
-              <Button 
                 onClick={() => navigate('/create-task')}
                 leftIcon={<PlusCircle className="h-5 w-5" />}
                 disabled={!selectedChild}
