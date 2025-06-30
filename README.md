@@ -19,7 +19,7 @@ familyChain 是一个基于以太坊区块链的家庭任务管理和奖励系�
 - **钱包集成**: 与MetaMask等主流钱包无缝集成，让孩子学习管理自己的数字资产
 
 ### 思维导图
-![familyChain](/familyChain-data/FamilyChain.png)
+![familyChain](/familyChain-pic/FamilyChain.png)
 
 ### 🔮 未来展望
 
