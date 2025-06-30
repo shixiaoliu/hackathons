@@ -44,8 +44,8 @@ func (s *ChildService) CreateChild(child *models.Child) error {
 	}
 
 	// 验证家庭是否存在
-	if child.FamilyID != 0 {
-		family, err := s.familyRepo.GetByID(child.FamilyID)
+	if child.Family != nil && child.Family.ID != 0 {
+		family, err := s.familyRepo.GetByID(child.Family.ID)
 		if err != nil {
 			return errors.New("family not found")
 		}
@@ -56,13 +56,14 @@ func (s *ChildService) CreateChild(child *models.Child) error {
 
 	// 清理输入数据
 	child.Name = utils.SanitizeString(child.Name)
-	if child.Avatar != "" {
-		child.Avatar = utils.SanitizeString(child.Avatar)
+	if child.Avatar != nil && *child.Avatar != "" {
+		sanitizedAvatar := utils.SanitizeString(*child.Avatar)
+		child.Avatar = &sanitizedAvatar
 	}
 
 	// 初始化统计数据
-	child.TasksCompleted = 0
-	child.TotalRewards = 0.0
+	child.TotalTasksCompleted = 0
+	child.TotalRewardsEarned = "0"
 
 	return s.childRepo.Create(child)
 }
@@ -87,7 +88,8 @@ func (s *ChildService) GetChildByWalletAddress(walletAddress string) (*models.Ch
 
 // UpdateChild 更新孩子信息
 func (s *ChildService) UpdateChild(id uint, updates map[string]interface{}) error {
-	child, err := s.childRepo.GetByID(id)
+	// 检查孩子是否存在
+	_, err := s.childRepo.GetByID(id)
 	if err != nil {
 		return err
 	}
@@ -127,8 +129,8 @@ func (s *ChildService) UpdateChild(id uint, updates map[string]interface{}) erro
 	// 不允许修改某些字段
 	delete(updates, "parent_address")
 	delete(updates, "family_id")
-	delete(updates, "tasks_completed")
-	delete(updates, "total_rewards")
+	delete(updates, "total_tasks_completed")
+	delete(updates, "total_rewards_earned")
 
 	return s.childRepo.Update(id, updates)
 }
@@ -148,7 +150,7 @@ func (s *ChildService) DeleteChild(id uint) error {
 		}
 	}
 
-	return s.childRepo.Delete(id)
+	return s.childRepo.DeleteChild(id)
 }
 
 // GetChildProgress 获取孩子的进度信息
@@ -166,12 +168,12 @@ func (s *ChildService) GetChildProgress(id uint) (map[string]interface{}, error)
 
 	// 统计任务状态
 	taskStats := map[string]int{
-		"total":      len(tasks),
-		"pending":    0,
+		"total":       len(tasks),
+		"pending":     0,
 		"in_progress": 0,
-		"completed":  0,
-		"approved":   0,
-		"rejected":   0,
+		"completed":   0,
+		"approved":    0,
+		"rejected":    0,
 	}
 
 	for _, task := range tasks {
@@ -195,8 +197,8 @@ func (s *ChildService) GetChildProgress(id uint) (map[string]interface{}, error)
 			"wallet_address": child.WalletAddress,
 		},
 		"statistics": map[string]interface{}{
-			"tasks_completed": child.TasksCompleted,
-			"total_rewards":   child.TotalRewards,
+			"tasks_completed": child.TotalTasksCompleted,
+			"total_rewards":   child.TotalRewardsEarned,
 			"completion_rate": completionRate,
 		},
 		"task_breakdown": taskStats,
@@ -215,13 +217,13 @@ func (s *ChildService) getRecentTasks(tasks []*models.Task, limit int) []map[str
 	for i := len(tasks) - 1; i >= 0 && count < limit; i-- {
 		task := tasks[i]
 		recentTasks = append(recentTasks, map[string]interface{}{
-			"id":          task.ID,
-			"title":       task.Title,
-			"status":      task.Status,
-			"reward":      task.RewardAmount,
-			"difficulty":  task.Difficulty,
-			"created_at":  task.CreatedAt,
-			"due_date":    task.DueDate,
+			"id":         task.ID,
+			"title":      task.Title,
+			"status":     task.Status,
+			"reward":     task.RewardAmount,
+			"difficulty": task.Difficulty,
+			"created_at": task.CreatedAt,
+			"due_date":   task.DueDate,
 		})
 		count++
 	}
@@ -250,12 +252,12 @@ func (s *ChildService) ValidateChildAccess(childID uint, userAddress string, use
 }
 
 // UpdateChildStatistics 更新孩子的统计信息
-func (s *ChildService) UpdateChildStatistics(childID uint, tasksCompleted int, rewardAmount float64) error {
+func (s *ChildService) UpdateChildStatistics(childID uint, tasksCompleted int, rewardAmount string) error {
 	updates := map[string]interface{}{
-		"tasks_completed": "tasks_completed + ?",
-		"total_rewards":   "total_rewards + ?",
+		"total_tasks_completed": tasksCompleted,
+		"total_rewards_earned":  rewardAmount,
 	}
-	return s.childRepo.UpdateWithRaw(childID, updates, tasksCompleted, rewardAmount)
+	return s.childRepo.Update(childID, updates)
 }
 
 // GetChildrenByFamily 获取家庭的所有孩子

@@ -8,7 +8,6 @@ import (
 	"eth-for-babies-backend/internal/config"
 	"eth-for-babies-backend/pkg/blockchain"
 
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -39,17 +38,21 @@ func main() {
 	if cfg.Blockchain.RPCURL != "" && cfg.Blockchain.PrivateKey != "" {
 		log.Println("Initializing blockchain client...")
 
-		// 连接以太坊节点
-		ethClient, err := ethclient.Dial(cfg.Blockchain.RPCURL)
+		// 创建以太坊客户端
+		ethClient, err := blockchain.NewEthClient(cfg.Blockchain.RPCURL, cfg.Blockchain.PrivateKey)
 		if err != nil {
-			log.Printf("Warning: Failed to connect to blockchain node: %v", err)
+			log.Printf("Warning: Failed to initialize blockchain client: %v", err)
 			log.Println("Continuing without blockchain functionality...")
 		} else {
-			// 添加客户端到配置
-			cfg.Blockchain.Client = ethClient
+			// 初始化合约管理器，使用自定义的合约地址
+			contractAddresses := map[string]string{
+				"TaskRegistry":   cfg.Blockchain.TaskRegistryAddress,
+				"FamilyRegistry": cfg.Blockchain.FamilyRegistryAddress,
+				"RewardToken":    cfg.Blockchain.RewardTokenAddress,
+				"RewardRegistry": cfg.Blockchain.RewardRegistryAddress,
+			}
 
-			// 初始化合约管理器
-			contractManager, err = blockchain.NewContractManager(&cfg.Blockchain)
+			contractManager, err = blockchain.NewContractManager(ethClient, contractAddresses)
 			if err != nil {
 				log.Printf("Warning: Failed to initialize contract manager: %v", err)
 				log.Println("Continuing without blockchain functionality...")

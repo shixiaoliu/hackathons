@@ -2,6 +2,8 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
 
 	"eth-for-babies-backend/internal/models"
 	"eth-for-babies-backend/internal/repository"
@@ -63,7 +65,7 @@ func (s *FamilyService) GetFamilyByID(id uint) (*models.Family, error) {
 
 // UpdateFamily 更新家庭信息
 func (s *FamilyService) UpdateFamily(id uint, updates map[string]interface{}) error {
-	family, err := s.familyRepo.GetByID(id)
+	_, err := s.familyRepo.GetByID(id)
 	if err != nil {
 		return err
 	}
@@ -107,7 +109,7 @@ func (s *FamilyService) AddFamilyMember(familyID uint, child *models.Child) erro
 	}
 
 	// 设置孩子的家庭ID和家长地址
-	child.FamilyID = familyID
+	child.Family = family
 	child.ParentAddress = family.ParentAddress
 
 	// 验证孩子数据
@@ -123,8 +125,9 @@ func (s *FamilyService) AddFamilyMember(familyID uint, child *models.Child) erro
 
 	// 清理输入数据
 	child.Name = utils.SanitizeString(child.Name)
-	if child.Avatar != "" {
-		child.Avatar = utils.SanitizeString(child.Avatar)
+	if child.Avatar != nil && *child.Avatar != "" {
+		sanitizedAvatar := utils.SanitizeString(*child.Avatar)
+		child.Avatar = &sanitizedAvatar
 	}
 
 	return s.childRepo.Create(child)
@@ -161,8 +164,11 @@ func (s *FamilyService) GetFamilyStatistics(familyID uint) (map[string]interface
 	totalRewards := 0.0
 
 	for _, child := range children {
-		totalTasksCompleted += child.TasksCompleted
-		totalRewards += child.TotalRewards
+		totalTasksCompleted += child.TotalTasksCompleted
+		childReward, err := s.parseRewardString(child.TotalRewardsEarned)
+		if err == nil {
+			totalRewards += childReward
+		}
 	}
 
 	stats := map[string]interface{}{
@@ -202,4 +208,56 @@ func (s *FamilyService) ValidateFamilyAccess(familyID uint, userAddress string, 
 	}
 
 	return errors.New("access denied")
+}
+
+// UpdateFamilyStats 更新家庭统计信息
+func (s *FamilyService) UpdateFamilyStats(familyID uint) error {
+	// 检查家庭是否存在
+	_, err := s.familyRepo.GetByID(familyID)
+	if err != nil {
+		return err
+	}
+
+	// 获取家庭的所有孩子
+	children, err := s.childRepo.GetByFamilyID(familyID)
+	if err != nil {
+		return err
+	}
+
+	// 计算总体统计数据
+	totalChildren := len(children)
+	totalTasksCompleted := 0
+	totalRewardsStr := "0"
+
+	for _, child := range children {
+		totalTasksCompleted += child.TotalTasksCompleted
+
+		// 累加字符串形式的奖励
+		childReward, err := s.parseRewardString(child.TotalRewardsEarned)
+		if err != nil {
+			continue // 跳过无法解析的奖励
+		}
+
+		currentTotal, err := s.parseRewardString(totalRewardsStr)
+		if err != nil {
+			currentTotal = 0
+		}
+
+		// 将新的总额转回字符串
+		totalRewardsStr = fmt.Sprintf("%.2f", currentTotal+childReward)
+	}
+
+	// 更新家庭统计数据
+	updates := map[string]interface{}{
+		"children_count":        totalChildren,
+		"total_tasks_completed": totalTasksCompleted,
+		"total_rewards_earned":  totalRewardsStr,
+	}
+
+	return s.familyRepo.Update(familyID, updates)
+}
+
+// parseRewardString 解析奖励字符串为浮点数
+func (s *FamilyService) parseRewardString(rewardStr string) (float64, error) {
+	return strconv.ParseFloat(rewardStr, 64)
 }

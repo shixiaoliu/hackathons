@@ -3,7 +3,6 @@ package blockchain
 import (
 	"context"
 	"crypto/ecdsa"
-	"eth-for-babies-backend/internal/config"
 	"fmt"
 	"log"
 	"math/big"
@@ -12,12 +11,11 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 // ContractManager manages interactions with smart contracts
 type ContractManager struct {
-	client           *ethclient.Client
+	client           *EthClient
 	privateKey       *ecdsa.PrivateKey
 	chainID          *big.Int
 	TaskRegistry     *TaskRegistry
@@ -31,22 +29,27 @@ type ContractManager struct {
 }
 
 // NewContractManager creates a new contract manager
-func NewContractManager(config *config.BlockchainConfig) (*ContractManager, error) {
-	manager := &ContractManager{}
+func NewContractManager(client *EthClient, contractAddresses map[string]string) (*ContractManager, error) {
+	manager := &ContractManager{
+		client: client,
+	}
 
 	// Set contract addresses if provided
-	if config.TaskRegistryAddress != "" {
-		manager.taskAddress = common.HexToAddress(config.TaskRegistryAddress)
+	if taskAddr, ok := contractAddresses["TaskRegistry"]; ok && taskAddr != "" {
+		manager.taskAddress = common.HexToAddress(taskAddr)
 	}
-	if config.FamilyRegistryAddress != "" {
-		manager.familyAddress = common.HexToAddress(config.FamilyRegistryAddress)
+
+	if familyAddr, ok := contractAddresses["FamilyRegistry"]; ok && familyAddr != "" {
+		manager.familyAddress = common.HexToAddress(familyAddr)
 	}
-	if config.RewardTokenAddress != "" {
-		manager.tokenAddress = common.HexToAddress(config.RewardTokenAddress)
+
+	if tokenAddr, ok := contractAddresses["RewardToken"]; ok && tokenAddr != "" {
+		manager.tokenAddress = common.HexToAddress(tokenAddr)
 	}
-	if config.RewardRegistryAddress != "" {
-		rewardRegAddress := common.HexToAddress(config.RewardRegistryAddress)
-		rewardRegistry, err := NewRewardRegistry(rewardRegAddress, config.Client)
+
+	if rewardRegAddr, ok := contractAddresses["RewardRegistry"]; ok && rewardRegAddr != "" {
+		rewardRegAddress := common.HexToAddress(rewardRegAddr)
+		rewardRegistry, err := NewRewardRegistry(rewardRegAddress, client.GetClient())
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize reward registry contract: %v", err)
 		}
@@ -65,7 +68,7 @@ func NewContractManager(config *config.BlockchainConfig) (*ContractManager, erro
 
 // initializeContracts initializes contract instances
 func (cm *ContractManager) initializeContracts() error {
-	ethClient := cm.client
+	ethClient := cm.client.GetClient()
 
 	// Initialize TaskRegistry if address is set
 	if cm.taskAddress != (common.Address{}) {
@@ -104,7 +107,7 @@ func (cm *ContractManager) DeployContracts() error {
 		return fmt.Errorf("failed to create auth: %v", err)
 	}
 
-	ethClient := cm.client
+	ethClient := cm.client.GetClient()
 
 	// Deploy TaskRegistry
 	log.Println("Deploying TaskRegistry contract...")
@@ -302,7 +305,7 @@ func (cm *ContractManager) RejectTask(taskID uint64) error {
 
 	// Do not set auth.Value as the reward is already locked in the contract
 	// The smart contract will refund the reward from its balance to the parent
-	auth.Value = big.Int{}
+	auth.Value = big.NewInt(0)
 
 	// 直接使用生成的RejectTask方法
 	tx, err := cm.TaskRegistry.RejectTask(auth, big.NewInt(int64(taskID)))
@@ -485,17 +488,17 @@ func (m *ContractManager) GetChildTransactOpts(ctx context.Context, childAddress
 	// 这里是一个简化的实现，实际使用中需要根据应用架构调整
 	// 在此简化实现中，我们使用管理员账户模拟孩子账户的交易
 
-	nonce, err := m.client.PendingNonceAt(ctx, childAddress)
+	nonce, err := m.client.GetClient().PendingNonceAt(ctx, childAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	gasPrice, err := m.client.SuggestGasPrice(ctx)
+	gasPrice, err := m.client.GetClient().SuggestGasPrice(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	auth, err := bind.NewKeyedTransactorWithChainID(m.privateKey, m.chainID)
+	auth, err := bind.NewKeyedTransactorWithChainID(m.client.GetPrivateKey(), m.client.GetChainID())
 	if err != nil {
 		return nil, err
 	}
@@ -506,4 +509,24 @@ func (m *ContractManager) GetChildTransactOpts(ctx context.Context, childAddress
 	auth.GasPrice = gasPrice
 
 	return auth, nil
+}
+
+// GetTransactOpts 获取交易选项
+func (cm *ContractManager) GetTransactOpts(ctx context.Context) (*bind.TransactOpts, error) {
+	auth, err := cm.client.GetAuth()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create auth: %v", err)
+	}
+
+	return auth, nil
+}
+
+// WaitForTxReceipt 等待交易确认并返回收据
+func (cm *ContractManager) WaitForTxReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
+	receipt, err := cm.client.WaitForTransaction(txHash, 5*time.Minute)
+	if err != nil {
+		return nil, fmt.Errorf("error waiting for transaction: %v", err)
+	}
+
+	return receipt, nil
 }

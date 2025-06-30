@@ -65,7 +65,7 @@ func (s *RewardService) CreateReward(ctx context.Context, userID uint, familyID 
 	}
 
 	// 等待交易确认
-	receipt, err := s.contractClient.WaitForTxReceipt(ctx, tx.Hash())
+	_, err = s.contractClient.WaitForTxReceipt(ctx, tx.Hash())
 	if err != nil {
 		return 0, fmt.Errorf("transaction failed: %w", err)
 	}
@@ -227,7 +227,7 @@ func (s *RewardService) ExchangeReward(ctx context.Context, childID uint, req mo
 	}
 
 	// 等待交易确认
-	receipt, err := s.contractClient.WaitForTxReceipt(ctx, tx.Hash())
+	_, err = s.contractClient.WaitForTxReceipt(ctx, tx.Hash())
 	if err != nil {
 		return 0, fmt.Errorf("transaction failed: %w", err)
 	}

@@ -100,10 +100,10 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config, contractManager *blockchain.Co
 			}
 
 			// 奖品管理路由
-			rewards := protected.Group("/families/:family_id/rewards")
+			rewards := protected.Group("/rewards")
 			{
-				rewards.POST("", middleware.RequireRole("parent"), rewardHandler.CreateReward)
-				rewards.GET("", rewardHandler.GetRewards)
+				rewards.POST("/family/:family_id", middleware.RequireRole("parent"), rewardHandler.CreateReward)
+				rewards.GET("/family/:family_id", rewardHandler.GetRewards)
 				rewards.GET("/:id", rewardHandler.GetRewardByID)
 				rewards.PUT("/:id", middleware.RequireRole("parent"), rewardHandler.UpdateReward)
 				rewards.DELETE("/:id", middleware.RequireRole("parent"), rewardHandler.DeleteReward)
@@ -119,7 +119,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config, contractManager *blockchain.Co
 			}
 
 			// 家庭兑换记录路由
-			protected.GET("/families/:family_id/exchanges", middleware.RequireRole("parent"), exchangeHandler.GetFamilyExchanges)
+			protected.GET("/exchanges/family/:family_id", middleware.RequireRole("parent"), exchangeHandler.GetFamilyExchanges)
 		}
 
 		// 在 v1 路由组下添加健康检查路由
