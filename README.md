@@ -159,9 +159,10 @@ yarn install
 .
 ├── familyChain/              # 前端项目 (React + TypeScript)
 ├── familyChain-backend/      # 后端项目 (Go + Gin)
-├── logs/                        # 运行日志
-├── start.sh                     # 启动脚本
-└── stop.sh                      # 停止脚本
+├── familyChain-contract/     # 智能合约项目 (Solidity + Hardhat)
+├── logs/                     # 运行日志
+├── start.sh                  # 启动脚本
+└── stop.sh                   # 停止脚本
 ```
 
 ## �� 许可证
