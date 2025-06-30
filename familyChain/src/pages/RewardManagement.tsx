@@ -350,13 +350,17 @@ const RewardManagement = () => {
                 ) : (
                   <div className="text-center py-12">
                     <Package className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2 text-gray-500 text-lg">暂无奖品</p>
-                    <Button 
-                      onClick={() => setAddModalOpen(true)}
-                      className="mt-4"
-                    >
-                      添加第一个奖品
-                    </Button>
+                    <p className="mt-2 text-gray-500 text-lg">
+                      {filter === 'inactive' ? '暂无已停用奖品' : '暂无奖品'}
+                    </p>
+                    {filter !== 'inactive' && (
+                      <Button 
+                        onClick={() => setAddModalOpen(true)}
+                        className="mt-4"
+                      >
+                        添加第一个奖品
+                      </Button>
+                    )}
                   </div>
                 )}
               </>
