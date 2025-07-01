@@ -30,7 +30,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
   const [previewImage, setPreviewImage] = useState<string | null>(initialData?.image_url || null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // 表单验证
+      // 表单验证
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     
@@ -42,10 +42,8 @@ const RewardForm: React.FC<RewardFormProps> = ({
       newErrors.tokenPrice = '代币价格必须大于0';
     }
     
-    if (stock < 0) {
-      newErrors.stock = '库存不能为负数';
-    }
-    
+    // 库存固定为1，移除验证
+        
     // 恢复图片URL验证
     if (!imageUrl.trim()) {
       newErrors.imageUrl = '请上传图片或提供图片URL';
@@ -71,7 +69,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
       description,
       image_url: finalImageUrl,
       token_price: tokenPrice,
-      stock
+      stock: 1  // 库存固定为1
     });
   };
 
@@ -259,25 +257,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
         )}
       </div>
       
-      {/* 库存数量 */}
-      <div>
-        <label htmlFor="stock" className="block text-sm font-medium text-gray-700 mb-1">
-          库存数量
-        </label>
-        <input
-          type="number"
-          id="stock"
-          value={stock}
-          onChange={(e) => setStock(parseInt(e.target.value) || 0)}
-          className={`w-full px-3 py-2 border ${
-            errors.stock ? 'border-red-500' : 'border-gray-300'
-          } rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500`}
-          min="0"
-          step="1"
-          disabled={isLoading}
-        />
-        {errors.stock && <p className="mt-1 text-sm text-red-500">{errors.stock}</p>}
-      </div>
+      {/* 库存固定为1，不再显示输入框 */}
       
       {/* 操作按钮 */}
       <div className="flex justify-end space-x-3 pt-4">

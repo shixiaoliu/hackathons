@@ -9,6 +9,7 @@ import TaskDetail from './pages/TaskDetail';
 import CreateTask from './pages/CreateTask';
 import SubmitTask from './pages/SubmitTask';
 import RewardManagement from './pages/RewardManagement';
+import RewardStore from './pages/RewardStore';
 import { LoginModal } from './components/LoginModal';
 import { useAuthContext } from './context/AuthContext';
 import { UserRoleProvider } from './context/UserRoleContext';
@@ -108,6 +109,14 @@ function App() {
                   element={
                     isAuthenticated && user?.role === 'parent' ? 
                       <RewardManagement /> : 
+                      <Navigate to="/" />
+                  } 
+                />
+                <Route 
+                  path="/reward-store" 
+                  element={
+                    isAuthenticated && user?.role === 'child' ? 
+                      <RewardStore /> : 
                       <Navigate to="/" />
                   } 
                 />

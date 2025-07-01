@@ -31,12 +31,10 @@ const RewardCard: React.FC<RewardCardProps> = ({ reward, onEdit, onDelete }) => 
           }}
         />
         
-        {/* 库存标签 */}
-        {reward.stock <= 0 && (
-          <div className="absolute top-0 right-0 bg-red-500 text-white px-2 py-1 text-xs font-bold">
-            已售罄
-          </div>
-        )}
+        {/* 唯一性标签 */}
+        <div className="absolute top-0 right-0 bg-blue-500 text-white px-2 py-1 text-xs font-bold">
+          限量款
+        </div>
         
         {/* 编辑和删除按钮 */}
         {(onEdit || onDelete) && (
@@ -85,7 +83,7 @@ const RewardCard: React.FC<RewardCardProps> = ({ reward, onEdit, onDelete }) => 
         {/* 底部信息栏 */}
         <div className="flex justify-between items-center text-sm text-gray-500 mt-2">
           <div className="flex items-center">
-            <span>库存: {reward.stock}</span>
+            <span>仅限1份</span>
           </div>
           <div>
             {!reward.active && (

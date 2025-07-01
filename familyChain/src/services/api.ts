@@ -566,13 +566,40 @@ export const rewardApi = {
     description: string;
     image_url: string;
     token_price: number;
-    stock: number;
+    stock: number; // 兼容旧接口，但前端固定为1
   }) => apiClient.post<Reward>(`/rewards/family/${familyId}`, rewardData),
 
   // 获取家庭奖品列表
-  getAll: (familyId: number, activeOnly: boolean = true) => {
+  getAll: async (familyId: number, activeOnly: boolean = false) => {
     const query = activeOnly ? '?active_only=true' : '?active_only=false';
-    return apiClient.get<Reward[]>(`/rewards/family/${familyId}${query}`);
+    // 添加日志记录，便于调试
+    console.log(`[API] 获取家庭奖品列表, familyId: ${familyId}, activeOnly: ${activeOnly}, URL: /rewards/family/${familyId}${query}`);
+    
+    // 确保familyId是有效的数字
+    if (!familyId || isNaN(Number(familyId))) {
+      console.error(`[API] 无效的familyId: ${familyId}`);
+      return { 
+        success: false, 
+        error: '无效的家庭ID', 
+        status: 400 
+      };
+    }
+    
+    try {
+      // 添加额外的URL参数，避免缓存问题
+      const timestamp = Date.now();
+      const modifiedQuery = `${query}&_t=${timestamp}`;
+      const result = await apiClient.get<Reward[]>(`/rewards/family/${familyId}${modifiedQuery}`);
+      console.log(`[API] 奖品列表响应:`, result);
+      return result;
+    } catch (error) {
+      console.error(`[API] 获取奖品列表出错:`, error);
+      return { 
+        success: false, 
+        error: '获取奖品列表出错', 
+        status: 500 
+      };
+    }
   },
 
   // 获取奖品详情
@@ -589,7 +616,7 @@ export const rewardApi = {
 // 兑换相关 API
 export const exchangeApi = {
   // 兑换奖品
-  create: (data: { reward_id: number; notes?: string }) =>
+  create: (data: { reward_id: number; child_id?: number; notes?: string }) =>
     apiClient.post<Exchange>('/exchanges', data),
 
   // 获取孩子的兑换记录

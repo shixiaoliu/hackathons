@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { rewardApi, exchangeApi } from '../services/api';
+import { rewardApi, exchangeApi, familyApi } from '../services/api';
 import { Reward, Exchange } from '../types/reward';
 import { useAuthContext } from './AuthContext';
 import { useFamily } from './FamilyContext';
@@ -36,21 +36,62 @@ export const RewardProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [error, setError] = useState<string | null>(null);
   
   const { user } = useAuthContext();
-  const { selectedFamily } = useFamily();
+  const { selectedFamily, currentChild } = useFamily();
 
   // 获取家庭奖品列表
   const fetchRewards = async () => {
-    if (!selectedFamily || !selectedFamily.id) {
-      console.log('没有选择家庭，无法获取奖品列表');
+    let familyId: number | null = null;
+    
+    // 优先使用selectedFamily
+    if (selectedFamily && selectedFamily.id) {
+      familyId = parseInt(selectedFamily.id);
+      console.log('从selectedFamily获取家庭ID:', familyId);
+    } 
+    // 如果是孩子用户但没有selectedFamily，尝试从API获取家庭信息
+    else if (user && user.role === 'child') {
+      console.log('当前是孩子用户，尝试获取所有家庭');
+      try {
+        const familiesResponse = await familyApi.getAll();
+        if (familiesResponse.success && familiesResponse.data && familiesResponse.data.length > 0) {
+          // 获取第一个家庭的ID
+          familyId = familiesResponse.data[0].id;
+          console.log('获取到的第一个家庭ID:', familyId);
+        } else {
+          console.log('获取家庭列表失败或列表为空:', familiesResponse);
+          // 尝试使用默认ID 1
+          familyId = 1;
+          console.log('使用默认家庭ID: 1');
+        }
+      } catch (error) {
+        console.error('获取家庭列表出错:', error);
+        // 出错时使用默认ID 1
+        familyId = 1;
+        console.log('出错后使用默认家庭ID: 1');
+      }
+    }
+    
+    if (!familyId) {
+      console.log('没有找到有效的家庭ID，无法获取奖品列表');
       return;
     }
 
     setLoading(true);
     setError(null);
+    console.log('正在获取家庭奖品列表，家庭ID:', familyId);
     try {
-      const response = await rewardApi.getAll(parseInt(selectedFamily.id));
+      // 首先尝试获取激活的奖品，不考虑库存
+      let response = await rewardApi.getAll(familyId, true);
+      console.log('获取激活奖品响应:', response);
+      
+      // 如果没有找到激活的奖品，尝试获取所有奖品
+      if ((!response.success || !response.data || response.data.length === 0) && response.status === 404) {
+        console.log('未找到激活的奖品，尝试获取所有奖品');
+        response = await rewardApi.getAll(familyId, false);
+      }
+      console.log('获取奖品列表响应:', response);
       if (response.success) {
         // 确保即使返回的数据为null或undefined也将rewards设置为空数组
+        console.log('获取到的奖品列表:', response.data);
         setRewards(response.data || []);
       } else {
         // 当出现404错误时，表示没有奖品记录，将rewards设置为空数组

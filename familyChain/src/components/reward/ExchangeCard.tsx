@@ -1,145 +1,111 @@
-import React from 'react';
-import Card, { CardBody, CardFooter } from '../common/Card';
-import Button from '../common/Button';
-import { Exchange } from '../../types/reward';
-import { CheckCircle, XCircle, Clock } from 'lucide-react';
+import { FC } from 'react';
+import { formatDistanceToNow } from '../../utils/dateUtils';
+import { Exchange } from '../../services/api';
+import { Check, XIcon, Clock, ShoppingBag } from 'lucide-react';
+import Card, { CardBody } from '../common/Card';
 
 interface ExchangeCardProps {
   exchange: Exchange;
-  onApprove: () => void;
-  onCancel: () => void;
+  isChild?: boolean;
+  onApprove?: (exchangeId: number) => void;
+  onCancel?: (exchangeId: number) => void;
 }
 
-const ExchangeCard: React.FC<ExchangeCardProps> = ({ 
-  exchange,
+const ExchangeCard: FC<ExchangeCardProps> = ({ 
+  exchange, 
+  isChild = false,
   onApprove,
   onCancel
 }) => {
-  // 默认图片
-  const defaultImage = 'https://via.placeholder.com/300x200?text=奖品图片';
-  
-  // 状态显示
-  const statusDisplay = () => {
+  // 状态徽章
+  const renderStatusBadge = () => {
     switch (exchange.status) {
+      case 'pending':
+        return (
+          <div className="flex items-center px-2 py-1 rounded bg-yellow-100 text-yellow-800 text-xs font-medium">
+            <Clock className="h-3 w-3 mr-1" />
+            待处理
+          </div>
+        );
       case 'completed':
         return (
-          <span className="inline-flex items-center text-green-600">
-            <CheckCircle className="h-4 w-4 mr-1" />
-            已批准
-          </span>
+          <div className="flex items-center px-2 py-1 rounded bg-green-100 text-green-800 text-xs font-medium">
+            <Check className="h-3 w-3 mr-1" />
+            已完成
+          </div>
         );
       case 'cancelled':
         return (
-          <span className="inline-flex items-center text-red-600">
-            <XCircle className="h-4 w-4 mr-1" />
-            已拒绝
-          </span>
+          <div className="flex items-center px-2 py-1 rounded bg-red-100 text-red-800 text-xs font-medium">
+            <XIcon className="h-3 w-3 mr-1" />
+            已取消
+          </div>
         );
-      case 'pending':
       default:
-        return (
-          <span className="inline-flex items-center text-yellow-600">
-            <Clock className="h-4 w-4 mr-1" />
-            待处理
-          </span>
-        );
+        return null;
     }
   };
 
-  // 格式化日期
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
-  };
-
   return (
-    <Card className="transition-all duration-200 hover:shadow-lg">
+    <Card>
       <CardBody>
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* 奖品图片 */}
-          <div className="w-full sm:w-1/4">
-            <div className="relative w-full h-32 bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
-              <img 
-                src={exchange.reward_image || defaultImage} 
-                alt={exchange.reward_name || '奖品图片'} 
+        <div className="flex items-center">
+          <div className="h-16 w-16 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 mr-4">
+            {exchange.reward_image ? (
+              <img
+                src={exchange.reward_image}
+                alt={exchange.reward_name || '奖品图片'}
                 className="w-full h-full object-contain"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = defaultImage;
-                }}
               />
-            </div>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <ShoppingBag className="h-6 w-6 text-gray-400" />
+              </div>
+            )}
           </div>
           
-          {/* 兑换信息 */}
-          <div className="w-full sm:w-3/4 flex flex-col">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {exchange.reward_name || '未命名奖品'}
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">兑换者: {exchange.child_name || '未知'}</p>
-              </div>
-              <div className="px-3 py-1 bg-primary-100 text-primary-800 text-sm font-medium rounded-md">
-                {exchange.token_amount} 代币
-              </div>
+          <div className="flex-grow">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-medium text-gray-900">
+                {exchange.reward_name || '未命名奖品'}
+              </h3>
+              {renderStatusBadge()}
             </div>
             
-            {/* 兑换状态和日期 */}
-            <div className="mt-4 flex flex-wrap justify-between">
-              <div>
-                <p className="text-sm text-gray-500">
-                  兑换时间: {formatDate(exchange.exchange_date)}
-                </p>
-                {exchange.completed_date && (
-                  <p className="text-sm text-gray-500">
-                    处理时间: {formatDate(exchange.completed_date)}
-                  </p>
-                )}
-              </div>
-              <div>{statusDisplay()}</div>
+            <div className="flex items-center text-sm text-gray-500 mb-1">
+              <span className="font-medium text-primary-600">{exchange.token_amount} 代币</span>
+              <span className="mx-2">•</span>
+              <span>{formatDistanceToNow(new Date(exchange.exchange_date))}</span>
             </div>
             
-            {/* 备注 */}
             {exchange.notes && (
-              <div className="mt-2 p-2 bg-gray-50 rounded-md">
-                <p className="text-sm text-gray-600">{exchange.notes}</p>
+              <p className="text-sm text-gray-600 mt-1">{exchange.notes}</p>
+            )}
+            
+            {!isChild && exchange.status === 'pending' && (
+              <div className="flex space-x-2 mt-2">
+                {onApprove && (
+                  <button
+                    onClick={() => onApprove(exchange.id)}
+                    className="text-sm px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                  >
+                    批准
+                  </button>
+                )}
+                
+                {onCancel && (
+                  <button
+                    onClick={() => onCancel(exchange.id)}
+                    className="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                  >
+                    拒绝
+                  </button>
+                )}
               </div>
             )}
           </div>
         </div>
       </CardBody>
-      
-      {/* 操作按钮 - 只对待处理的请求显示 */}
-      {exchange.status === 'pending' && (
-        <CardFooter className="flex justify-end space-x-2">
-          <Button 
-            variant="outline" 
-            className="border-red-300 text-red-600 hover:bg-red-50"
-            onClick={(e) => {
-              e.stopPropagation();
-              onCancel();
-            }}
-          >
-            拒绝
-          </Button>
-          <Button
-            className="bg-green-600 hover:bg-green-700"
-            onClick={(e) => {
-              e.stopPropagation();
-              onApprove();
-            }}
-          >
-            批准
-          </Button>
-        </CardFooter>
-      )}
     </Card>
   );
 };

@@ -72,6 +72,21 @@ const Navbar = () => {
               </Link>
             )}
             
+            {/* 奖品商店链接 - 仅孩子可见 */}
+            {userRole === 'child' && (
+              <Link 
+                to="/reward-store" 
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  location.pathname.includes('/reward-store') 
+                    ? 'text-primary-600 bg-primary-50' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Gift className="inline-block mr-1 h-4 w-4" />
+                奖品商店
+              </Link>
+            )}
+            
             <div className="ml-4">
               <ConnectButton />
             </div>
@@ -133,6 +148,22 @@ const Navbar = () => {
               >
                 <Gift className="inline-block mr-1 h-4 w-4" />
                 奖品管理
+              </Link>
+            )}
+            
+            {/* 奖品商店链接 - 仅孩子可见 */}
+            {userRole === 'child' && (
+              <Link 
+                to="/reward-store" 
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  location.pathname.includes('/reward-store') 
+                    ? 'text-primary-600 bg-primary-50' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Gift className="inline-block mr-1 h-4 w-4" />
+                奖品商店
               </Link>
             )}
             
