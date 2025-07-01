@@ -488,27 +488,117 @@ func (m *ContractManager) GetChildTransactOpts(ctx context.Context, childAddress
 	// 这里是一个简化的实现，实际使用中需要根据应用架构调整
 	// 在此简化实现中，我们使用管理员账户模拟孩子账户的交易
 
+	// 添加更多日志记录
+	log.Printf("获取孩子账户交易选项, 地址: %s", childAddress.Hex())
+
+	// 获取链上当前nonce
 	nonce, err := m.client.GetClient().PendingNonceAt(ctx, childAddress)
 	if err != nil {
+		log.Printf("获取nonce失败: %v", err)
 		return nil, err
 	}
+	log.Printf("获取到初始nonce: %d", nonce)
 
-	gasPrice, err := m.client.GetClient().SuggestGasPrice(ctx)
+	// 尝试从区块链获取最新交易信息以检测nonce不同步
+	latestNonce := nonce
+	// 如果nonce看起来太低，尝试查询区块链状态获取正确的nonce
+	// 这是一个临时解决方案，用于处理nonce同步问题
+	if err := m.syncNonce(ctx, childAddress, &latestNonce); err != nil {
+		log.Printf("同步nonce警告: %v", err)
+	}
+
+	// 如果发现nonce不同步，使用更高的值
+	if latestNonce > nonce {
+		log.Printf("检测到nonce不同步! 链上值: %d, 本地值: %d, 使用链上值", latestNonce, nonce)
+		nonce = latestNonce
+	}
+
+	// 获取gas价格，添加重试机制
+	var gasPrice *big.Int
+	for retries := 0; retries < 3; retries++ {
+		gasPrice, err = m.client.GetClient().SuggestGasPrice(ctx)
+		if err == nil {
+			break
+		}
+		log.Printf("获取gas价格失败(尝试 %d/3): %v", retries+1, err)
+		time.Sleep(time.Second) // 等待1秒后重试
+	}
 	if err != nil {
+		log.Printf("获取gas价格失败，所有尝试均失败: %v", err)
 		return nil, err
 	}
+	log.Printf("获取到gas价格: %s", gasPrice.String())
 
+	// 创建交易签名器
 	auth, err := bind.NewKeyedTransactorWithChainID(m.client.GetPrivateKey(), m.client.GetChainID())
 	if err != nil {
+		log.Printf("创建交易签名器失败: %v", err)
 		return nil, err
 	}
 
+	// 设置交易参数
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = uint64(300000)
 	auth.GasPrice = gasPrice
 
+	// 记录所有交易参数
+	log.Printf("交易参数设置完成 - Nonce: %d, GasPrice: %s, GasLimit: %d, Chain ID: %s",
+		auth.Nonce.Uint64(), auth.GasPrice.String(), auth.GasLimit, m.client.GetChainID().String())
+
 	return auth, nil
+}
+
+// syncNonce 尝试从区块链获取更准确的nonce值
+// 这是一个临时解决方案，用于处理nonce同步问题
+func (m *ContractManager) syncNonce(ctx context.Context, address common.Address, currentNonce *uint64) error {
+	// 如果有错误，我们只记录但不中断流程
+	client := m.client.GetClient()
+
+	// 尝试获取地址的交易数量作为nonce参考
+	count, err := client.PendingTransactionCount(ctx)
+	if err != nil {
+		return fmt.Errorf("获取待处理交易数量失败: %v", err)
+	}
+	log.Printf("当前待处理交易总数: %d", count)
+
+	// 获取账户状态nonce (这是账户已确认的交易数量)
+	stateNonce, err := client.NonceAt(ctx, address, nil)
+	if err != nil {
+		log.Printf("获取账户状态nonce失败: %v", err)
+	} else {
+		log.Printf("账户状态nonce: %d", stateNonce)
+		if stateNonce > *currentNonce {
+			*currentNonce = stateNonce
+			log.Printf("使用账户状态nonce: %d", *currentNonce)
+			return nil
+		}
+	}
+
+	// 获取待处理nonce (包括内存池中的交易)
+	pendingNonce, err := client.PendingNonceAt(ctx, address)
+	if err != nil {
+		log.Printf("获取待处理nonce失败: %v", err)
+	} else {
+		log.Printf("待处理nonce: %d", pendingNonce)
+		if pendingNonce > *currentNonce {
+			*currentNonce = pendingNonce
+			log.Printf("使用待处理nonce: %d", *currentNonce)
+			return nil
+		}
+	}
+
+	// 额外安全措施: 如果当前nonce看起来太低，增加一个合理的值
+	// 这可以避免反复使用太低的nonce值
+	if *currentNonce < 30 && count > 100 {
+		// 如果账户交易总数很高但nonce很低，可能是严重不同步
+		// 增加nonce到一个较高的值
+		newNonce := *currentNonce + 150
+		log.Printf("检测到可能的严重nonce不同步，尝试增加nonce: %d -> %d", *currentNonce, newNonce)
+		*currentNonce = newNonce
+	}
+
+	return nil
 }
 
 // GetTransactOpts 获取交易选项

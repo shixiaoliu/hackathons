@@ -28,9 +28,12 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config, contractManager *blockchain.Co
 	rewardRepo := repository.NewRewardRepository(db)
 	exchangeRepo := repository.NewExchangeRepository(db)
 	childRepo := repository.NewChildRepository(db)
+	familyRepo := repository.NewFamilyRepository(db)
+	taskRepo := repository.NewTaskRepository(db)
 
 	// 创建服务
 	rewardService := services.NewRewardService(rewardRepo, exchangeRepo, childRepo, contractManager)
+	childService := services.NewChildService(childRepo, familyRepo, taskRepo)
 
 	// 创建处理器
 	authHandler := handlers.NewAuthHandler(db, jwtManager)
@@ -39,7 +42,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config, contractManager *blockchain.Co
 	taskHandler := handlers.NewTaskHandler(db, contractManager)
 	contractHandler := handlers.NewContractHandler(db)
 	rewardHandler := handlers.NewRewardHandler(rewardService)
-	exchangeHandler := handlers.NewExchangeHandler(rewardService)
+	exchangeHandler := handlers.NewExchangeHandler(rewardService, childService)
 
 	// API v1 路由组
 	v1 := router.Group("/api/v1")

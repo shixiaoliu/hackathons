@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 
 	"eth-for-babies-backend/internal/models"
@@ -84,6 +85,11 @@ func (s *ChildService) GetChildByWalletAddress(walletAddress string) (*models.Ch
 		return nil, errors.New("invalid wallet address format")
 	}
 	return s.childRepo.GetByWalletAddress(walletAddress)
+}
+
+// GetByWalletAddress 根据钱包地址获取孩子（带上下文）
+func (s *ChildService) GetByWalletAddress(ctx context.Context, walletAddress string) (*models.Child, error) {
+	return s.GetChildByWalletAddress(walletAddress)
 }
 
 // UpdateChild 更新孩子信息

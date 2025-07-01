@@ -22,7 +22,7 @@ func (r *ChildRepository) Create(child *models.Child) error {
 // GetByID 根据ID获取孩子
 func (r *ChildRepository) GetByID(id uint) (*models.Child, error) {
 	var child models.Child
-	err := r.db.Preload("User").Preload("Family").Preload("Tasks").First(&child, id).Error
+	err := r.db.Preload("Parent").Preload("Family").Preload("Tasks").First(&child, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func (r *ChildRepository) GetByID(id uint) (*models.Child, error) {
 // GetByWalletAddress 根据钱包地址获取孩子
 func (r *ChildRepository) GetByWalletAddress(walletAddress string) (*models.Child, error) {
 	var child models.Child
-	err := r.db.Preload("User").Preload("Family").Where("wallet_address = ?", walletAddress).First(&child).Error
+	err := r.db.Preload("Parent").Preload("Family").Where("wallet_address = ?", walletAddress).First(&child).Error
 	if err != nil {
 		return nil, err
 	}
@@ -42,14 +42,14 @@ func (r *ChildRepository) GetByWalletAddress(walletAddress string) (*models.Chil
 // GetByParentAddress 根据家长地址获取孩子列表
 func (r *ChildRepository) GetByParentAddress(parentAddress string) ([]*models.Child, error) {
 	var children []*models.Child
-	err := r.db.Preload("User").Preload("Family").Where("parent_address = ?", parentAddress).Find(&children).Error
+	err := r.db.Preload("Parent").Preload("Family").Where("parent_address = ?", parentAddress).Find(&children).Error
 	return children, err
 }
 
 // GetByFamilyID 根据家庭ID获取孩子列表
 func (r *ChildRepository) GetByFamilyID(familyID uint) ([]*models.Child, error) {
 	var children []*models.Child
-	err := r.db.Preload("User").Preload("Family").Where("family_id = ?", familyID).Find(&children).Error
+	err := r.db.Preload("Parent").Preload("Family").Where("family_id = ?", familyID).Find(&children).Error
 	return children, err
 }
 

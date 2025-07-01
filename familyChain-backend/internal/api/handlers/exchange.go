@@ -14,12 +14,14 @@ import (
 // ExchangeHandler 处理兑换相关的API请求
 type ExchangeHandler struct {
 	rewardService *services.RewardService
+	childService  *services.ChildService
 }
 
 // NewExchangeHandler 创建一个新的兑换处理器
-func NewExchangeHandler(rewardService *services.RewardService) *ExchangeHandler {
+func NewExchangeHandler(rewardService *services.RewardService, childService *services.ChildService) *ExchangeHandler {
 	return &ExchangeHandler{
 		rewardService: rewardService,
+		childService:  childService,
 	}
 }
 
@@ -34,12 +36,38 @@ func (h *ExchangeHandler) ExchangeReward(c *gin.Context) {
 		return
 	}
 
-	// 获取当前用户信息
-	childID, exists := c.Get("user_id")
-	if !exists {
+	// 检查用户认证
+	if _, exists := c.Get("user_id"); !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"error":   "用户未认证",
+		})
+		return
+	}
+
+	// 获取用户钱包地址
+	walletAddress, exists := c.Get("wallet_address")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   "用户钱包地址未找到",
+		})
+		return
+	}
+
+	// 通过钱包地址获取child信息
+	child, err := h.childService.GetByWalletAddress(c.Request.Context(), walletAddress.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "获取孩子信息失败: " + err.Error(),
+		})
+		return
+	}
+	if child == nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "未找到对应的孩子记录",
 		})
 		return
 	}
@@ -48,7 +76,7 @@ func (h *ExchangeHandler) ExchangeReward(c *gin.Context) {
 	req.Notes = utils.SanitizeString(req.Notes)
 
 	// 兑换奖品
-	exchangeID, err := h.rewardService.ExchangeReward(c.Request.Context(), childID.(uint), req)
+	exchangeID, err := h.rewardService.ExchangeReward(c.Request.Context(), child.ID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

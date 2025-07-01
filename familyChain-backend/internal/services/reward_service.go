@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"eth-for-babies-backend/internal/models"
 	"eth-for-babies-backend/internal/repository"
@@ -203,15 +206,47 @@ func (s *RewardService) ExchangeReward(ctx context.Context, childID uint, req mo
 	// 使用孩子的地址调用合约进行兑换
 	rewardIdBig := new(big.Int).SetUint64(uint64(req.RewardID))
 
-	// 获取孩子的交易选项
-	txOpts, err := s.contractClient.GetChildTransactOpts(ctx, childAddress)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get transaction options: %w", err)
+	// 添加重试机制处理nonce错误
+	var tx *types.Transaction
+	var txErr error
+	maxRetries := 3
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		// 获取孩子的交易选项
+		txOpts, err := s.contractClient.GetChildTransactOpts(ctx, childAddress)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get transaction options: %w", err)
+		}
+
+		// 记录尝试信息
+		fmt.Printf("尝试兑换奖品 (尝试 %d/%d), 使用nonce: %d\n",
+			attempt+1, maxRetries, txOpts.Nonce.Uint64())
+
+		// 执行交易
+		tx, txErr = s.contractClient.RewardRegistry.ExchangeReward(txOpts, rewardIdBig)
+
+		// 如果成功或者不是nonce错误，跳出循环
+		if txErr == nil {
+			break
+		}
+
+		// 检查是否是nonce错误
+		if !strings.Contains(txErr.Error(), "nonce too low") {
+			// 如果不是nonce错误，直接返回
+			return 0, fmt.Errorf("failed to exchange reward on chain: %w", txErr)
+		}
+
+		fmt.Printf("nonce错误，将重试 (尝试 %d/%d): %v\n",
+			attempt+1, maxRetries, txErr)
+
+		// 在重试前等待一段时间
+		time.Sleep(time.Second * 2)
 	}
 
-	tx, err := s.contractClient.RewardRegistry.ExchangeReward(txOpts, rewardIdBig)
-	if err != nil {
-		return 0, fmt.Errorf("failed to exchange reward on chain: %w", err)
+	// 检查是否所有尝试都失败了
+	if txErr != nil {
+		return 0, fmt.Errorf("failed to exchange reward after %d attempts: %w",
+			maxRetries, txErr)
 	}
 
 	// 等待交易确认

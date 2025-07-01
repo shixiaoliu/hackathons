@@ -72,7 +72,6 @@ const RewardStore = () => {
       // 记录兑换请求详情，便于调试
       console.log('兑换请求数据:', {
         reward_id: reward.id,
-        child_id: Number(currentChild.id),
         childInfo: {
           name: currentChild.name,
           walletAddress: currentChild.walletAddress,
@@ -81,7 +80,6 @@ const RewardStore = () => {
       
       const response = await exchangeApi.create({
         reward_id: reward.id,
-        child_id: Number(currentChild.id),  // 明确传递子用户ID
         notes: `由${currentChild.name}兑换`
       });
       

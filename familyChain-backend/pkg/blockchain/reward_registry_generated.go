@@ -1,9 +1,10 @@
-// 这个文件是为了兼容合约调用而创建的 RewardRegistry 绑定
-// 实际项目中应该使用 abigen 工具从合约 ABI 自动生成
+// 这是修复后的 RewardRegistry 绑定
+// 请用这个文件替换 familyChain-backend/pkg/blockchain/reward_registry_generated.go
 
 package blockchain
 
 import (
+	"errors"
 	"math/big"
 	"strings"
 
@@ -13,8 +14,520 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-// RewardRegistryABI 是 RewardRegistry 合约的 ABI
-const RewardRegistryABI = "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_tokenAddress\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"exchangeId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"parent\",\"type\":\"address\"}],\"name\":\"ExchangeFulfilled\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"rewardId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"creator\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"familyId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenPrice\",\"type\":\"uint256\"}],\"name\":\"RewardCreated\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"exchangeId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"rewardId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"child\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenAmount\",\"type\":\"uint256\"}],\"name\":\"RewardExchanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"rewardId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"tokenPrice\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"active\",\"type\":\"bool\"}],\"name\":\"RewardUpdated\",\"type\":\"event\"}]"
+// RewardRegistryABI 是 RewardRegistry 合约的完整 ABI
+const RewardRegistryABI = `[
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_tokenAddress",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableInvalidOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableUnauthorizedAccount",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "exchangeId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "parent",
+          "type": "address"
+        }
+      ],
+      "name": "ExchangeFulfilled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "rewardId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "creator",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "familyId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "tokenPrice",
+          "type": "uint256"
+        }
+      ],
+      "name": "RewardCreated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "exchangeId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "rewardId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "child",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "tokenAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "RewardExchanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "rewardId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "tokenPrice",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "active",
+          "type": "bool"
+        }
+      ],
+      "name": "RewardUpdated",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_child",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_index",
+          "type": "uint256"
+        }
+      ],
+      "name": "getChildExchangeId",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_familyId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "_name",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_description",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_imageURI",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_tokenPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_stock",
+          "type": "uint256"
+        }
+      ],
+      "name": "createReward",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_rewardId",
+          "type": "uint256"
+        }
+      ],
+      "name": "exchangeReward",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_exchangeId",
+          "type": "uint256"
+        }
+      ],
+      "name": "fulfillExchange",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_child",
+          "type": "address"
+        }
+      ],
+      "name": "getChildExchangeCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_exchangeId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getExchange",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_familyId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getFamilyRewardCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_familyId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_index",
+          "type": "uint256"
+        }
+      ],
+      "name": "getFamilyRewardId",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_rewardId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getReward",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_rewardId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "_name",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_description",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_imageURI",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_tokenPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_stock",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "_active",
+          "type": "bool"
+        }
+      ],
+      "name": "updateReward",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+]`
 
 // RewardRegistry 是与 RewardRegistry 合约交互的绑定
 type RewardRegistry struct {
@@ -103,72 +616,127 @@ func (r *RewardRegistryTransactor) FulfillExchange(opts *bind.TransactOpts, exch
 	return r.contract.Transact(opts, "fulfillExchange", exchangeId)
 }
 
-// 由于类型转换问题，我们使用模拟实现，实际项目中应使用abigen生成的实现
-// 以下方法为模拟实现，实际调用时会返回错误，但不会阻止程序编译
-
 // GetReward 获取奖励信息
 func (r *RewardRegistryCaller) GetReward(opts *bind.CallOpts, rewardId *big.Int) (RewardInfo, error) {
-	// 在实际项目中，这里应该是调用合约方法获取奖励信息
-	// 由于类型转换问题，这里暂时返回模拟数据
-	return RewardInfo{
-		Id:          big.NewInt(0),
-		Creator:     common.Address{},
-		FamilyId:    big.NewInt(0),
-		Name:        "",
-		Description: "",
-		ImageURI:    "",
-		TokenPrice:  big.NewInt(0),
-		Stock:       big.NewInt(0),
-		Active:      false,
-	}, nil
+	var out []interface{}
+	err := r.contract.Call(opts, &out, "getReward", rewardId)
+
+	if err != nil {
+		return RewardInfo{}, err
+	}
+
+	if len(out) == 0 {
+		return RewardInfo{}, errors.New("reward not found")
+	}
+
+	result := RewardInfo{
+		Id:          out[0].(*big.Int),
+		Creator:     out[1].(common.Address),
+		FamilyId:    out[2].(*big.Int),
+		Name:        out[3].(string),
+		Description: out[4].(string),
+		ImageURI:    out[5].(string),
+		TokenPrice:  out[6].(*big.Int),
+		Stock:       out[7].(*big.Int),
+		Active:      out[8].(bool),
+	}
+
+	return result, nil
 }
 
 // GetExchange 获取兑换记录信息
 func (r *RewardRegistryCaller) GetExchange(opts *bind.CallOpts, exchangeId *big.Int) (ExchangeInfo, error) {
-	// 在实际项目中，这里应该是调用合约方法获取兑换信息
-	// 由于类型转换问题，这里暂时返回模拟数据
-	return ExchangeInfo{
-		Id:           big.NewInt(0),
-		RewardId:     big.NewInt(0),
-		Child:        common.Address{},
-		TokenAmount:  big.NewInt(0),
-		ExchangeDate: big.NewInt(0),
-		Fulfilled:    false,
-	}, nil
+	var out []interface{}
+	err := r.contract.Call(opts, &out, "getExchange", exchangeId)
+
+	if err != nil {
+		return ExchangeInfo{}, err
+	}
+
+	if len(out) == 0 {
+		return ExchangeInfo{}, errors.New("exchange not found")
+	}
+
+	result := ExchangeInfo{
+		Id:           out[0].(*big.Int),
+		RewardId:     out[1].(*big.Int),
+		Child:        out[2].(common.Address),
+		TokenAmount:  out[3].(*big.Int),
+		ExchangeDate: out[4].(*big.Int),
+		Fulfilled:    out[5].(bool),
+	}
+
+	return result, nil
 }
 
 // GetFamilyRewardCount 获取家庭奖励数量
 func (r *RewardRegistryCaller) GetFamilyRewardCount(opts *bind.CallOpts, familyId *big.Int) (*big.Int, error) {
-	// 模拟实现
-	return big.NewInt(0), nil
+	var out []interface{}
+	err := r.contract.Call(opts, &out, "getFamilyRewardCount", familyId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return out[0].(*big.Int), nil
 }
 
 // GetFamilyRewardId 获取家庭奖励ID
 func (r *RewardRegistryCaller) GetFamilyRewardId(opts *bind.CallOpts, familyId *big.Int, index *big.Int) (*big.Int, error) {
-	// 模拟实现
-	return big.NewInt(0), nil
+	var out []interface{}
+	err := r.contract.Call(opts, &out, "getFamilyRewardId", familyId, index)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return out[0].(*big.Int), nil
 }
 
 // GetChildExchangeCount 获取孩子兑换记录数量
 func (r *RewardRegistryCaller) GetChildExchangeCount(opts *bind.CallOpts, child common.Address) (*big.Int, error) {
-	// 模拟实现
-	return big.NewInt(0), nil
+	var out []interface{}
+	err := r.contract.Call(opts, &out, "getChildExchangeCount", child)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return out[0].(*big.Int), nil
 }
 
 // GetChildExchangeId 获取孩子兑换记录ID
 func (r *RewardRegistryCaller) GetChildExchangeId(opts *bind.CallOpts, child common.Address, index *big.Int) (*big.Int, error) {
-	// 模拟实现
-	return big.NewInt(0), nil
+	var out []interface{}
+	err := r.contract.Call(opts, &out, "getChildExchangeId", child, index)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return out[0].(*big.Int), nil
 }
 
 // RewardCount 获取奖励总数
 func (r *RewardRegistryCaller) RewardCount(opts *bind.CallOpts) (*big.Int, error) {
-	// 模拟实现
-	return big.NewInt(0), nil
+	var out []interface{}
+	err := r.contract.Call(opts, &out, "rewardCount")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return out[0].(*big.Int), nil
 }
 
 // ExchangeCount 获取兑换总数
 func (r *RewardRegistryCaller) ExchangeCount(opts *bind.CallOpts) (*big.Int, error) {
-	// 模拟实现
-	return big.NewInt(0), nil
+	var out []interface{}
+	err := r.contract.Call(opts, &out, "exchangeCount")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return out[0].(*big.Int), nil
 }
