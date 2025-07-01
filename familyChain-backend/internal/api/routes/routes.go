@@ -32,6 +32,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config, contractManager *blockchain.Co
 	taskRepo := repository.NewTaskRepository(db)
 
 	// 创建服务
+	contractService, _ := services.NewContractService(&cfg.Blockchain, contractManager)
 	rewardService := services.NewRewardService(rewardRepo, exchangeRepo, childRepo, contractManager)
 	childService := services.NewChildService(childRepo, familyRepo, taskRepo)
 
@@ -40,7 +41,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config, contractManager *blockchain.Co
 	familyHandler := handlers.NewFamilyHandler(db)
 	childHandler := handlers.NewChildHandler(db)
 	taskHandler := handlers.NewTaskHandler(db, contractManager)
-	contractHandler := handlers.NewContractHandler(db)
+	contractHandler := handlers.NewContractHandler(db, contractService)
 	rewardHandler := handlers.NewRewardHandler(rewardService)
 	exchangeHandler := handlers.NewExchangeHandler(rewardService, childService)
 

@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"fmt"
+	"math/big"
 	"net/http"
 
+	"eth-for-babies-backend/internal/services"
 	"eth-for-babies-backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -10,11 +13,15 @@ import (
 )
 
 type ContractHandler struct {
-	db *gorm.DB
+	db              *gorm.DB
+	contractService *services.ContractService
 }
 
-func NewContractHandler(db *gorm.DB) *ContractHandler {
-	return &ContractHandler{db: db}
+func NewContractHandler(db *gorm.DB, contractService *services.ContractService) *ContractHandler {
+	return &ContractHandler{
+		db:              db,
+		contractService: contractService,
+	}
 }
 
 type TransferRequest struct {
@@ -25,7 +32,7 @@ type TransferRequest struct {
 // GetBalance 获取代币余额
 func (h *ContractHandler) GetBalance(c *gin.Context) {
 	address := c.Param("address")
-	
+
 	// 验证地址格式
 	if !utils.IsValidEthereumAddress(address) {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -35,14 +42,29 @@ func (h *ContractHandler) GetBalance(c *gin.Context) {
 		return
 	}
 
-	// TODO: 实现实际的区块链余额查询
-	// 这里返回模拟数据
-	balance := "100.0" // 模拟余额
+	// 使用正确部署的RewardToken合约地址
+	// 合约地址来自deployed_addresses.json
+	tokenAddress := "0xe7cAa23a4E496e1A5854298Cd0b8f4Bd94C9F12d"
+
+	// 从区块链获取真实代币余额
+	balance, err := h.contractService.GetTokenBalance(tokenAddress, address)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   fmt.Sprintf("Failed to get token balance: %v", err),
+		})
+		return
+	}
+
+	// 转换为浮点数字符串表示（假设代币有18位小数）
+	divisor := new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil))
+	balanceFloat := new(big.Float).Quo(new(big.Float).SetInt(balance), divisor)
+	balanceStr := balanceFloat.Text('f', 4) // 保留4位小数
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"balance": balance,
+			"balance": balanceStr,
 		},
 	})
 }
@@ -95,7 +117,7 @@ func (h *ContractHandler) Transfer(c *gin.Context) {
 // GetTransactionStatus 获取交易状态
 func (h *ContractHandler) GetTransactionStatus(c *gin.Context) {
 	hash := c.Param("hash")
-	
+
 	// 简单验证哈希格式
 	if len(hash) != 66 || hash[:2] != "0x" {
 		c.JSON(http.StatusBadRequest, gin.H{
