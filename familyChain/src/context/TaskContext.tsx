@@ -7,8 +7,8 @@ import { mockTasks } from '../data/mockTasks';
 import { ethers } from 'ethers';
 import { TaskContractABI } from '../contracts/TaskContract';
 
-// Get contract address from environment variables
-const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x123456789...'; // Replace placeholder with actual fallback address
+// Get contract address from environment variables - fallback to deployed address
+const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x935d008D7716b272A28fA0eFa5977B50AB435AF2'; // Deployed TaskRegistry address
 
 export interface Task {
   id: string;
@@ -335,11 +335,94 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
 
   const assignTask = async (taskId: string, childWalletAddress: string, childId: string) => {
     console.log('assignTask', taskId, childWalletAddress, childId);
+    
+    // 获取任务信息
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+      console.error('任务不存在:', taskId);
+      alert('任务不存在');
+      return;
+    }
+    
+    // 检查是否有合约任务ID
+    if (task.contractTaskId) {
+      // 检查以太坊提供者
+      if (!(window as any).ethereum) {
+        alert('未找到以太坊提供者，请安装MetaMask');
+        return;
+      }
+      
+      try {
+        console.log('开始与合约交互，分配任务...');
+        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        
+        // 检查网络是否为Sepolia
+        const network = await provider.getNetwork();
+        console.log('当前网络:', network.name, '链ID:', network.chainId.toString());
+        
+        if (network.chainId !== 11155111n) {
+          console.log('当前不在Sepolia网络，尝试切换...');
+          try {
+            await (window as any).ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0xaa36a7' }] // Sepolia chainId
+            });
+            console.log('已切换到Sepolia网络');
+          } catch (switchError) {
+            console.error('切换网络失败:', switchError);
+            alert('请在钱包中手动切换到Sepolia测试网络');
+            return;
+          }
+        }
+        
+        const signer = await provider.getSigner();
+        const signerAddress = await signer.getAddress();
+        console.log('签名者地址:', signerAddress);
+        
+        // 创建合约实例
+        const taskContract = new ethers.Contract(
+          TASK_CONTRACT_ADDRESS,
+          TaskContractABI,
+          signer
+        );
+        
+        // 检查合约方法
+        console.log('合约方法:', Object.keys(taskContract.interface));
+        
+        console.log('调用合约分配任务:', {
+          taskId: Number(task.contractTaskId),
+          childAddress: childWalletAddress
+        });
+        
+        // 调用合约方法分配任务
+        const tx = await taskContract.assignTask(
+          Number(task.contractTaskId),
+          childWalletAddress
+        );
+        
+        console.log('交易已发送:', tx.hash);
+        
+        // 等待交易被确认
+        const receipt = await tx.wait();
+        console.log('交易已确认:', receipt);
+        
+        console.log('成功在区块链上分配任务');
+      } catch (contractError) {
+        console.error('与智能合约交互时出错:', contractError);
+        alert(`与智能合约交互失败: ${contractError instanceof Error ? contractError.message : '未知错误'}`);
+        return;
+      }
+    } else {
+      console.log('任务没有区块链ID，跳过合约交互');
+    }
+    
+    // 更新后端状态
     await updateTask(taskId, {
       assignedTo: childWalletAddress,
       assignedChildId: childId,
       status: 'in-progress'
     });
+    
     // 确保数据与后端同步
     await refreshTasks();
   };
