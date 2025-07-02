@@ -71,7 +71,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Login to FamilyChain</h2>
+          <h2 className="text-lg font-bold">Login to FamilyChain</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -80,7 +80,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        <p className="text-gray-600 mb-4">
+        <p className="text-gray-600 mb-4 text-sm">
           Please select your role
         </p>
 
@@ -185,7 +185,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
           {/* 连接方式选择 */}
           <div>
-            <p className="text-gray-600 mb-4">Connection method</p>
+            <p className="text-gray-600 mb-4 text-sm">Connection method</p>
             <div className="flex space-x-4 mb-3">
               <label className="flex items-center">
                 <input

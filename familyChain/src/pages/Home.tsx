@@ -70,16 +70,16 @@ const Home: React.FC<HomeProps> = ({ onLoginClick }) => {
           <button
             onClick={() => setShowLoginModal(true)}
             className="flex items-center gap-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors mr-2"
-          >
+          > 
             <User className="w-4 h-4" />
-            登录
+            Login
           </button>
           <button
             onClick={() => setShowApiTest(true)}
             className="flex items-center gap-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
           >
             <Settings className="w-4 h-4" />
-            API 测试
+            API Test
           </button>
         </div>
         <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">

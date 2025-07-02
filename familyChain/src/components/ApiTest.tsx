@@ -153,14 +153,14 @@ export const ApiTest: React.FC<ApiTestProps> = ({ isOpen, onClose }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* 测试按钮 */}
           <div className="space-y-2">
-            <h3 className="font-semibold mb-2">API 测试</h3>
+            <h3 className="font-semibold mb-2">API Test</h3>
             
             <button
               onClick={testHealthCheck}
               disabled={loading}
               className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50"
             >
-              测试健康检查
+              Test Health Check
             </button>
             
             <button
