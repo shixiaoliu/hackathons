@@ -34,6 +34,7 @@ echo ""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$SCRIPT_DIR/familyChain-backend"
 FRONTEND_DIR="$SCRIPT_DIR/familyChain"
+CONTRACT_DIR="$SCRIPT_DIR/familyChain-contract"
 
 # 检查项目目录是否存在
 if [ ! -d "$BACKEND_DIR" ]; then
@@ -45,6 +46,52 @@ if [ ! -d "$FRONTEND_DIR" ]; then
     echo "❌ 前端项目目录不存在: $FRONTEND_DIR"
     exit 1
 fi
+
+if [ ! -d "$CONTRACT_DIR" ]; then
+    echo "❌ 合约项目目录不存在: $CONTRACT_DIR"
+    exit 1
+fi
+
+# 处理环境文件
+echo "🔑 检查环境文件..."
+
+# 前端环境文件
+if [ -f "$FRONTEND_DIR/.env" ]; then
+    echo "✅ 前端 .env 文件已存在"
+else
+    if [ -f "$FRONTEND_DIR/.env.example" ]; then
+        echo "📝 复制前端 .env.example 到 .env"
+        cp "$FRONTEND_DIR/.env.example" "$FRONTEND_DIR/.env"
+    else
+        echo "⚠️ 前端 .env.example 文件不存在，无法创建 .env"
+    fi
+fi
+
+# 后端环境文件
+if [ -f "$BACKEND_DIR/.env" ]; then
+    echo "✅ 后端 .env 文件已存在"
+else
+    if [ -f "$BACKEND_DIR/.env.example" ]; then
+        echo "📝 复制后端 .env.example 到 .env"
+        cp "$BACKEND_DIR/.env.example" "$BACKEND_DIR/.env"
+    else
+        echo "⚠️ 后端 .env.example 文件不存在，无法创建 .env"
+    fi
+fi
+
+# 合约环境文件
+if [ -f "$CONTRACT_DIR/.env" ]; then
+    echo "✅ 合约 .env 文件已存在"
+else
+    if [ -f "$CONTRACT_DIR/.env.example" ]; then
+        echo "📝 复制合约 .env.example 到 .env"
+        cp "$CONTRACT_DIR/.env.example" "$CONTRACT_DIR/.env"
+    else
+        echo "⚠️ 合约 .env.example 文件不存在，无法创建 .env"
+    fi
+fi
+
+echo ""
 
 # 创建日志目录
 LOG_DIR="$SCRIPT_DIR/logs"
