@@ -1,42 +1,6 @@
 {
   "_format": "hh-sol-cache-2",
   "files": {
-    "/Users/patrikhuang/metaNode/hackathons/familyChain-contract/solidity/FamilyRegistry.sol": {
-      "lastModificationDate": 1751251057405,
-      "contentHash": "8e974d64d4b1f44621cf7ad3723222b2",
-      "sourceName": "solidity/FamilyRegistry.sol",
-      "solcConfig": {
-        "version": "0.8.20",
-        "settings": {
-          "evmVersion": "paris",
-          "optimizer": {
-            "enabled": false,
-            "runs": 200
-          },
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.0"
-      ],
-      "artifacts": [
-        "FamilyRegistry"
-      ]
-    },
     "/Users/patrikhuang/metaNode/hackathons/familyChain-contract/solidity/RewardRegistry.sol": {
       "lastModificationDate": 1751339057848,
       "contentHash": "80ec7d661095014e4eeee832424aff50",
