@@ -119,8 +119,17 @@ cp .env.example .env
 # 启动开发服务器
 yarn dev
 ```
+#### 3. 智能合约设置
 
-#### 3. 钱包配置
+```bash
+cd familyChain-contract
+
+# 配置环境变量
+cp .env.example .env
+
+```
+
+#### 4. 钱包配置
 
 1. 安装MetaMask浏览器扩展
 2. 创建或导入钱包
