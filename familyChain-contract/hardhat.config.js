@@ -38,14 +38,14 @@ module.exports = {
     },
     // 仅在环境变量存在的情况下配置 Sepolia
     ...(SEPOLIA_RPC_URL && SEPOLIA_PRIVATE_KEY_PARENT ? {
-      sepolia: {
+    sepolia: {
         url: SEPOLIA_RPC_URL,
         accounts: [
           SEPOLIA_PRIVATE_KEY_PARENT,
           // 如果有子账户私钥，则添加，否则使用父账户私钥
           SEPOLIA_PRIVATE_KEY_CHILD || SEPOLIA_PRIVATE_KEY_PARENT
         ],
-        chainId: 11155111
+      chainId: 11155111
       }
     } : {})
   },
