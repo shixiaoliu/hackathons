@@ -13,7 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-// ContractManager manages interactions with smart contracts
+// ContractManager handles interactions with smart contracts
 type ContractManager struct {
 	client           *EthClient
 	privateKey       *ecdsa.PrivateKey
@@ -28,212 +28,215 @@ type ContractManager struct {
 	rewardRegAddress common.Address
 }
 
-// NewContractManager creates a new contract manager
+// NewContractManager creates a new contract manager instance
 func NewContractManager(client *EthClient, contractAddresses map[string]string) (*ContractManager, error) {
-	manager := &ContractManager{
-		client: client,
+	cm := &ContractManager{
+		client:  client,
+		chainID: client.GetChainID(),
 	}
 
-	// Set contract addresses if provided
-	if taskAddr, ok := contractAddresses["TaskRegistry"]; ok && taskAddr != "" {
-		manager.taskAddress = common.HexToAddress(taskAddr)
-	}
-
-	if familyAddr, ok := contractAddresses["FamilyRegistry"]; ok && familyAddr != "" {
-		manager.familyAddress = common.HexToAddress(familyAddr)
-	}
-
-	if tokenAddr, ok := contractAddresses["RewardToken"]; ok && tokenAddr != "" {
-		manager.tokenAddress = common.HexToAddress(tokenAddr)
-	}
-
-	if rewardRegAddr, ok := contractAddresses["RewardRegistry"]; ok && rewardRegAddr != "" {
-		rewardRegAddress := common.HexToAddress(rewardRegAddr)
-		rewardRegistry, err := NewRewardRegistry(rewardRegAddress, client.GetClient())
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize reward registry contract: %v", err)
+	// 如果提供了合约地址，就使用它们
+	if len(contractAddresses) > 0 {
+		// 设置任务合约地址
+		if addr, ok := contractAddresses["task"]; ok {
+			cm.taskAddress = common.HexToAddress(addr)
 		}
-		manager.RewardRegistry = rewardRegistry
-		manager.rewardRegAddress = rewardRegAddress
+		// 设置家庭合约地址
+		if addr, ok := contractAddresses["family"]; ok {
+			cm.familyAddress = common.HexToAddress(addr)
+		}
+		// 设置代币合约地址
+		if addr, ok := contractAddresses["token"]; ok {
+			cm.tokenAddress = common.HexToAddress(addr)
+		}
+		// 设置奖励合约地址
+		if addr, ok := contractAddresses["reward"]; ok {
+			cm.rewardRegAddress = common.HexToAddress(addr)
+		}
 	}
 
-	// Initialize contract instances
-	err := manager.initializeContracts()
+	// 初始化合约实例
+	err := cm.initializeContracts()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize contracts: %v", err)
 	}
 
-	return manager, nil
+	return cm, nil
 }
 
-// initializeContracts initializes contract instances
+// initializeContracts initializes contract instances based on addresses
 func (cm *ContractManager) initializeContracts() error {
-	ethClient := cm.client.GetClient()
-
-	// Initialize TaskRegistry if address is set
+	// 如果有任务合约地址，则初始化任务合约
 	if cm.taskAddress != (common.Address{}) {
-		taskRegistry, err := NewTaskRegistry(cm.taskAddress, ethClient)
+		taskRegistry, err := NewTaskRegistry(cm.taskAddress, cm.client.GetClient())
 		if err != nil {
-			return fmt.Errorf("failed to initialize TaskRegistry contract: %v", err)
+			return fmt.Errorf("failed to instantiate task registry contract: %v", err)
 		}
 		cm.TaskRegistry = taskRegistry
+		log.Printf("TaskRegistry initialized at address: %s", cm.taskAddress.Hex())
 	}
 
-	// Initialize FamilyRegistry if address is set
+	// 如果有家庭合约地址，则初始化家庭合约
 	if cm.familyAddress != (common.Address{}) {
-		familyRegistry, err := NewFamilyRegistry(cm.familyAddress, ethClient)
+		familyRegistry, err := NewFamilyRegistry(cm.familyAddress, cm.client.GetClient())
 		if err != nil {
-			return fmt.Errorf("failed to initialize FamilyRegistry contract: %v", err)
+			return fmt.Errorf("failed to instantiate family registry contract: %v", err)
 		}
 		cm.FamilyRegistry = familyRegistry
+		log.Printf("FamilyRegistry initialized at address: %s", cm.familyAddress.Hex())
 	}
 
-	// Initialize RewardToken if address is set
+	// 如果有代币合约地址，则初始化代币合约
 	if cm.tokenAddress != (common.Address{}) {
-		log.Printf("Initializing RewardToken at address: %s", cm.tokenAddress.Hex())
-		// 使用Go绑定直接与合约交互，不再使用代理方法
-		rewardToken, err := NewRewardToken(cm.tokenAddress, ethClient)
+		rewardToken, err := NewRewardToken(cm.tokenAddress, cm.client.GetClient())
 		if err != nil {
-			return fmt.Errorf("failed to initialize RewardToken contract: %v", err)
+			return fmt.Errorf("failed to instantiate reward token contract: %v", err)
 		}
 		cm.RewardToken = rewardToken
-		log.Printf("RewardToken initialized successfully")
+		log.Printf("RewardToken initialized at address: %s", cm.tokenAddress.Hex())
+	}
+
+	// 如果有奖励合约地址，则初始化奖励合约
+	if cm.rewardRegAddress != (common.Address{}) {
+		rewardRegistry, err := NewRewardRegistry(cm.rewardRegAddress, cm.client.GetClient())
+		if err != nil {
+			return fmt.Errorf("failed to instantiate reward registry contract: %v", err)
+		}
+		cm.RewardRegistry = rewardRegistry
+		log.Printf("RewardRegistry initialized at address: %s", cm.rewardRegAddress.Hex())
 	}
 
 	return nil
 }
 
-// DeployContracts deploys all contracts and initializes them
+// DeployContracts deploys all contracts
 func (cm *ContractManager) DeployContracts() error {
 	auth, err := cm.client.GetAuth()
 	if err != nil {
 		return fmt.Errorf("failed to create auth: %v", err)
 	}
 
-	ethClient := cm.client.GetClient()
-
-	// Deploy TaskRegistry
-	log.Println("Deploying TaskRegistry contract...")
-	taskRegistryAddress, tx, taskRegistry, err := DeployTaskRegistry(auth, ethClient)
+	// 部署任务合约
+	taskAddress, tx, taskInstance, err := DeployTaskRegistry(auth, cm.client.GetClient())
 	if err != nil {
-		return fmt.Errorf("failed to deploy TaskRegistry: %v", err)
+		return fmt.Errorf("failed to deploy task registry: %v", err)
 	}
-	cm.taskAddress = taskRegistryAddress
-	cm.TaskRegistry = taskRegistry
-	log.Printf("TaskRegistry deployed at: %s", taskRegistryAddress.Hex())
+	cm.taskAddress = taskAddress
+	cm.TaskRegistry = taskInstance
 
-	// Wait for transaction to be mined
-	_, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
-	if err != nil {
-		log.Printf("Error waiting for TaskRegistry deployment: %v", err)
-	}
+	log.Printf("TaskRegistry deployed with transaction: %s", tx.Hash().Hex())
+	log.Printf("TaskRegistry address: %s", taskAddress.Hex())
 
-	// Deploy FamilyRegistry
-	log.Println("Deploying FamilyRegistry contract...")
-	familyRegistryAddress, tx, familyRegistry, err := DeployFamilyRegistry(auth, ethClient)
+	receipt, err := cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
 	if err != nil {
-		return fmt.Errorf("failed to deploy FamilyRegistry: %v", err)
+		return fmt.Errorf("error waiting for TaskRegistry deploy: %v", err)
 	}
-	cm.familyAddress = familyRegistryAddress
-	cm.FamilyRegistry = familyRegistry
-	log.Printf("FamilyRegistry deployed at: %s", familyRegistryAddress.Hex())
+	log.Printf("TaskRegistry deployed at block: %d", receipt.BlockNumber.Uint64())
 
-	// Wait for transaction to be mined
-	_, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
+	// 部署家庭合约
+	familyAddress, tx, familyInstance, err := DeployFamilyRegistry(auth, cm.client.GetClient())
 	if err != nil {
-		log.Printf("Error waiting for FamilyRegistry deployment: %v", err)
+		return fmt.Errorf("failed to deploy family registry: %v", err)
 	}
+	cm.familyAddress = familyAddress
+	cm.FamilyRegistry = familyInstance
 
-	// Deploy RewardToken
-	log.Println("Deploying RewardToken contract...")
-	rewardTokenAddress, tx, rewardToken, err := DeployRewardToken(auth, ethClient, "EthForBabiesToken", "EFBT")
-	if err != nil {
-		return fmt.Errorf("failed to deploy RewardToken: %v", err)
-	}
-	cm.tokenAddress = rewardTokenAddress
-	cm.RewardToken = rewardToken
-	log.Printf("RewardToken deployed at: %s", rewardTokenAddress.Hex())
+	log.Printf("FamilyRegistry deployed with transaction: %s", tx.Hash().Hex())
+	log.Printf("FamilyRegistry address: %s", familyAddress.Hex())
 
-	// Wait for transaction to be mined
-	_, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
+	receipt, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
 	if err != nil {
-		log.Printf("Error waiting for RewardToken deployment: %v", err)
+		return fmt.Errorf("error waiting for FamilyRegistry deploy: %v", err)
 	}
+	log.Printf("FamilyRegistry deployed at block: %d", receipt.BlockNumber.Uint64())
+
+	// 部署代币合约
+	tokenAddress, tx, tokenInstance, err := DeployRewardToken(auth, cm.client.GetClient(), "TaskReward", "TRW")
+	if err != nil {
+		return fmt.Errorf("failed to deploy reward token: %v", err)
+	}
+	cm.tokenAddress = tokenAddress
+	cm.RewardToken = tokenInstance
+
+	log.Printf("RewardToken deployed with transaction: %s", tx.Hash().Hex())
+	log.Printf("RewardToken address: %s", tokenAddress.Hex())
+
+	receipt, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
+	if err != nil {
+		return fmt.Errorf("error waiting for RewardToken deploy: %v", err)
+	}
+	log.Printf("RewardToken deployed at block: %d", receipt.BlockNumber.Uint64())
 
 	return nil
 }
 
-// GetContractAddresses returns the addresses of all contracts
+// GetContractAddresses returns a map of contract addresses
 func (cm *ContractManager) GetContractAddresses() map[string]string {
 	return map[string]string{
-		"TaskRegistry":   cm.taskAddress.Hex(),
-		"FamilyRegistry": cm.familyAddress.Hex(),
-		"RewardToken":    cm.tokenAddress.Hex(),
+		"task":   cm.taskAddress.Hex(),
+		"family": cm.familyAddress.Hex(),
+		"token":  cm.tokenAddress.Hex(),
+		"reward": cm.rewardRegAddress.Hex(),
 	}
 }
 
-// Task Management Functions
-
-// CreateTask creates a new task in the TaskRegistry contract
+// CreateTask creates a new task
 func (cm *ContractManager) CreateTask(title, description string, reward *big.Int) (uint64, error) {
 	if cm.TaskRegistry == nil {
-		return 0, fmt.Errorf("TaskRegistry contract not initialized")
+		return 0, fmt.Errorf("task registry not initialized")
 	}
 
+	// 获取交易选项
 	auth, err := cm.client.GetAuth()
 	if err != nil {
 		return 0, fmt.Errorf("failed to create auth: %v", err)
 	}
 
-	// Set the value to be sent with the transaction (must equal reward)
-	auth.Value = reward
-
-	// Add log for task creation
-	log.Printf("Creating task with title: %s, description: %s, reward: %s",
-		title, description, reward.String())
-
+	// 调用合约创建任务
 	tx, err := cm.TaskRegistry.CreateTask(auth, title, description, reward)
-	log.Printf("create task	tx: %v", tx)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create task: %v", err)
 	}
 
-	// Wait for transaction to be mined
-	log.Printf("Waiting for transaction %s to be mined", tx.Hash().Hex())
-	receipt, err := cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
+	log.Printf("CreateTask transaction submitted: %s", tx.Hash().Hex())
+
+	// 等待交易确认
+	receipt, err := cm.client.WaitForTransaction(tx.Hash(), 2*time.Minute)
 	if err != nil {
 		return 0, fmt.Errorf("error waiting for transaction: %v", err)
 	}
 
-	// Parse task ID from logs
+	// 解析事件获取任务ID
 	for _, log := range receipt.Logs {
 		event, err := cm.TaskRegistry.ParseTaskCreated(*log)
-		if err == nil {
+		if err == nil && event != nil {
 			return event.TaskId.Uint64(), nil
 		}
 	}
 
-	return 0, fmt.Errorf("failed to parse task ID from transaction logs")
+	return 0, fmt.Errorf("could not find task ID in transaction logs")
 }
 
 // AssignTask assigns a task to a child
 func (cm *ContractManager) AssignTask(taskID uint64, childAddress common.Address) error {
 	if cm.TaskRegistry == nil {
-		return fmt.Errorf("TaskRegistry contract not initialized")
+		return fmt.Errorf("task registry not initialized")
 	}
 
+	// 获取交易选项
 	auth, err := cm.client.GetAuth()
 	if err != nil {
 		return fmt.Errorf("failed to create auth: %v", err)
 	}
 
+	// 调用合约分配任务
 	tx, err := cm.TaskRegistry.AssignTask(auth, big.NewInt(int64(taskID)), childAddress)
 	if err != nil {
 		return fmt.Errorf("failed to assign task: %v", err)
 	}
 
-	// Wait for transaction to be mined
-	_, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
+	// 等待交易确认
+	_, err = cm.client.WaitForTransaction(tx.Hash(), 2*time.Minute)
 	if err != nil {
 		return fmt.Errorf("error waiting for transaction: %v", err)
 	}
@@ -241,24 +244,26 @@ func (cm *ContractManager) AssignTask(taskID uint64, childAddress common.Address
 	return nil
 }
 
-// CompleteTask marks a task as completed by the assigned child
+// CompleteTask marks a task as completed by a child
 func (cm *ContractManager) CompleteTask(taskID uint64) error {
 	if cm.TaskRegistry == nil {
-		return fmt.Errorf("TaskRegistry contract not initialized")
+		return fmt.Errorf("task registry not initialized")
 	}
 
+	// 获取交易选项
 	auth, err := cm.client.GetAuth()
 	if err != nil {
 		return fmt.Errorf("failed to create auth: %v", err)
 	}
 
+	// 调用合约完成任务
 	tx, err := cm.TaskRegistry.CompleteTask(auth, big.NewInt(int64(taskID)))
 	if err != nil {
 		return fmt.Errorf("failed to complete task: %v", err)
 	}
 
-	// Wait for transaction to be mined
-	_, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
+	// 等待交易确认
+	_, err = cm.client.WaitForTransaction(tx.Hash(), 2*time.Minute)
 	if err != nil {
 		return fmt.Errorf("error waiting for transaction: %v", err)
 	}
@@ -266,28 +271,29 @@ func (cm *ContractManager) CompleteTask(taskID uint64) error {
 	return nil
 }
 
-// ApproveTask approves a completed task and transfers the reward
+// ApproveTask approves a completed task and transfers reward
 func (cm *ContractManager) ApproveTask(taskID uint64, reward *big.Int) error {
 	if cm.TaskRegistry == nil {
-		return fmt.Errorf("TaskRegistry contract not initialized")
+		return fmt.Errorf("task registry not initialized")
 	}
 
+	// 获取交易选项
 	auth, err := cm.client.GetAuth()
 	if err != nil {
 		return fmt.Errorf("failed to create auth: %v", err)
 	}
 
-	// Do not set auth.Value as the reward is already locked in the contract
-	// The smart contract will transfer the reward from its own balance to the child
-	auth.Value = big.NewInt(0)
+	// 设置交易值为奖励金额
+	auth.Value = reward
 
+	// 调用合约批准任务
 	tx, err := cm.TaskRegistry.ApproveTask(auth, big.NewInt(int64(taskID)))
 	if err != nil {
 		return fmt.Errorf("failed to approve task: %v", err)
 	}
 
-	// Wait for transaction to be mined
-	_, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
+	// 等待交易确认
+	_, err = cm.client.WaitForTransaction(tx.Hash(), 2*time.Minute)
 	if err != nil {
 		return fmt.Errorf("error waiting for transaction: %v", err)
 	}
@@ -295,29 +301,26 @@ func (cm *ContractManager) ApproveTask(taskID uint64, reward *big.Int) error {
 	return nil
 }
 
-// RejectTask rejects a completed task and refunds the reward to the parent
+// RejectTask rejects a completed task
 func (cm *ContractManager) RejectTask(taskID uint64) error {
 	if cm.TaskRegistry == nil {
-		return fmt.Errorf("TaskRegistry contract not initialized")
+		return fmt.Errorf("task registry not initialized")
 	}
 
+	// 获取交易选项
 	auth, err := cm.client.GetAuth()
 	if err != nil {
 		return fmt.Errorf("failed to create auth: %v", err)
 	}
 
-	// Do not set auth.Value as the reward is already locked in the contract
-	// The smart contract will refund the reward from its balance to the parent
-	auth.Value = big.NewInt(0)
-
-	// 直接使用生成的RejectTask方法
+	// 调用合约拒绝任务
 	tx, err := cm.TaskRegistry.RejectTask(auth, big.NewInt(int64(taskID)))
 	if err != nil {
 		return fmt.Errorf("failed to reject task: %v", err)
 	}
 
-	// Wait for transaction to be mined
-	_, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
+	// 等待交易确认
+	_, err = cm.client.WaitForTransaction(tx.Hash(), 2*time.Minute)
 	if err != nil {
 		return fmt.Errorf("error waiting for transaction: %v", err)
 	}
@@ -325,103 +328,100 @@ func (cm *ContractManager) RejectTask(taskID uint64) error {
 	return nil
 }
 
-// TransferETH transfers ETH from the contract manager's account to a specified address
+// TransferETH transfers ETH to the given address
 func (cm *ContractManager) TransferETH(to common.Address, amount *big.Int) (*types.Transaction, error) {
-	if cm.client == nil {
-		return nil, fmt.Errorf("eth client not initialized")
-	}
-
-	// Send ETH transaction
-	tx, err := cm.client.SendTransaction(to, amount, nil)
+	// 获取交易选项
+	auth, err := cm.client.GetAuth()
 	if err != nil {
-		return nil, fmt.Errorf("failed to send ETH transaction: %v", err)
+		return nil, fmt.Errorf("failed to create auth: %v", err)
 	}
 
-	// Wait for transaction to be mined
-	_, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
+	// 设置交易值
+	auth.Value = amount
+
+	// 创建交易对象
+	tx := types.NewTransaction(
+		auth.Nonce.Uint64(),
+		to,
+		auth.Value,
+		21000, // gas limit for standard ETH transfer
+		auth.GasPrice,
+		[]byte{}, // 没有额外数据
+	)
+
+	// 签名交易
+	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(cm.chainID), cm.client.GetPrivateKey())
 	if err != nil {
-		return nil, fmt.Errorf("error waiting for ETH transfer transaction: %v", err)
+		return nil, fmt.Errorf("failed to sign transaction: %v", err)
 	}
 
-	return tx, nil
+	// 发送交易
+	err = cm.client.GetClient().SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send transaction: %v", err)
+	}
+
+	return signedTx, nil
 }
 
-// GetTask retrieves a task by ID
-func (cm *ContractManager) GetTask(taskID uint64) (Task, error) {
-	if cm.TaskRegistry == nil {
-		return Task{}, fmt.Errorf("TaskRegistry contract not initialized")
-	}
 
-	id, creator, assignedTo, title, description, reward, completed, approved, err := cm.TaskRegistry.GetTask(&bind.CallOpts{}, big.NewInt(int64(taskID)))
-	if err != nil {
-		return Task{}, fmt.Errorf("failed to get task: %v", err)
-	}
-
-	return Task{
-		ID:          id.Uint64(),
-		Creator:     creator,
-		AssignedTo:  assignedTo,
-		Title:       title,
-		Description: description,
-		Reward:      reward,
-		Completed:   completed,
-		Approved:    approved,
-	}, nil
-}
-
-// Family Management Functions
-
-// CreateFamily creates a new family in the FamilyRegistry contract
+// CreateFamily creates a new family
 func (cm *ContractManager) CreateFamily(name string) (uint64, error) {
 	if cm.FamilyRegistry == nil {
-		return 0, fmt.Errorf("FamilyRegistry contract not initialized")
+		return 0, fmt.Errorf("family registry not initialized")
 	}
 
+	// 获取交易选项
 	auth, err := cm.client.GetAuth()
 	if err != nil {
 		return 0, fmt.Errorf("failed to create auth: %v", err)
 	}
 
+	// 调用合约创建家庭
 	tx, err := cm.FamilyRegistry.CreateFamily(auth, name)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create family: %v", err)
 	}
 
-	// Wait for transaction to be mined
-	receipt, err := cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
+	log.Printf("CreateFamily transaction submitted: %s", tx.Hash().Hex())
+
+	// 等待交易确认
+	receipt, err := cm.client.WaitForTransaction(tx.Hash(), 2*time.Minute)
 	if err != nil {
 		return 0, fmt.Errorf("error waiting for transaction: %v", err)
 	}
 
-	// Parse family ID from logs
+	// 解析事件获取家庭ID
 	for _, log := range receipt.Logs {
 		event, err := cm.FamilyRegistry.ParseFamilyCreated(*log)
-		if err == nil {
+		if err == nil && event != nil {
 			return event.FamilyId.Uint64(), nil
 		}
 	}
 
-	return 0, fmt.Errorf("failed to parse family ID from transaction logs")
+	return 0, fmt.Errorf("could not find family ID in transaction logs")
 }
 
 // AddChild adds a child to a family
 func (cm *ContractManager) AddChild(familyID uint64, childAddress common.Address, name string, age uint8) error {
 	if cm.FamilyRegistry == nil {
-		return fmt.Errorf("FamilyRegistry contract not initialized")
+		return fmt.Errorf("family registry not initialized")
 	}
 
+	// 获取交易选项
 	auth, err := cm.client.GetAuth()
 	if err != nil {
 		return fmt.Errorf("failed to create auth: %v", err)
 	}
 
+	// 调用合约添加孩子
 	tx, err := cm.FamilyRegistry.AddChild(auth, big.NewInt(int64(familyID)), childAddress, name, age)
 	if err != nil {
 		return fmt.Errorf("failed to add child: %v", err)
 	}
 
-	// Wait for transaction to be mined
-	_, err = cm.client.WaitForTransaction(tx.Hash(), 5*time.Minute)
+	// 等待交易确认
+	_, err = cm.client.WaitForTransaction(tx.Hash(), 2*time.Minute)
 	if err != nil {
 		return fmt.Errorf("error waiting for transaction: %v", err)
 	}
@@ -439,49 +439,6 @@ type Task struct {
 	Reward      *big.Int
 	Completed   bool
 	Approved    bool
-}
-
-// Note: TaskRegistry type is generated by abigen
-// Placeholder type for FamilyRegistry (to be generated by abigen)
-type FamilyRegistry struct{}
-
-// Note: NewTaskRegistry function is generated by abigen
-// Placeholder functions for FamilyRegistry and RewardToken
-func NewFamilyRegistry(address common.Address, client bind.ContractBackend) (*FamilyRegistry, error) {
-	return &FamilyRegistry{}, nil
-}
-
-func NewRewardToken(address common.Address, client bind.ContractBackend) (*RewardToken, error) {
-	return &RewardToken{}, nil
-}
-
-// Placeholder deploy functions
-func DeployTaskRegistry(auth *bind.TransactOpts, client bind.ContractBackend) (common.Address, *types.Transaction, *TaskRegistry, error) {
-	return common.Address{}, &types.Transaction{}, &TaskRegistry{}, fmt.Errorf("TaskRegistry deployment not implemented")
-}
-
-func DeployFamilyRegistry(auth *bind.TransactOpts, client bind.ContractBackend) (common.Address, *types.Transaction, *FamilyRegistry, error) {
-	return common.Address{}, &types.Transaction{}, &FamilyRegistry{}, fmt.Errorf("FamilyRegistry deployment not implemented")
-}
-
-func DeployRewardToken(auth *bind.TransactOpts, client bind.ContractBackend, name string, symbol string) (common.Address, *types.Transaction, *RewardToken, error) {
-	return common.Address{}, &types.Transaction{}, &RewardToken{}, fmt.Errorf("RewardToken deployment not implemented")
-}
-
-// Note: TaskRegistry methods are now generated in task_registry_generated.go
-
-// Placeholder methods for FamilyRegistry
-func (fr *FamilyRegistry) CreateFamily(auth *bind.TransactOpts, name string) (*types.Transaction, error) {
-	return &types.Transaction{}, nil
-}
-
-func (fr *FamilyRegistry) AddChild(auth *bind.TransactOpts, familyID *big.Int, childAddress common.Address, name string, age uint8) (*types.Transaction, error) {
-	return &types.Transaction{}, nil
-}
-
-// Placeholder method for parsing events
-func (fr *FamilyRegistry) ParseFamilyCreated(log types.Log) (*struct{ FamilyId *big.Int }, error) {
-	return &struct{ FamilyId *big.Int }{FamilyId: big.NewInt(0)}, nil
 }
 
 // GetChildTransactOpts 获取孩子账户的交易选项
