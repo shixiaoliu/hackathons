@@ -225,36 +225,6 @@ const Home: React.FC<HomeProps> = ({ onLoginClick }) => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-12 md:py-20 text-center">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to Transform Family Tasks?</h2>
-        <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          Connect your wallet and start creating blockchain-powered incentives for your family today.
-        </p>
-        
-        {!isConnected ? (
-          <div className="flex justify-center">
-            <ConnectButton label="Get Started" />
-          </div>
-        ) : (
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Button 
-              size="lg" 
-              onClick={() => handleRoleSelect('parent')}
-            >
-              Parent Dashboard
-            </Button>
-            <Button 
-              size="lg" 
-              variant="secondary" 
-              onClick={() => handleRoleSelect('child')}
-            >
-              Child Dashboard
-            </Button>
-          </div>
-        )}
-      </section>
-
       {/* Child Login Modal */}
       {showChildLoginModal && (
         <ChildLoginModal
