@@ -122,9 +122,9 @@ const RewardStore = () => {
       <div className="text-center py-12">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-lg mx-auto">
           <ShoppingBag className="h-12 w-12 text-yellow-600 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">需要登录</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Login Required</h2>
           <p className="text-gray-600 mb-4">
-            请先使用孩子账户登录，才能访问奖品商店。
+            Please log in with your child account to access the reward store.
           </p>
           <Button
             onClick={() => navigate('/')}
@@ -157,8 +157,8 @@ const RewardStore = () => {
     <div className="max-w-6xl mx-auto">
       <div className="mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">奖品商店</h1>
-          <p className="text-gray-600">使用你的代币兑换奖品</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Reward Store</h1>
+          <p className="text-gray-600">Use your tokens to redeem rewards</p>
         </div>
         <Button 
           variant="secondary"
@@ -169,7 +169,7 @@ const RewardStore = () => {
           className="flex items-center"
         >
           <RefreshCw className="h-4 w-4 mr-2" />
-          刷新奖品
+          Refresh Rewards
         </Button>
       </div>
       
@@ -182,12 +182,12 @@ const RewardStore = () => {
               </div>
             </div>
             <div>
-              <p className="text-sm text-gray-500">代币余额</p>
+              <p className="text-sm text-gray-500">Token Balance</p>
               <p className="text-2xl font-bold text-gray-900">
                 {loadingBalance ? (
-                  <span className="animate-pulse">加载中...</span>
+                  <span className="animate-pulse">Loading...</span>
                 ) : (
-                  `${parseFloat(balance).toFixed(4)} 代币`
+                  `${parseFloat(balance).toFixed(4)} tokens`
                 )}
               </p>
             </div>
@@ -202,7 +202,7 @@ const RewardStore = () => {
               </div>
             </div>
             <div>
-              <p className="text-sm text-gray-500">已兑换奖品</p>
+              <p className="text-sm text-gray-500">Exchanged Rewards</p>
               <p className="text-2xl font-bold text-gray-900">{exchangedRewards.length}</p>
             </div>
           </CardBody>
@@ -216,7 +216,7 @@ const RewardStore = () => {
               </div>
             </div>
             <div>
-              <p className="text-sm text-gray-500">待处理申请</p>
+              <p className="text-sm text-gray-500">Pending Requests</p>
               <p className="text-2xl font-bold text-gray-900">{pendingExchanges}</p>
             </div>
           </CardBody>
@@ -233,7 +233,7 @@ const RewardStore = () => {
             }`}
             onClick={() => setActiveTab('available')}
           >
-            可兑换奖品
+            Available Rewards
           </button>
           <button
             className={`px-4 py-2 text-sm font-medium ${
@@ -243,7 +243,7 @@ const RewardStore = () => {
             }`}
             onClick={() => setActiveTab('exchanged')}
           >
-            我的兑换记录
+            My Exchange Records
           </button>
         </div>
       </div>
@@ -257,8 +257,8 @@ const RewardStore = () => {
           ) : availableRewards.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg">
               <ShoppingBag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">暂无可兑换奖品</h3>
-              <p className="text-gray-600">目前没有可兑换的奖品，请稍后再来查看</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No rewards available</h3>
+              <p className="text-gray-600">Currently, there are no rewards available for redemption. Please check back later.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -282,10 +282,10 @@ const RewardStore = () => {
                     <p className="text-gray-600 text-sm mb-3">{reward.description}</p>
                     <div className="flex items-center justify-between">
                       <div className="text-primary-600 font-bold">
-                        {reward.token_price} 代币
+                        {reward.token_price} tokens
                       </div>
                       <div className="text-sm text-gray-500">
-                        限量: 1份
+                      Limited: 1
                       </div>
                     </div>
                     <Button
@@ -294,7 +294,7 @@ const RewardStore = () => {
                       onClick={() => handleExchange(reward)}
                       disabled={parseFloat(balance) < reward.token_price || exchangeInProgress}
                     >
-                      {exchangeInProgress ? '处理中...' : '兑换'}
+                      {exchangeInProgress ? 'Processing...' : 'Exchange'}
                     </Button>
                   </CardBody>
                 </Card>
@@ -313,8 +313,8 @@ const RewardStore = () => {
           ) : exchanges.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg">
               <History className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">暂无兑换记录</h3>
-              <p className="text-gray-600">你还没有兑换过奖品</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No exchange requests</h3>
+              <p className="text-gray-600">You have not exchanged any rewards yet.</p>
             </div>
           ) : (
             <>
@@ -338,7 +338,7 @@ const RewardStore = () => {
                       </div>
                       <div className="border rounded-lg p-4 bg-gray-50">
                         <p className="text-sm text-gray-500">总消费代币</p>
-                        <p className="text-2xl font-bold text-primary-600">{totalSpent.toFixed(4)} 代币</p>
+                        <p className="text-2xl font-bold text-primary-600">{totalSpent.toFixed(4)} tokens</p>
                       </div>
                     </div>
                   </CardBody>

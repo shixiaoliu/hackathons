@@ -156,9 +156,8 @@ const ChildDashboard = () => {
               onClick={handleRefresh}
               variant="secondary"
               leftIcon={<RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />}
-              size="sm"
             >
-              刷新数据
+              Refresh Data
             </Button>
             <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
               {currentChild.avatar ? (

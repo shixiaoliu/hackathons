@@ -73,7 +73,7 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
             </div>
             
             <div className="flex items-center text-sm text-gray-500 mb-1">
-              <span className="font-medium text-primary-600">{exchange.token_amount} 代币</span>
+              <span className="font-medium text-primary-600">{exchange.token_amount} tokens</span>
               <span className="mx-2">•</span>
               <span>{formatDistanceToNow(new Date(exchange.exchange_date))}</span>
             </div>
@@ -89,7 +89,7 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
                     onClick={() => onApprove(exchange.id)}
                     className="text-sm px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
                   >
-                    批准
+                    Approve
                   </button>
                 )}
                 
@@ -98,7 +98,7 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
                     onClick={() => onCancel(exchange.id)}
                     className="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
                   >
-                    拒绝
+                    Reject
                   </button>
                 )}
               </div>

@@ -158,9 +158,9 @@ const RewardManagement = () => {
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">奖品管理</h1>
-          <p className="text-gray-600">
-            {selectedFamily && `管理${selectedFamily.name}的奖品和兑换请求`}
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Reward Management</h1>
+          <p className="text-gray-600 mb-4">
+            Manage your rewards and exchanges here.
           </p>
         </div>
         
@@ -170,7 +170,7 @@ const RewardManagement = () => {
             variant="secondary"
             leftIcon={<RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />}
           >
-            刷新数据
+            Refresh Data
           </Button>
           
           {activeTab === 'rewards' && (
@@ -178,7 +178,7 @@ const RewardManagement = () => {
               onClick={() => setAddModalOpen(true)}
               leftIcon={<PlusCircle className="h-5 w-5" />}
             >
-              添加奖品
+              Add Reward
             </Button>
           )}
         </div>
@@ -188,31 +188,24 @@ const RewardManagement = () => {
       <div className="mb-8">
         <div className="flex space-x-2 border-b border-gray-200">
           <button
-            className={`px-4 py-2 text-sm font-medium flex items-center space-x-2 ${
-              activeTab === 'rewards'
+            className={`px-4 py-2 text-sm font-medium ${
+              activeTab === 'available'
                 ? 'text-primary-600 border-b-2 border-primary-600'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
-            onClick={() => setActiveTab('rewards')}
+            onClick={() => setActiveTab('available')}
           >
-            <Gift className="h-4 w-4" />
-            <span>奖品列表</span>
+            Available Rewards
           </button>
           <button
-            className={`px-4 py-2 text-sm font-medium flex items-center space-x-2 ${
-              activeTab === 'exchanges'
+            className={`px-4 py-2 text-sm font-medium ${
+              activeTab === 'exchanged'
                 ? 'text-primary-600 border-b-2 border-primary-600'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
-            onClick={() => setActiveTab('exchanges')}
+            onClick={() => setActiveTab('exchanged')}
           >
-            <Package className="h-4 w-4" />
-            <span>兑换请求</span>
-            {pendingExchangesCount > 0 && (
-              <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                {pendingExchangesCount}
-              </span>
-            )}
+            My Exchange Records
           </button>
         </div>
       </div>
@@ -221,7 +214,7 @@ const RewardManagement = () => {
       <div className="mb-8">
         <div className="flex items-center space-x-2">
           <Filter className="h-4 w-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700">筛选:</span>
+          <span className="text-sm font-medium text-gray-700">Filter:</span>
           
           {/* 根据当前标签页显示不同的筛选选项 */}
           {activeTab === 'rewards' ? (
@@ -234,7 +227,7 @@ const RewardManagement = () => {
                 }`}
                 onClick={() => setFilter('all')}
               >
-                全部
+                All
               </button>
               <button
                 className={`px-3 py-1 text-sm rounded-full ${
@@ -244,7 +237,7 @@ const RewardManagement = () => {
                 }`}
                 onClick={() => setFilter('active')}
               >
-                已启用
+                Active
               </button>
               <button
                 className={`px-3 py-1 text-sm rounded-full ${
@@ -254,7 +247,7 @@ const RewardManagement = () => {
                 }`}
                 onClick={() => setFilter('inactive')}
               >
-                已停用
+                Inactive
               </button>
             </div>
           ) : (
@@ -267,7 +260,7 @@ const RewardManagement = () => {
                 }`}
                 onClick={() => setFilter('all')}
               >
-                全部
+                All
               </button>
               <button
                 className={`px-3 py-1 text-sm rounded-full ${
@@ -277,7 +270,7 @@ const RewardManagement = () => {
                 }`}
                 onClick={() => setFilter('pending')}
               >
-                待处理
+                Pending
               </button>
               <button
                 className={`px-3 py-1 text-sm rounded-full ${
@@ -287,7 +280,7 @@ const RewardManagement = () => {
                 }`}
                 onClick={() => setFilter('completed')}
               >
-                已批准
+                Completed
               </button>
               <button
                 className={`px-3 py-1 text-sm rounded-full ${
@@ -297,7 +290,7 @@ const RewardManagement = () => {
                 }`}
                 onClick={() => setFilter('cancelled')}
               >
-                已拒绝
+                Cancelled
               </button>
             </div>
           )}
@@ -350,9 +343,7 @@ const RewardManagement = () => {
                 ) : (
                   <div className="text-center py-12">
                     <Package className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2 text-gray-500 text-lg">
-                      {filter === 'inactive' ? '暂无已停用奖品' : '暂无奖品'}
-                    </p>
+                    <p className="mt-2 text-gray-500 text-lg">No rewards available</p>
                     {filter !== 'inactive' && (
                       <Button 
                         onClick={() => setAddModalOpen(true)}
@@ -381,7 +372,7 @@ const RewardManagement = () => {
                 ) : (
                   <div className="text-center py-12">
                     <Package className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2 text-gray-500 text-lg">暂无兑换请求</p>
+                    <p className="mt-2 text-gray-500 text-lg">No exchange requests</p>
                   </div>
                 )}
               </>

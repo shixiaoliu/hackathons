@@ -138,7 +138,10 @@ export const ApiTest: React.FC<ApiTestProps> = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[80vh] overflow-hidden">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">API 连接测试</h2>
+          <h2 className="text-xl font-bold">API Connection Test</h2>
+          <p className="text-gray-600 mb-4">
+            Test the connection to the API.
+          </p>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"

@@ -68,7 +68,7 @@ const Navbar = () => {
                 }`}
               >
                 <Gift className="inline-block mr-1 h-4 w-4" />
-                奖品管理
+                Reward Management
               </Link>
             )}
             
@@ -83,7 +83,7 @@ const Navbar = () => {
                 }`}
               >
                 <Gift className="inline-block mr-1 h-4 w-4" />
-                奖品商店
+                Reward Store
               </Link>
             )}
             
@@ -147,7 +147,7 @@ const Navbar = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 <Gift className="inline-block mr-1 h-4 w-4" />
-                奖品管理
+                Reward Management
               </Link>
             )}
             
@@ -163,7 +163,7 @@ const Navbar = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 <Gift className="inline-block mr-1 h-4 w-4" />
-                奖品商店
+                Reward Store
               </Link>
             )}
             

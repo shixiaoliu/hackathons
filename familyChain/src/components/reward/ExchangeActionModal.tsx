@@ -24,8 +24,8 @@ const ExchangeActionModal: React.FC<ExchangeActionModalProps> = ({
   
   if (!isOpen) return null;
   
-  const title = actionType === 'approve' ? '批准兑换请求' : '拒绝兑换请求';
-  const confirmText = actionType === 'approve' ? '批准' : '拒绝';
+  const title = actionType === 'approve' ? 'Approve Exchange Request' : 'Reject Exchange Request';
+  const confirmText = actionType === 'approve' ? 'Approve' : 'Reject';
   const confirmColor = actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700';
 
   return (
@@ -59,18 +59,17 @@ const ExchangeActionModal: React.FC<ExchangeActionModalProps> = ({
             <div className="mb-4">
               <p className="text-gray-700">
                 {actionType === 'approve' 
-                  ? `您确定要批准此兑换请求吗？这将减少 ${exchange.token_amount} 代币，并将奖品标记为已兑换。` 
-                  : '您确定要拒绝此兑换请求吗？'
-                }
+                  ? `Are you sure you want to approve this exchange request? This will deduct ${exchange.token_amount} tokens and mark the reward as exchanged.` 
+                  : 'Are you sure you want to reject this exchange request?'}
               </p>
             </div>
             
             {/* 兑换信息 */}
             <div className="bg-gray-50 p-3 rounded-md mb-4">
-              <p><strong>奖品:</strong> {exchange.reward_name || '未命名奖品'}</p>
-              <p><strong>兑换者:</strong> {exchange.child_name || '未知'}</p>
-              <p><strong>代币:</strong> {exchange.token_amount}</p>
-              {exchange.notes && <p><strong>备注:</strong> {exchange.notes}</p>}
+              <p><strong>Reward:</strong> {exchange.reward_name || 'Unnamed Reward'}</p>
+              <p><strong>Exchanger:</strong> {exchange.child_name || 'Unknown'}</p>
+              <p><strong>Tokens:</strong> {exchange.token_amount}</p>
+              {exchange.notes && <p><strong>Notes:</strong> {exchange.notes}</p>}
             </div>
             
             {/* 添加备注 */}
@@ -84,7 +83,7 @@ const ExchangeActionModal: React.FC<ExchangeActionModalProps> = ({
                 onChange={(e) => setNotes(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
                 rows={3}
-                placeholder={actionType === 'approve' ? '添加备注 (如发放说明)' : '添加拒绝原因'}
+                placeholder={actionType === 'approve' ? 'Add notes (e.g., issuance instructions)' : 'Add rejection reason'}
                 disabled={isLoading}
               ></textarea>
             </div>

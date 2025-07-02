@@ -89,10 +89,7 @@ const ParentDashboard = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Parent Dashboard</h1>
               <p className="text-gray-600">
-                {selectedChild 
-                  ? `Managing tasks for ${selectedChild.name}`
-                  : 'Manage children and tasks'
-                }
+                Manage children and tasks
               </p>
             </div>
             
@@ -102,7 +99,7 @@ const ParentDashboard = () => {
                 variant="secondary"
                 leftIcon={<RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />}
               >
-                刷新数据
+                Refresh Data
               </Button>
               <Button 
                 onClick={() => navigate('/create-task')}

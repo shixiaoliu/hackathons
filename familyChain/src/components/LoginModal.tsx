@@ -29,7 +29,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
       if (connectionMode === 'manual') {
         // 验证手动输入的地址格式
         if (!manualAddress || !/^0x[a-fA-F0-9]{40}$/.test(manualAddress)) {
-          alert('请输入有效的以太坊地址格式');
+          alert('Please enter a valid Ethereum address format');
           return;
         }
         // 使用手动输入的地址登录
@@ -71,7 +71,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">登录到 FamilyChain</h2>
+          <h2 className="text-xl font-bold">Login to FamilyChain</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -79,6 +79,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             ✕
           </button>
         </div>
+
+        <p className="text-gray-600 mb-4">
+          Please select your role
+        </p>
 
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -154,9 +158,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         <div className="space-y-4">
           {/* 角色选择 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              选择您的角色
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Select your role</label>
             <div className="flex space-x-4">
               <label className="flex items-center">
                 <input
@@ -166,7 +168,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                   onChange={(e) => setSelectedRole(e.target.value as 'parent' | 'child')}
                   className="mr-2"
                 />
-                家长
+                Parent
               </label>
               <label className="flex items-center">
                 <input
@@ -176,16 +178,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                   onChange={(e) => setSelectedRole(e.target.value as 'parent' | 'child')}
                   className="mr-2"
                 />
-                儿童
+                Child
               </label>
             </div>
           </div>
 
           {/* 连接方式选择 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              连接方式
-            </label>
+            <p className="text-gray-600 mb-4">Connection method</p>
             <div className="flex space-x-4 mb-3">
               <label className="flex items-center">
                 <input
@@ -195,7 +195,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                   onChange={(e) => setConnectionMode(e.target.value as 'wallet' | 'manual')}
                   className="mr-2"
                 />
-                钱包连接
+                Wallet Connection
               </label>
               <label className="flex items-center">
                 <input
@@ -205,7 +205,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                   onChange={(e) => setConnectionMode(e.target.value as 'wallet' | 'manual')}
                   className="mr-2"
                 />
-                手动输入
+                Manual Input
               </label>
             </div>
             
@@ -248,7 +248,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                     </svg>
                     登录中...
                   </div>
-                ) : '登录'}
+                ) : 'Login'}
               </button>
             </>
           )}

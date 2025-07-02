@@ -129,7 +129,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
       {/* 奖品名称 */}
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-          奖品名称<span className="text-red-500">*</span>
+          Reward Name<span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -148,7 +148,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
       {/* 奖品描述 */}
       <div>
         <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-          奖品描述
+          Reward Description
         </label>
         <textarea
           id="description"
@@ -164,7 +164,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
       {/* 奖品图片 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          奖品图片<span className="text-red-500">*</span>
+          Reward Image<span className="text-red-500">*</span>
         </label>
         
         <div className="mt-1 flex flex-col items-center space-y-2">
@@ -233,7 +233,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
       {/* 代币价格 */}
       <div>
         <label htmlFor="token-price" className="block text-sm font-medium text-gray-700 mb-1">
-          代币价格<span className="text-red-500">*</span>
+          Token Price<span className="text-red-500">*</span>
         </label>
         <div className="relative mt-1 rounded-md shadow-sm">
           <input
