@@ -12,7 +12,7 @@ import { ethers } from 'ethers';
 import { TaskContractABI } from '../contracts/TaskContract';
 
 // Get contract address from environment variables
-const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x123456789...'; // Replace placeholder with actual fallback address
+const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x11dB634CFD2f58967e472a179ebDbaF8AB067144'; // Replace placeholder with actual fallback address
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
