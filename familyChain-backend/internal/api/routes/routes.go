@@ -90,6 +90,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config, contractManager *blockchain.Co
 				tasks.GET("", taskHandler.GetTasks)
 				tasks.GET("/:id", taskHandler.GetTaskByID)
 				tasks.PUT("/:id", middleware.RequireRole("parent"), taskHandler.UpdateTask)
+				tasks.POST("/:id/direct-assign", middleware.RequireRole("parent"), taskHandler.DirectAssignTask)
 				tasks.POST("/:id/complete", middleware.RequireRole("child"), taskHandler.CompleteTask)
 				tasks.POST("/:id/approve", middleware.RequireRole("parent"), taskHandler.ApproveTask)
 				tasks.POST("/:id/reject", middleware.RequireRole("parent"), taskHandler.RejectTask)

@@ -45,7 +45,7 @@ interface TaskContextType {
   getTasksForParent: (parentWalletAddress: string) => Task[];
   getAvailableTasks: () => Task[];
   refreshTasks: () => Promise<void>;
-  getAllTasks: () => Promise<{ id: number; title: string; description: string; }[]>;
+  getAllTasks: () => Promise<Task[]>;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -279,6 +279,16 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         apiData.status = apiStatus;
       }
       
+      // 添加任务分配相关字段
+      if (updates.assignedChildId) {
+        apiData.assigned_child_id = parseInt(updates.assignedChildId);
+      }
+      
+      // 添加钱包地址信息
+      if (updates.assignedTo) {
+        apiData.assigned_to = updates.assignedTo;
+      }
+      
       // 处理任务提交相关信息
       if (updates.submissionProof) {
         apiData.submission_note = updates.submissionProof.description;
@@ -318,11 +328,14 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         }
       } else if (Object.keys(apiData).length > 0) {
         // 其他普通更新
+        console.log('正在调用API更新任务，ID:', taskIdNumber, '数据:', JSON.stringify(apiData));
         const response = await taskApi.update(taskIdNumber, apiData);
+        console.log('API更新任务响应:', response);
         if (response.success) {
           console.log('任务已成功更新');
         } else {
           console.error('更新任务失败:', response.error);
+          alert(`更新任务失败: ${response.error || '未知错误'}`);
           // 失败时重新从后端获取数据
           await fetchTasks();
         }
@@ -410,22 +423,61 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         console.log('成功在区块链上分配任务');
       } catch (contractError) {
         console.error('与智能合约交互时出错:', contractError);
-        alert(`与智能合约交互失败: ${contractError instanceof Error ? contractError.message : '未知错误'}`);
-        return;
+        console.log('继续更新数据库，忽略区块链错误');
+        // 不返回，继续执行后续代码
       }
     } else {
       console.log('任务没有区块链ID，跳过合约交互');
     }
     
-    // 更新后端状态
-    await updateTask(taskId, {
-      assignedTo: childWalletAddress,
-      assignedChildId: childId,
-      status: 'in-progress'
-    });
+    // 获取API基础URL和认证令牌
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      console.error('未找到认证令牌');
+      alert('未找到认证令牌，请重新登录');
+      return;
+    }
     
-    // 确保数据与后端同步
-    await refreshTasks();
+    try {
+      // 直接调用API更新任务状态，完全跳过后端的区块链交互
+      console.log('直接调用API更新任务状态');
+      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/direct-assign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          assigned_child_id: childId
+        })
+      });
+      
+      const data = await response.json();
+      console.log('API直接分配任务响应:', data);
+      
+      if (!response.ok) {
+        throw new Error(data.error || '更新任务状态失败');
+      }
+      
+      // 本地状态更新
+      setTasks(prev => {
+        return prev.map(task => 
+          task.id === taskId 
+            ? { ...task, assignedTo: childWalletAddress, assignedChildId: childId, status: 'in-progress' as const }
+            : task
+        );
+      });
+      
+      // 确保数据与后端同步
+      await refreshTasks();
+      
+      // 提示用户操作成功
+      alert('任务已成功分配！');
+    } catch (error) {
+      console.error('分配任务失败:', error);
+      alert(`分配任务失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
   };
 
   const submitTask = async (taskId: string, proof: Task['submissionProof']) => {

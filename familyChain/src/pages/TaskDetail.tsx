@@ -2,17 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useUserRole } from '../context/UserRoleContext';
 import { useTask } from '../context/TaskContext';
+import { useFamily } from '../context/FamilyContext';
 import { useAuthContext } from '../context/AuthContext';
 import { useAccount } from 'wagmi';
 import { Clock, Award, ChevronLeft, Calendar, User, CheckCircle, AlertTriangle } from 'lucide-react';
 import Button from '../components/common/Button';
 import Card, { CardBody, CardHeader, CardFooter } from '../components/common/Card';
+import Modal from '../components/common/Modal';
 import { formatDateTime, formatDate } from '../utils/dateUtils';
-import { ethers } from 'ethers';
-import { TaskContractABI } from '../contracts/TaskContract';
-
-// Get contract address from environment variables
-const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x11dB634CFD2f58967e472a179ebDbaF8AB067144'; // Replace placeholder with actual fallback address
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +17,7 @@ const TaskDetail = () => {
   const location = useLocation();
   const { userRole } = useUserRole();
   const { tasks, assignTask, submitTask, approveTask, rejectTask } = useTask();
+  const { getAllChildren } = useFamily();
   const { user } = useAuthContext();
   const { address } = useAccount();
   
@@ -27,6 +25,18 @@ const TaskDetail = () => {
   const isFromTaskList = location.state && location.state.from === 'tasks';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [contractError, setContractError] = useState<string | null>(null);
+  
+  // Assign Modal 相关状态
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedChildId, setSelectedChildId] = useState<string>('');
+  const [children, setChildren] = useState<any[]>([]);
+  const [isAssigning, setIsAssigning] = useState(false);
+  
+  // 获取子账户列表
+  useEffect(() => {
+    const childrenData = getAllChildren();
+    setChildren(childrenData);
+  }, [getAllChildren]);
   
   // 从TaskContext中查找任务而不是mockTasks
   const task = tasks.find(task => task.id === id);
@@ -92,6 +102,39 @@ const TaskDetail = () => {
       console.error('提交任务失败:', error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+  
+  // 处理分配任务按钮点击
+  const handleAssignClick = () => {
+    setSelectedChildId('');
+    setShowAssignModal(true);
+  };
+  
+  // 处理任务分配
+  const handleAssignTask = async () => {
+    if (!id || !selectedChildId) return;
+    
+    setIsAssigning(true);
+    try {
+      const selectedChild = children.find(child => child.id === selectedChildId);
+      if (!selectedChild) return;
+
+      console.log('分配任务 - 任务ID:', id, '子账户ID:', selectedChildId, '子账户钱包地址:', selectedChild.walletAddress);
+      console.log('子账户详情:', selectedChild);
+
+      // 调用TaskContext中的assignTask方法，它会处理区块链调用和后端API更新
+      await assignTask(id, selectedChild.walletAddress, selectedChildId);
+      
+      setShowAssignModal(false);
+      setSelectedChildId('');
+      
+      alert('任务已成功分配！');
+    } catch (error) {
+      console.error('分配任务失败:', error);
+      alert('分配任务失败，请重试');
+    } finally {
+      setIsAssigning(false);
     }
   };
 
@@ -328,6 +371,13 @@ const TaskDetail = () => {
                   </Button>
                 )}
                 
+                {/* Parent actions for open tasks */}
+                {isParent && task.status === 'open' && !isOverdue && (
+                  <Button onClick={handleAssignClick}>
+                    Assign Task
+                  </Button>
+                )}
+                
                 {canSubmitTask && (
                   <Button 
                     onClick={handleTaskSubmit}
@@ -363,6 +413,51 @@ const TaskDetail = () => {
           </div>
         </CardFooter>
       </Card>
+
+      {/* 分配任务弹窗 */}
+      <Modal
+        isOpen={showAssignModal}
+        onClose={() => setShowAssignModal(false)}
+        title="分配任务"
+      >
+        <div className="p-4">
+          <p className="mb-4 font-medium">{task.title}</p>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              选择孩子
+            </label>
+            <select
+              value={selectedChildId}
+              onChange={(e) => setSelectedChildId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+              disabled={isAssigning}
+            >
+              <option value="">-- 请选择 --</option>
+              {children.map(child => (
+                <option key={child.id} value={child.id}>
+                  {child.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button 
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              onClick={() => setShowAssignModal(false)}
+              disabled={isAssigning}
+            >
+              取消
+            </button>
+            <button 
+              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-gray-400"
+              onClick={handleAssignTask}
+              disabled={!selectedChildId || isAssigning}
+            >
+              {isAssigning ? '处理中...' : '确认分配'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

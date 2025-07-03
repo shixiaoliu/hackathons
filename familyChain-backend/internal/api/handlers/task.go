@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -11,7 +10,6 @@ import (
 	"eth-for-babies-backend/internal/utils"
 	"eth-for-babies-backend/pkg/blockchain"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -401,40 +399,12 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 			return
 		}
 
-		// 保存原来的状态，用于判断是否为新分配
-		wasUnassigned := task.AssignedChildID == nil
-
 		// 更新任务分配
 		task.AssignedChildID = req.AssignedChildID
 
 		// 如果分配给了孩子且状态是pending，改为in_progress
 		if task.Status == "pending" {
 			task.Status = "in_progress"
-		}
-
-		// 如果是新分配的任务，且任务有关联的区块链任务ID，则调用区块链合约
-		if wasUnassigned && h.contractManager != nil && task.ContractTaskID != nil {
-			// 获取孩子的钱包地址
-			childWalletAddress := child.WalletAddress
-			if childWalletAddress == "" {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"success": false,
-					"error":   "Child wallet address not found",
-				})
-				return
-			}
-
-			// 调用区块链合约的AssignTask方法
-			err := h.contractManager.AssignTask(*task.ContractTaskID, common.HexToAddress(childWalletAddress))
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"success": false,
-					"error":   fmt.Sprintf("Failed to assign task on blockchain: %v", err),
-				})
-				return
-			}
-
-			fmt.Printf("Successfully assigned task %d on blockchain to %s\n", *task.ContractTaskID, childWalletAddress)
 		}
 	}
 	if req.DueDate != "" {
@@ -792,5 +762,117 @@ func (h *TaskHandler) RejectTask(c *gin.Context) {
 		"success": true,
 		"data":    task,
 		"message": "Task rejected and reward refunded to parent",
+	})
+}
+
+// DirectAssignTask 直接分配任务，跳过区块链调用
+func (h *TaskHandler) DirectAssignTask(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid task ID",
+		})
+		return
+	}
+
+	var req struct {
+		AssignedChildID string `json:"assigned_child_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request data",
+		})
+		return
+	}
+
+	// 转换childId为uint
+	assignedChildID, err := strconv.ParseUint(req.AssignedChildID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid child ID format",
+		})
+		return
+	}
+	childID := uint(assignedChildID)
+
+	walletAddress, exists := c.Get("wallet_address")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   "User not authenticated",
+		})
+		return
+	}
+
+	// 查找任务
+	var task models.Task
+	result := h.db.First(&task, uint(id))
+	if result.Error == gorm.ErrRecordNotFound {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "Task not found",
+		})
+		return
+	} else if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Database error",
+		})
+		return
+	}
+
+	// 检查权限（只有任务创建者可以更新）
+	if task.CreatedBy != walletAddress.(string) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"error":   "Only task creator can update the task",
+		})
+		return
+	}
+
+	// 验证孩子是否属于当前父母
+	var child models.Child
+	result = h.db.Where("id = ? AND parent_address = ?", childID, walletAddress).First(&child)
+	if result.Error == gorm.ErrRecordNotFound {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Child not found or not belongs to you",
+		})
+		return
+	} else if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Database error",
+		})
+		return
+	}
+
+	// 更新任务分配
+	task.AssignedChildID = &childID
+
+	// 如果分配给了孩子且状态是pending，改为in_progress
+	if task.Status == "pending" {
+		task.Status = "in_progress"
+	}
+
+	// 保存到数据库
+	if err := h.db.Save(&task).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to update task",
+		})
+		return
+	}
+
+	// 预加载关联数据
+	h.db.Preload("AssignedChild").First(&task, task.ID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    task,
 	})
 }

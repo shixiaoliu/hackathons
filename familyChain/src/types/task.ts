@@ -18,4 +18,5 @@ export interface Task {
   };
   createdAt: string;
   updatedAt: string;
+  contractTaskId?: string; // 区块链上的任务ID
 }
