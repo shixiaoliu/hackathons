@@ -16,6 +16,7 @@ import { UserRoleProvider } from './context/UserRoleContext';
 import { FamilyProvider } from './context/FamilyContext';
 import { TaskProvider } from './context/TaskContext';
 import { RewardProvider } from './context/RewardContext';
+import TaskList from './pages/TaskList';
 
 function App() {
   const { isConnected } = useAccount();
@@ -81,6 +82,14 @@ function App() {
                   element={
                     isAuthenticated && user?.role === 'child' ? 
                       <ChildDashboard /> : 
+                      <Navigate to="/" />
+                  } 
+                />
+                <Route 
+                  path="/tasks" 
+                  element={
+                    isAuthenticated ? 
+                      <TaskList /> : 
                       <Navigate to="/" />
                   } 
                 />

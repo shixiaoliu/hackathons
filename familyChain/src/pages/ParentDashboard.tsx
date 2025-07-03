@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Routes, Route } from 'react-router-dom';
+import { useNavigate, Routes, Route, Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { PlusCircle, Filter, AlertCircle, Users, RefreshCw, Gift } from 'lucide-react';
 import Button from '../components/common/Button';
@@ -108,6 +108,9 @@ const ParentDashboard = () => {
               >
                 Create Task
               </Button>
+              <Link to="/tasks">
+                <Button variant="outline">View All Tasks</Button>
+              </Link>
             </div>
           </div>
 

@@ -232,6 +232,7 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 
 	// 执行查询
 	if err := query.Preload("AssignedChild").Order("created_at DESC").Find(&tasks).Error; err != nil {
+		log.Println("查询任务时出错:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   "Failed to fetch tasks",
@@ -239,6 +240,7 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 		return
 	}
 
+	log.Printf("获取到的任务数量: %d", len(tasks)) // 添加调试信息
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    tasks,

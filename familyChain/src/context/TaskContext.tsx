@@ -45,6 +45,7 @@ interface TaskContextType {
   getTasksForParent: (parentWalletAddress: string) => Task[];
   getAvailableTasks: () => Task[];
   refreshTasks: () => Promise<void>;
+  getAllTasks: () => Promise<{ id: number; title: string; description: string; }[]>;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -873,6 +874,61 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
     return availableTasks;
   };
 
+  const getAllTasks = async (): Promise<Task[]> => {
+    try {
+      const response = await taskApi.getAll();
+      console.log('API 响应:', response); // 添加调试信息
+      if (!response.success) {
+        throw new Error(response.error || '获取任务失败');
+      }
+      const data = response.data || [];
+      console.log('获取到的任务数据:', data); // 添加调试信息
+      
+      // 获取所有children数据以便映射assigned_child_id到wallet地址
+      let childrenMap: { [key: string]: string } = {};
+      try {
+        const childrenResponse = await childApi.getAll();
+        if (childrenResponse.success && childrenResponse.data) {
+          childrenMap = childrenResponse.data.reduce((map: { [key: string]: string }, child: ApiChild) => {
+            map[child.id.toString()] = child.wallet_address;
+            return map;
+          }, {});
+        }
+      } catch (error) {
+        console.warn('[TaskContext] 获取children数据失败:', error);
+      }
+      
+      return data.map((apiTask: ApiTask) => {
+        const assignedChildId = apiTask.assigned_child_id ? apiTask.assigned_child_id.toString() : undefined;
+        const assignedTo = assignedChildId ? childrenMap[assignedChildId] : undefined;
+        
+        return {
+          id: apiTask.id.toString(),
+          title: apiTask.title,
+          description: apiTask.description,
+          reward: apiTask.reward_amount,
+          deadline: apiTask.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          difficulty: apiTask.difficulty || 'medium',
+          status: apiTask.status === 'pending' ? 'open' as const :
+                 apiTask.status === 'in_progress' ? 'in-progress' as const :
+                 apiTask.status === 'completed' ? 'completed' as const :
+                 apiTask.status === 'approved' ? 'approved' as const :
+                 apiTask.status === 'rejected' ? 'rejected' as const : 'open' as const,
+          assignedTo: assignedTo,
+          assignedChildId: assignedChildId,
+          createdBy: apiTask.created_by,
+          createdAt: apiTask.created_at,
+          updatedAt: apiTask.updated_at,
+          completionCriteria: apiTask.description,
+          contractTaskId: apiTask.contract_task_id ? apiTask.contract_task_id.toString() : undefined
+        };
+      });
+    } catch (error) {
+      console.error('获取任务失败:', error);
+      return []; // 返回空数组以防止崩溃
+    }
+  };
+
   return (
     <TaskContext.Provider value={{
       tasks,
@@ -885,7 +941,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
       getTasksForChild,
       getTasksForParent,
       getAvailableTasks,
-      refreshTasks
+      refreshTasks,
+      getAllTasks
     }}>
       {children}
     </TaskContext.Provider>

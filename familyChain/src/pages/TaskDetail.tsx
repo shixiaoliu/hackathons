@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useUserRole } from '../context/UserRoleContext';
 import { useTask } from '../context/TaskContext';
 import { useAuthContext } from '../context/AuthContext';
@@ -17,10 +17,14 @@ const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x1
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { userRole } = useUserRole();
   const { tasks, assignTask, submitTask, approveTask, rejectTask } = useTask();
   const { user } = useAuthContext();
   const { address } = useAccount();
+  
+  // 检查是否从任务列表页面进入
+  const isFromTaskList = location.state && location.state.from === 'tasks';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [contractError, setContractError] = useState<string | null>(null);
   
@@ -95,11 +99,20 @@ const TaskDetail = () => {
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center mb-6">
         <button
-          onClick={() => navigate(isParent ? '/parent' : '/child')}
+          onClick={() => {
+            // 根据来源决定返回位置
+            if (isFromTaskList) {
+              // 如果是从任务列表页面进入，则返回任务列表
+              navigate('/tasks');
+            } else {
+              // 否则返回仪表盘
+              navigate(isParent ? '/parent' : '/child');
+            }
+          }}
           className="flex items-center text-gray-600 hover:text-gray-900"
         >
           <ChevronLeft className="h-5 w-5 mr-1" />
-          Back to dashboard
+          {isFromTaskList ? 'Return to All Tasks' : 'Return to Dashboard'}
         </button>
       </div>
       
