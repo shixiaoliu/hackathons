@@ -8,7 +8,7 @@ import { ethers } from 'ethers';
 import { TaskContractABI } from '../contracts/TaskContract';
 
 // Get contract address from environment variables - fallback to deployed address
-const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x935d008D7716b272A28fA0eFa5977B50AB435AF2'; // Deployed TaskRegistry address
+const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x11dB634CFD2f58967e472a179ebDbaF8AB067144'; // Deployed TaskRegistry address
 
 export interface Task {
   id: string;

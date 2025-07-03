@@ -20,32 +20,23 @@ if (!SEPOLIA_RPC_URL || !SEPOLIA_PRIVATE_KEY_PARENT) {
   );
 }
 
-// 仅在开发环境中硬编码私钥，生产环境中绝不应该这样做
-const HARDCODED_PRIVATE_KEY = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; // 仅用于本地测试
-
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  solidity: "0.8.20",
+  solidity: "0.8.28",
   networks: {
     hardhat: {
       chainId: 1337
     },
-    localhost: {
-      url: "http://127.0.0.1:8545",
-      accounts: [
-        HARDCODED_PRIVATE_KEY // 默认测试账户私钥
-      ]
-    },
     // 仅在环境变量存在的情况下配置 Sepolia
     ...(SEPOLIA_RPC_URL && SEPOLIA_PRIVATE_KEY_PARENT ? {
-    sepolia: {
+      sepolia: {
         url: SEPOLIA_RPC_URL,
         accounts: [
           SEPOLIA_PRIVATE_KEY_PARENT,
           // 如果有子账户私钥，则添加，否则使用父账户私钥
           SEPOLIA_PRIVATE_KEY_CHILD || SEPOLIA_PRIVATE_KEY_PARENT
         ],
-      chainId: 11155111
+        chainId: 11155111
       }
     } : {})
   },

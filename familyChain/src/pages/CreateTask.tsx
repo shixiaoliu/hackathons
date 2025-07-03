@@ -10,7 +10,7 @@ import { ethers } from 'ethers';
 import { getTaskContract, createTask as createTaskOnChain, TaskContractABI } from '../contracts/TaskContract';
 
 // Get contract address from environment variables
-const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x123456789...'; // Replace placeholder with actual fallback address
+const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x11dB634CFD2f58967e472a179ebDbaF8AB067144'; // Replace placeholder with actual fallback address
 
 const CreateTask = () => {
   const navigate = useNavigate();
@@ -221,12 +221,21 @@ const CreateTask = () => {
           reward: rewardWei.toString()
         });
         
+        // 首先检查账户余额
+        const balance = await provider.getBalance(address);
+        console.log('账户余额:', ethers.formatEther(balance), 'ETH');
+        console.log('需要的金额:', ethers.formatEther(rewardWei), 'ETH');
+        
+        if (balance < rewardWei) {
+          throw new Error(`账户余额不足。当前余额: ${ethers.formatEther(balance)} ETH，需要: ${ethers.formatEther(rewardWei)} ETH`);
+        }
+        
         // 调用合约方法，并发送ETH
         const tx = await taskContract.createTask(
           formData.title,
           formData.description,
           rewardWei,
-          { value: rewardWei }
+          {value: rewardWei}
         );
         
         console.log('交易已发送:', tx.hash);
@@ -290,10 +299,30 @@ const CreateTask = () => {
 
         alert('任务创建成功！');
         navigate('/parent');
-      } catch (apiError: any) {
-        console.error('创建任务失败:', apiError);
-        alert('创建任务失败: ' + (apiError.message || '未知错误'));
-        throw apiError;
+      } catch (contractError: any) {
+        console.error('合约交互失败:', contractError);
+        
+        // 解析具体的错误类型
+        let errorMessage = '创建任务失败: ';
+        
+        if (contractError.code === 'INSUFFICIENT_FUNDS') {
+          errorMessage += '账户余额不足，请确保有足够的 ETH 支付交易费用和奖励金额';
+        } else if (contractError.code === 'UNPREDICTABLE_GAS_LIMIT') {
+          errorMessage += '无法估算 gas 费用，请检查合约地址和网络连接';
+        } else if (contractError.code === 'NETWORK_ERROR') {
+          errorMessage += '网络连接错误，请检查网络连接并重试';
+        } else if (contractError.message?.includes('missing revert data')) {
+          errorMessage += '交易被拒绝，可能是合约地址错误或网络问题。请检查合约地址: ' + TASK_CONTRACT_ADDRESS;
+        } else if (contractError.message?.includes('execution reverted')) {
+          errorMessage += '合约执行失败，可能是合约逻辑错误。请检查合约代码。';
+        } else if (contractError.message?.includes('insufficient funds')) {
+          errorMessage += '账户余额不足，请确保有足够的 ETH 支付交易费用和奖励金额';
+        } else {
+          errorMessage += contractError.message || '未知的合约错误';
+        }
+        
+        alert(errorMessage);
+        throw contractError;
       }
     } catch (error) {
       console.error('创建任务时出错:', error);
@@ -314,6 +343,8 @@ const CreateTask = () => {
         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
           <h3 className="text-sm font-medium text-blue-800">钱包连接信息</h3>
           <p className="text-xs mt-1">Wagmi 钱包地址: {address || '未连接'}</p>
+          <p className="text-xs mt-1">合约地址: {TASK_CONTRACT_ADDRESS}</p>
+          <p className="text-xs mt-1">当前网络 Chain ID: {chainId}</p>
           {currentProvider && (
             <>
               <p className="text-xs mt-1">Provider 钱包地址: {currentProvider.providerAddress}</p>

@@ -4,12 +4,11 @@ package blockchain
 import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 
-	"eth-for-babies-backend/pkg/blockchain/contracts/taskregistry"
 	"eth-for-babies-backend/pkg/blockchain/contracts/familyregistry"
-	"eth-for-babies-backend/pkg/blockchain/contracts/rewardtoken"
 	"eth-for-babies-backend/pkg/blockchain/contracts/rewardregistry"
+	"eth-for-babies-backend/pkg/blockchain/contracts/rewardtoken"
+	"eth-for-babies-backend/pkg/blockchain/contracts/taskregistry"
 )
 
 // Contract bindings
@@ -41,21 +40,21 @@ func NewRewardRegistry(address common.Address, backend bind.ContractBackend) (*R
 }
 
 // DeployTaskRegistry deploys a new task registry contract
-func DeployTaskRegistry(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *taskregistry.TaskRegistry, error) {
-	return taskregistry.DeployTaskRegistry(auth, backend)
-}
+// func DeployTaskRegistry(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *taskregistry.TaskRegistry, error) {
+// 	return taskregistry.DeployTaskRegistry(auth, backend)
+// }
 
 // DeployFamilyRegistry deploys a new family registry contract
-func DeployFamilyRegistry(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *familyregistry.FamilyRegistry, error) {
-	return familyregistry.DeployFamilyRegistry(auth, backend)
-}
+// func DeployFamilyRegistry(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *familyregistry.FamilyRegistry, error) {
+// 	return familyregistry.DeployFamilyRegistry(auth, backend)
+// }
 
 // DeployRewardToken deploys a new reward token contract
-func DeployRewardToken(auth *bind.TransactOpts, backend bind.ContractBackend, name string, symbol string) (common.Address, *types.Transaction, *rewardtoken.RewardToken, error) {
-	return rewardtoken.DeployRewardToken(auth, backend, name, symbol)
-}
+// func DeployRewardToken(auth *bind.TransactOpts, backend bind.ContractBackend, name string, symbol string) (common.Address, *types.Transaction, *rewardtoken.RewardToken, error) {
+// 	return rewardtoken.DeployRewardToken(auth, backend, name, symbol)
+// }
 
 // DeployRewardRegistry deploys a new reward registry contract
-func DeployRewardRegistry(auth *bind.TransactOpts, backend bind.ContractBackend, tokenAddress common.Address) (common.Address, *types.Transaction, *rewardregistry.RewardRegistry, error) {
-	return rewardregistry.DeployRewardRegistry(auth, backend, tokenAddress)
-}
+// func DeployRewardRegistry(auth *bind.TransactOpts, backend bind.ContractBackend, tokenAddress common.Address) (common.Address, *types.Transaction, *rewardregistry.RewardRegistry, error) {
+// 	return rewardregistry.DeployRewardRegistry(auth, backend, tokenAddress)
+// }

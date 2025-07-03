@@ -3,43 +3,25 @@
 
 import { ethers } from 'ethers';
 
-// Define the type for our Task Contract
+// Define the type for our Task Contract based on TaskRegistry ABI
 interface TaskContract extends ethers.BaseContract {
-  createTask(title: string, description: string, reward: ethers.BigNumberish, options?: {value: ethers.BigNumberish}): Promise<ethers.ContractTransactionResponse>;
-  acceptTask(taskId: number): Promise<ethers.ContractTransactionResponse>;
+  createTask(title: string, description: string, reward: ethers.BigNumberish, overrides?: {value: ethers.BigNumberish}): Promise<ethers.ContractTransactionResponse>;
   assignTask(taskId: number, childAddress: string): Promise<ethers.ContractTransactionResponse>;
   completeTask(taskId: number): Promise<ethers.ContractTransactionResponse>;
   approveTask(taskId: number): Promise<ethers.ContractTransactionResponse>;
   rejectTask(taskId: number): Promise<ethers.ContractTransactionResponse>;
-  getTask(taskId: number): Promise<any>;
-  getTasksByCreator(creator: string): Promise<number[]>;
-  getTasksByAssignee(assignee: string): Promise<number[]>;
+  getTask(taskId: number): Promise<[bigint, string, string, string, string, bigint, boolean, boolean, boolean]>;
+  owner(): Promise<string>;
+  taskCount(): Promise<bigint>;
+  tasks(taskId: number): Promise<[bigint, string, string, string, string, bigint, boolean, boolean, boolean]>;
+  withdraw(): Promise<ethers.ContractTransactionResponse>;
 }
 
-// Example ABI for a task contract
-export const TaskContractABI = [
-  // Task creation
-  "function createTask(string title, string description, uint256 reward) payable returns (uint256)",
-  
-  // Task management
-  "function acceptTask(uint256 taskId)",
-  "function assignTask(uint256 taskId, address childAddress)",
-  "function completeTask(uint256 taskId)",
-  "function approveTask(uint256 taskId)",
-  "function rejectTask(uint256 taskId)",
-  
-  // View functions
-  "function getTask(uint256 taskId) view returns (tuple(uint256 id, string title, string description, uint256 deadline, uint8 difficulty, uint256 reward, uint8 status, address createdBy, address assignedTo, string completionCriteria, uint256 createdAt, uint256 updatedAt))",
-  "function getTasksByCreator(address creator) view returns (uint256[])",
-  "function getTasksByAssignee(address assignee) view returns (uint256[])",
-  
-  // Events
-  "event TaskCreated(uint256 indexed taskId, address indexed creator, string title, uint256 reward)",
-  "event TaskAccepted(uint256 indexed taskId, address indexed assignee)",
-  "event TaskCompleted(uint256 indexed taskId, address indexed assignee)",
-  "event TaskApproved(uint256 indexed taskId, address indexed approver, address indexed assignee, uint256 reward)",
-  "event TaskRejected(uint256 indexed taskId, address indexed approver, string feedback)"
-];
+// Import the actual TaskRegistry ABI
+import TaskRegistryABI from '../../../familyChain-contract/abi/TaskRegistry.json';
+
+// Use the real TaskRegistry ABI
+export const TaskContractABI = TaskRegistryABI;
 
 // Example code to interact with the contract
 export const getTaskContract = async (provider: ethers.BrowserProvider, contractAddress: string): Promise<TaskContract> => {
@@ -174,10 +156,7 @@ export const createTask = async (
   }
 };
 
-export const acceptTask = async (contract: TaskContract, taskId: number) => {
-  const tx = await contract.acceptTask(taskId);
-  return tx.wait();
-};
+// acceptTask function removed - not available in TaskRegistry contract
 
 export const assignTask = async (contract: TaskContract, taskId: number, childAddress: string) => {
   console.log(`准备分配任务 ${taskId} 给子账户 ${childAddress}`);

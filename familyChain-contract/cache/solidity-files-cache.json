@@ -6,7 +6,7 @@
       "contentHash": "80ec7d661095014e4eeee832424aff50",
       "sourceName": "solidity/RewardRegistry.sol",
       "solcConfig": {
-        "version": "0.8.20",
+        "version": "0.8.28",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -45,7 +45,7 @@
       "contentHash": "f0e33e548c1cb6553f7e77e7f9f01bfc",
       "sourceName": "solidity/RewardToken.sol",
       "solcConfig": {
-        "version": "0.8.20",
+        "version": "0.8.28",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -84,7 +84,7 @@
       "contentHash": "d3c790edc9ccf808a17c5a6cd13614fd",
       "sourceName": "@openzeppelin/contracts/access/Ownable.sol",
       "solcConfig": {
-        "version": "0.8.20",
+        "version": "0.8.28",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -122,7 +122,7 @@
       "contentHash": "57d79df281f57bbb1b09214c7914f877",
       "sourceName": "@openzeppelin/contracts/token/ERC20/ERC20.sol",
       "solcConfig": {
-        "version": "0.8.20",
+        "version": "0.8.28",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -163,7 +163,7 @@
       "contentHash": "67bfbc07588eb8683b3fd8f6f909563e",
       "sourceName": "@openzeppelin/contracts/utils/Context.sol",
       "solcConfig": {
-        "version": "0.8.20",
+        "version": "0.8.28",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -199,7 +199,7 @@
       "contentHash": "8f19f64d2adadf448840908bbaf431c8",
       "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
       "solcConfig": {
-        "version": "0.8.20",
+        "version": "0.8.28",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -235,7 +235,7 @@
       "contentHash": "267d92fe4de67b1bdb3302c08f387dbf",
       "sourceName": "@openzeppelin/contracts/interfaces/draft-IERC6093.sol",
       "solcConfig": {
-        "version": "0.8.20",
+        "version": "0.8.28",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -273,7 +273,7 @@
       "contentHash": "794db3115001aa372c79326fcfd44b1f",
       "sourceName": "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol",
       "solcConfig": {
-        "version": "0.8.20",
+        "version": "0.8.28",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -311,7 +311,7 @@
       "contentHash": "853b3e593a34ff5e5716ca0efd11da09",
       "sourceName": "solidity/TaskRegistry.sol",
       "solcConfig": {
-        "version": "0.8.20",
+        "version": "0.8.28",
         "settings": {
           "evmVersion": "paris",
           "optimizer": {
@@ -340,6 +340,42 @@
       ],
       "artifacts": [
         "TaskRegistry"
+      ]
+    },
+    "/Users/patrikhuang/metaNode/hackathons/familyChain-contract/solidity/Lock.sol": {
+      "lastModificationDate": 1751514211742,
+      "contentHash": "7eee587c347fe6b1de50c96688cb9477",
+      "sourceName": "solidity/Lock.sol",
+      "solcConfig": {
+        "version": "0.8.28",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.28"
+      ],
+      "artifacts": [
+        "Lock"
       ]
     }
   }
