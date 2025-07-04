@@ -8,6 +8,7 @@ import { useFamily } from '../context/FamilyContext';
 import { useAuthContext } from '../context/AuthContext';
 import { exchangeApi, contractApi, Reward, Exchange } from '../services/api';
 import ExchangeCard from '../components/reward/ExchangeCard';
+import { getTokenBalance } from '../services/tokenService';
 
 const RewardStore = () => {
   const navigate = useNavigate();
@@ -21,18 +22,48 @@ const RewardStore = () => {
   const [loadingBalance, setLoadingBalance] = useState<boolean>(false);
   const [exchangeInProgress, setExchangeInProgress] = useState<boolean>(false);
   
-  // 获取代币余额
+  // 获取代币余额 - 使用区块链直接查询
   const fetchBalance = async () => {
     if (!currentChild?.walletAddress) return;
     
     setLoadingBalance(true);
     try {
-      const response = await contractApi.getBalance(currentChild.walletAddress);
-      if (response.success && response.data) {
-        setBalance(response.data.balance);
+      // 首先尝试从区块链直接获取余额
+      console.log('[RewardStore] 从区块链获取代币余额...');
+      const blockchainBalance = await getTokenBalance(currentChild.walletAddress);
+      
+      if (blockchainBalance !== '0') {
+        console.log('[RewardStore] 成功从区块链获取余额:', blockchainBalance);
+        setBalance(blockchainBalance);
+      } else {
+        // 如果区块链获取失败，回退到API
+        console.log('[RewardStore] 区块链获取余额失败，尝试API...');
+        const response = await contractApi.getBalance(currentChild.walletAddress);
+        if (response.success && response.data) {
+          console.log('[RewardStore] 从API获取余额成功:', response.data.balance);
+          setBalance(response.data.balance);
+        } else {
+          console.log('[RewardStore] API获取余额失败');
+        }
       }
     } catch (error) {
-      console.error('获取余额失败:', error);
+      console.error('[RewardStore] 获取余额失败:', error);
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
+  
+  // 刷新代币余额
+  const refreshBalance = async () => {
+    if (!currentChild?.walletAddress) return;
+    
+    setLoadingBalance(true);
+    try {
+      const blockchainBalance = await getTokenBalance(currentChild.walletAddress);
+      console.log('[RewardStore] 刷新余额结果:', blockchainBalance);
+      setBalance(blockchainBalance);
+    } catch (error) {
+      console.error('[RewardStore] 刷新余额失败:', error);
     } finally {
       setLoadingBalance(false);
     }
@@ -86,7 +117,7 @@ const RewardStore = () => {
       if (response.success) {
         alert('兑换申请已提交');
         // 刷新数据
-        fetchBalance();
+        refreshBalance();
         fetchExchanges();
         fetchRewards();
       } else {
@@ -181,15 +212,25 @@ const RewardStore = () => {
                 <Wallet className="h-6 w-6 text-green-600" />
               </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-500">Token Balance</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {loadingBalance ? (
-                  <span className="animate-pulse">Loading...</span>
-                ) : (
-                  `${parseFloat(balance).toFixed(4)} tokens`
-                )}
-              </p>
+            <div className="flex-grow">
+              <p className="text-sm text-gray-500">FCT Balance</p>
+              <div className="flex items-center">
+                <p className="text-2xl font-bold text-gray-900">
+                  {loadingBalance ? (
+                    <span className="animate-pulse">Loading...</span>
+                  ) : (
+                    `${Math.floor(parseFloat(balance))} FCT`
+                  )}
+                </p>
+                <button 
+                  onClick={refreshBalance}
+                  className="ml-2 text-blue-500 hover:text-blue-700"
+                  disabled={loadingBalance}
+                  title="刷新余额"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </CardBody>
         </Card>
@@ -282,7 +323,7 @@ const RewardStore = () => {
                     <p className="text-gray-600 text-sm mb-3">{reward.description}</p>
                     <div className="flex items-center justify-between">
                       <div className="text-primary-600 font-bold">
-                        {reward.token_price} tokens
+                        {Math.floor(reward.token_price)} FCT
                       </div>
                       <div className="text-sm text-gray-500">
                       Limited: 1
@@ -338,7 +379,7 @@ const RewardStore = () => {
                       </div>
                       <div className="border rounded-lg p-4 bg-gray-50">
                         <p className="text-sm text-gray-500">总消费代币</p>
-                        <p className="text-2xl font-bold text-primary-600">{totalSpent.toFixed(4)} tokens</p>
+                        <p className="text-2xl font-bold text-primary-600">{Math.floor(totalSpent)} FCT</p>
                       </div>
                     </div>
                   </CardBody>

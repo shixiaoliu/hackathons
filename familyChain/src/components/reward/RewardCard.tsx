@@ -71,7 +71,7 @@ const RewardCard: React.FC<RewardCardProps> = ({ reward, onEdit, onDelete }) => 
         <div className="mb-2 flex justify-between items-start">
           <h3 className="text-lg font-semibold text-gray-900">{reward.name}</h3>
           <div className="px-2 py-1 bg-primary-100 text-primary-800 text-sm font-medium rounded-md">
-            {reward.token_price} tokens
+            {Math.floor(reward.token_price)} FCT
           </div>
         </div>
         

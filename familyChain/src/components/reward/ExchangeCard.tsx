@@ -73,7 +73,7 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
             </div>
             
             <div className="flex items-center text-sm text-gray-500 mb-1">
-              <span className="font-medium text-primary-600">{exchange.token_amount} tokens</span>
+              <span className="font-medium text-primary-600">{Math.floor(exchange.token_amount)} FCT</span>
               <span className="mx-2">•</span>
               <span>{formatDistanceToNow(new Date(exchange.exchange_date))}</span>
             </div>
