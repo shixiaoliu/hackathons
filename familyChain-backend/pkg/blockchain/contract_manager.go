@@ -364,7 +364,6 @@ func (cm *ContractManager) TransferETH(to common.Address, amount *big.Int) (*typ
 	return signedTx, nil
 }
 
-
 // CreateFamily creates a new family
 func (cm *ContractManager) CreateFamily(name string) (uint64, error) {
 	if cm.FamilyRegistry == nil {
@@ -578,4 +577,31 @@ func (cm *ContractManager) WaitForTxReceipt(ctx context.Context, txHash common.H
 	}
 
 	return receipt, nil
+}
+
+// InitRewardToken initializes or reinitializes the reward token contract
+func (cm *ContractManager) InitRewardToken(tokenAddress string) error {
+	// 使用地址初始化代币合约
+	if tokenAddress == "" {
+		return fmt.Errorf("token address is empty")
+	}
+
+	address := common.HexToAddress(tokenAddress)
+	if address == (common.Address{}) {
+		return fmt.Errorf("invalid token address format")
+	}
+
+	cm.tokenAddress = address
+
+	// 初始化代币合约实例
+	rewardToken, err := NewRewardToken(address, cm.client.GetClient())
+	if err != nil {
+		return fmt.Errorf("failed to instantiate reward token contract: %v", err)
+	}
+
+	// 更新合约实例
+	cm.RewardToken = rewardToken
+	log.Printf("RewardToken re-initialized at address: %s", address.Hex())
+
+	return nil
 }

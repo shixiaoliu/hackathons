@@ -779,7 +779,6 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         } catch (contractError) {
           console.error('与智能合约交互时出错:', contractError);
           alert(`与智能合约交互失败: ${contractError instanceof Error ? contractError.message : '未知错误'}`);
-          return;
         }
       }
 

@@ -9,21 +9,21 @@ async function main() {
     // 存储所有已部署合约地址
     const deployedAddresses = {};
     
-    // 1. 部署 TaskRegistry
-    console.log("\n--- Deploying TaskRegistry ---");
-    const TaskRegistry = await ethers.getContractFactory("TaskRegistry");
-    const taskRegistry = await TaskRegistry.deploy();
-    await taskRegistry.deployed();
-    console.log("TaskRegistry deployed to:", taskRegistry.address);
-    deployedAddresses.TaskRegistry = taskRegistry.address;
+    // // 1. 部署 TaskRegistry
+    // console.log("\n--- Deploying TaskRegistry ---");
+    // const TaskRegistry = await ethers.getContractFactory("TaskRegistry");
+    // const taskRegistry = await TaskRegistry.deploy();
+    // await taskRegistry.deployed();
+    // console.log("TaskRegistry deployed to:", taskRegistry.address);
+    // deployedAddresses.TaskRegistry = taskRegistry.address;
     
-    // // 2. 部署 RewardToken
-    // console.log("\n--- Deploying RewardToken ---");
-    // const RewardToken = await ethers.getContractFactory("RewardToken");
-    // const rewardToken = await RewardToken.deploy("RewardToken", "RWT");
-    // await rewardToken.deployed();
-    // console.log("RewardToken deployed to:", rewardToken.address);
-    // deployedAddresses.RewardToken = rewardToken.address;
+    // 2. 部署 RewardToken
+    console.log("\n--- Deploying RewardToken ---");
+    const RewardToken = await ethers.getContractFactory("RewardToken");
+    const rewardToken = await RewardToken.deploy("RewardToken", "FCT");
+    await rewardToken.deployed();
+    console.log("RewardToken deployed to:", rewardToken.address);
+    deployedAddresses.RewardToken = rewardToken.address;
     
     // // 3. 部署 RewardRegistry (使用已部署的 RewardToken 地址)
     // console.log("\n--- Deploying RewardRegistry ---");
