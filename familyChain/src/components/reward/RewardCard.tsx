@@ -31,8 +31,8 @@ const RewardCard: React.FC<RewardCardProps> = ({ reward, onEdit, onDelete }) => 
           }}
         />
         
-        {/* 唯一性标签 */}
-        <div className="absolute top-0 right-0 bg-blue-500 text-white px-2 py-1 text-xs font-bold">
+        {/* 唯一性标签 - 移到左上角 */}
+        <div className="absolute top-0 left-0 bg-blue-500 text-white px-2 py-1 text-xs font-bold">
           Limited: 1
         </div>
         

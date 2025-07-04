@@ -31,7 +31,7 @@ const RewardManagement = () => {
   } = useReward();
   
   // 组件状态
-  const [activeTab, setActiveTab] = useState('rewards'); // 'rewards' 或 'exchanges'
+  const [activeTab, setActiveTab] = useState('available'); // 'available' 或 'exchanged'
   const [filter, setFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -52,7 +52,7 @@ const RewardManagement = () => {
   // 处理刷新数据
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    if (activeTab === 'rewards') {
+    if (activeTab === 'available') {
       await fetchRewards();
     } else {
       await fetchExchanges();
@@ -173,7 +173,7 @@ const RewardManagement = () => {
             Refresh Data
           </Button>
           
-          {activeTab === 'rewards' && (
+          {activeTab === 'available' && (
             <Button 
               onClick={() => setAddModalOpen(true)}
               leftIcon={<PlusCircle className="h-5 w-5" />}
@@ -217,7 +217,7 @@ const RewardManagement = () => {
           <span className="text-sm font-medium text-gray-700">Filter:</span>
           
           {/* 根据当前标签页显示不同的筛选选项 */}
-          {activeTab === 'rewards' ? (
+          {activeTab === 'available' ? (
             <div className="flex space-x-2">
               <button
                 className={`px-3 py-1 text-sm rounded-full ${
@@ -323,7 +323,7 @@ const RewardManagement = () => {
         
         {!loading && !error && (
           <>
-            {activeTab === 'rewards' ? (
+            {activeTab === 'available' ? (
               // 奖品列表
               <>
                 {filteredRewards.length > 0 ? (
