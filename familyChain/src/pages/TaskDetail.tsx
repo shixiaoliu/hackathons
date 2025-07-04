@@ -44,7 +44,7 @@ const TaskDetail = () => {
   // 检查任务的合约ID
   useEffect(() => {
     if (task && !task.contractTaskId) {
-      setContractError('此任务没有关联的区块链合约ID，无法在区块链上完成任务。');
+      setContractError('This task has no associated blockchain contract ID and cannot be completed on the blockchain.');
     } else {
       setContractError(null);
     }
@@ -87,19 +87,19 @@ const TaskDetail = () => {
   // 处理任务提交
   const handleTaskSubmit = async () => {
     if (!task.contractTaskId) {
-      alert('此任务没有关联的区块链合约ID，无法在区块链上完成任务。请联系父母重新创建任务。');
+      alert('This task has no associated blockchain contract ID and cannot be completed on the blockchain. Please contact a parent to recreate the task.');
       return;
     }
     
     setIsSubmitting(true);
     try {
       const proof = {
-        description: '任务已完成',
+        description: 'Task completed',
         submittedAt: new Date().toISOString()
       };
       await submitTask(task.id, proof);
     } catch (error) {
-      console.error('提交任务失败:', error);
+      console.error('Failed to submit task:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -120,8 +120,8 @@ const TaskDetail = () => {
       const selectedChild = children.find(child => child.id === selectedChildId);
       if (!selectedChild) return;
 
-      console.log('分配任务 - 任务ID:', id, '子账户ID:', selectedChildId, '子账户钱包地址:', selectedChild.walletAddress);
-      console.log('子账户详情:', selectedChild);
+      console.log('Assigning task - Task ID:', id, 'Child ID:', selectedChildId, 'Child wallet address:', selectedChild.walletAddress);
+      console.log('Child details:', selectedChild);
 
       // 调用TaskContext中的assignTask方法，它会处理区块链调用和后端API更新
       await assignTask(id, selectedChild.walletAddress, selectedChildId);
@@ -129,10 +129,10 @@ const TaskDetail = () => {
       setShowAssignModal(false);
       setSelectedChildId('');
       
-      alert('任务已成功分配！');
+      alert('Task assigned successfully!');
     } catch (error) {
-      console.error('分配任务失败:', error);
-      alert('分配任务失败，请重试');
+      console.error('Failed to assign task:', error);
+      alert('Failed to assign task, please try again');
     } finally {
       setIsAssigning(false);
     }
@@ -237,8 +237,8 @@ const TaskDetail = () => {
               <div className="flex items-center">
                 <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2" />
                 <span className="text-yellow-700 font-medium">
-                  只有被分配的孩子 ({task.assignedTo?.slice(0, 6)}...{task.assignedTo?.slice(-4)}) 
-                  可以完成这个任务。当前钱包地址: {address?.slice(0, 6)}...{address?.slice(-4)}
+                  Only the assigned child ({task.assignedTo?.slice(0, 6)}...{task.assignedTo?.slice(-4)}) 
+                  can complete this task. Current wallet address: {address?.slice(0, 6)}...{address?.slice(-4)}
                 </span>
               </div>
             </div>
@@ -372,9 +372,9 @@ const TaskDetail = () => {
                 )}
                 
                 {/* Parent actions for open tasks */}
-                {isParent && task.status === 'open' && !isOverdue && (
+                {isParent && task.status === 'open' && !isOverdue && !task.assignedChildId && (
                   <Button onClick={handleAssignClick}>
-                    Assign Task
+                    Assign
                   </Button>
                 )}
                 
@@ -383,8 +383,8 @@ const TaskDetail = () => {
                     onClick={handleTaskSubmit}
                     isLoading={isSubmitting}
                     disabled={!task.contractTaskId || !isAssignedToCurrentUser}
-                    title={!task.contractTaskId ? "此任务没有关联的区块链合约ID" : 
-                           !isAssignedToCurrentUser ? "只有被分配的孩子才能完成任务" : ""}
+                    title={!task.contractTaskId ? "This task has no associated blockchain contract ID" : 
+                           !isAssignedToCurrentUser ? "Only the assigned child can complete this task" : ""}
                   >
                     Complete Task
                   </Button>
@@ -397,14 +397,14 @@ const TaskDetail = () => {
               <div className="flex justify-end mt-4 space-x-2">
                 <Button onClick={() => approveTask(task.id)}
                        disabled={!task.contractTaskId}
-                       title={!task.contractTaskId ? "此任务没有关联的区块链合约ID，无法在区块链上批准" : "批准任务并在区块链上转移奖励"}>
+                       title={!task.contractTaskId ? "This task has no associated blockchain contract ID and cannot be approved on the blockchain" : "Approve task and transfer reward on the blockchain"}>
                   Approve
                 </Button>
                 <Button 
                   variant="secondary"
                   onClick={() => rejectTask(task.id)}
                   disabled={!task.contractTaskId}
-                  title={!task.contractTaskId ? "此任务没有关联的区块链合约ID，无法在区块链上拒绝" : "拒绝任务并在区块链上退回奖励"}
+                  title={!task.contractTaskId ? "This task has no associated blockchain contract ID and cannot be rejected on the blockchain" : "Reject task and return reward on the blockchain"}
                 >
                   Reject
                 </Button>
@@ -414,17 +414,17 @@ const TaskDetail = () => {
         </CardFooter>
       </Card>
 
-      {/* 分配任务弹窗 */}
+      {/* Assign Task Modal */}
       <Modal
         isOpen={showAssignModal}
         onClose={() => setShowAssignModal(false)}
-        title="分配任务"
+        title="Assign Task"
       >
         <div className="p-4">
           <p className="mb-4 font-medium">{task.title}</p>
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              选择孩子
+              Select Child
             </label>
             <select
               value={selectedChildId}
@@ -432,7 +432,7 @@ const TaskDetail = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               disabled={isAssigning}
             >
-              <option value="">-- 请选择 --</option>
+              <option value="">-- Please Select --</option>
               {children.map(child => (
                 <option key={child.id} value={child.id}>
                   {child.name}
@@ -446,14 +446,14 @@ const TaskDetail = () => {
               onClick={() => setShowAssignModal(false)}
               disabled={isAssigning}
             >
-              取消
+              Cancel
             </button>
             <button 
               className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-gray-400"
               onClick={handleAssignTask}
               disabled={!selectedChildId || isAssigning}
             >
-              {isAssigning ? '处理中...' : '确认分配'}
+              {isAssigning ? 'Processing...' : 'Confirm Assignment'}
             </button>
           </div>
         </div>

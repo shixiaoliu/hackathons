@@ -5,7 +5,7 @@ import { useFamily } from '../context/FamilyContext';
 import TaskCard from '../components/task/TaskCard';
 import { Task } from '../types/task';
 import Button from '../components/common/Button';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Plus } from 'lucide-react';
 import Modal from '../components/common/Modal';
 
 const TaskList = () => {
@@ -71,6 +71,10 @@ const TaskList = () => {
     setIsRefreshing(false);
   };
 
+  const handleCreateTask = () => {
+    navigate('/create-task');
+  };
+
   const handleAssignClick = (task: Task) => {
     setSelectedTask(task);
     setShowAssignModal(true);
@@ -84,8 +88,8 @@ const TaskList = () => {
       const selectedChild = children.find(child => child.id === selectedChildId);
       if (!selectedChild) return;
 
-      console.log('分配任务 - 任务ID:', selectedTask.id, '子账户ID:', selectedChildId, '子账户钱包地址:', selectedChild.walletAddress);
-      console.log('子账户详情:', selectedChild);
+      console.log('Assigning task - Task ID:', selectedTask.id, 'Child ID:', selectedChildId, 'Child wallet address:', selectedChild.walletAddress);
+      console.log('Child details:', selectedChild);
 
       // 调用TaskContext中的assignTask方法，它会处理区块链调用和后端API更新
       await assignTask(selectedTask.id, selectedChild.walletAddress, selectedChildId);
@@ -108,10 +112,10 @@ const TaskList = () => {
       setShowAssignModal(false);
       setSelectedChildId('');
       
-      console.log('任务分配成功');
+      console.log('Task assigned successfully');
     } catch (error) {
-      console.error('分配任务失败:', error);
-      alert(`分配任务失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      console.error('Failed to assign task:', error);
+      alert(`Failed to assign task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -120,15 +124,24 @@ const TaskList = () => {
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">所有任务</h1>
-        <Button 
-          variant="secondary" 
-          leftIcon={<RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />}
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-        >
-          刷新
-        </Button>
+        <h1 className="text-3xl font-bold">All Tasks</h1>
+        <div className="flex space-x-2">
+          <Button 
+            variant="secondary" 
+            leftIcon={<RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            Refresh
+          </Button>
+          <Button 
+            variant="primary" 
+            leftIcon={<Plus className="h-5 w-5" />}
+            onClick={handleCreateTask}
+          >
+            Create Task
+          </Button>
+        </div>
       </div>
 
       {loading && (
@@ -145,7 +158,7 @@ const TaskList = () => {
 
       {!loading && !error && tasks.length === 0 && (
         <div className="text-center py-8 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">没有找到任何任务。</p>
+          <p className="text-gray-600">No tasks found.</p>
         </div>
       )}
 
@@ -176,17 +189,17 @@ const TaskList = () => {
         </div>
       )}
 
-      {/* 分配任务弹窗 */}
+      {/* Assign Task Modal */}
       <Modal
         isOpen={showAssignModal}
         onClose={() => setShowAssignModal(false)}
-        title="分配任务"
+        title="Assign Task"
       >
         <div className="p-4">
           <p className="mb-4 font-medium">{selectedTask?.title}</p>
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              选择孩子
+              Select Child
             </label>
             <select
               value={selectedChildId}
@@ -194,7 +207,7 @@ const TaskList = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               disabled={isLoading}
             >
-              <option value="">-- 请选择 --</option>
+              <option value="">-- Please Select --</option>
               {children.map(child => (
                 <option key={child.id} value={child.id}>
                   {child.name}
@@ -208,14 +221,14 @@ const TaskList = () => {
               onClick={() => setShowAssignModal(false)}
               disabled={isLoading}
             >
-              取消
+              Cancel
             </button>
             <button 
               className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-gray-400"
               onClick={handleAssignTask}
               disabled={!selectedChildId || isLoading}
             >
-              {isLoading ? '处理中...' : '确认分配'}
+              {isLoading ? 'Processing...' : 'Confirm Assignment'}
             </button>
           </div>
         </div>
