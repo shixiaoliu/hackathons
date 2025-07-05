@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"time"
 
 	"eth-for-babies-backend/internal/models"
@@ -125,13 +126,18 @@ func (r *ExchangeRepository) GetExchangeWithDetails(id uint) (*models.Exchange, 
 func (r *ExchangeRepository) GetChildExchangesWithDetails(childID uint) ([]*models.Exchange, error) {
 	var exchanges []*models.Exchange
 
+	fmt.Printf("获取孩子兑换记录，childID: %d\n", childID)
+
 	err := r.db.Where("child_id = ?", childID).
 		Order("exchange_date DESC").
 		Find(&exchanges).Error
 
 	if err != nil {
+		fmt.Printf("获取孩子兑换记录失败: %v\n", err)
 		return nil, err
 	}
+
+	fmt.Printf("查询到 %d 条兑换记录\n", len(exchanges))
 
 	for _, exchange := range exchanges {
 		// 获取奖品名称和图片
@@ -139,6 +145,9 @@ func (r *ExchangeRepository) GetChildExchangesWithDetails(childID uint) ([]*mode
 		if err := r.db.Select("name, image_url").First(&reward, exchange.RewardID).Error; err == nil {
 			exchange.RewardName = reward.Name
 			exchange.RewardImage = reward.ImageURL
+			fmt.Printf("兑换记录 %d: 奖品名称=%s, 奖品图片=%s\n", exchange.ID, reward.Name, reward.ImageURL)
+		} else {
+			fmt.Printf("获取奖品信息失败，兑换ID: %d, 奖品ID: %d, 错误: %v\n", exchange.ID, exchange.RewardID, err)
 		}
 	}
 

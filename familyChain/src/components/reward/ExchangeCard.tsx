@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { formatDistanceToNow } from '../../utils/dateUtils';
 import { Exchange } from '../../services/api';
-import { Check, XIcon, Clock, ShoppingBag } from 'lucide-react';
+import { Check, XIcon, Clock, ShoppingBag, AlertTriangle } from 'lucide-react';
 import Card, { CardBody } from '../common/Card';
 
 interface ExchangeCardProps {
@@ -41,8 +41,33 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
             已取消
           </div>
         );
+      case 'confirmed':
+        return (
+          <div className="flex items-center px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs font-medium">
+            <Check className="h-3 w-3 mr-1" />
+            已确认
+          </div>
+        );
+      case 'failed':
+        return (
+          <div className="flex items-center px-2 py-1 rounded bg-red-100 text-red-800 text-xs font-medium">
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            失败
+          </div>
+        );
       default:
         return null;
+    }
+  };
+  
+  // 格式化时间
+  const formatTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return formatDistanceToNow(date);
+    } catch (error) {
+      console.error('日期格式化错误:', error);
+      return '未知时间';
     }
   };
 
@@ -75,7 +100,9 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
             <div className="flex items-center text-sm text-gray-500 mb-1">
               <span className="font-medium text-primary-600">{Math.floor(exchange.token_amount)} FCT</span>
               <span className="mx-2">•</span>
-              <span>{formatDistanceToNow(new Date(exchange.exchange_date))}</span>
+              <span title={new Date(exchange.exchange_date).toLocaleString()}>
+                {formatTime(exchange.exchange_date)}
+              </span>
             </div>
             
             {exchange.notes && (

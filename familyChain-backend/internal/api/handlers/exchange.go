@@ -153,6 +153,7 @@ func (h *ExchangeHandler) GetChildExchanges(c *gin.Context) {
 	// 获取当前用户信息
 	childID, exists := c.Get("user_id")
 	if !exists {
+		fmt.Printf("获取兑换记录失败: 用户未认证\n")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"error":   "用户未认证",
@@ -160,14 +161,22 @@ func (h *ExchangeHandler) GetChildExchanges(c *gin.Context) {
 		return
 	}
 
+	fmt.Printf("获取孩子兑换记录，childID: %v, 类型: %T\n", childID, childID)
+
 	// 获取兑换记录
 	exchanges, err := h.rewardService.GetChildExchanges(c.Request.Context(), childID.(uint))
 	if err != nil {
+		fmt.Printf("获取兑换记录失败: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   "获取兑换记录失败: " + err.Error(),
 		})
 		return
+	}
+
+	fmt.Printf("成功获取到 %d 条兑换记录\n", len(exchanges))
+	for i, exchange := range exchanges {
+		fmt.Printf("兑换记录 %d: ID=%d, 奖品=%s, 状态=%s\n", i+1, exchange.ID, exchange.RewardName, exchange.Status)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

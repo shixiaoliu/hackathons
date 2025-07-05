@@ -621,7 +621,71 @@ export const exchangeApi = {
     apiClient.post<Exchange>('/exchanges', data),
 
   // 获取孩子的兑换记录
-  getByChild: () => apiClient.get<Exchange[]>('/exchanges/my'),
+  getByChild: async () => {
+    console.log('[API] 开始获取孩子的兑换记录...');
+    try {
+      const timestamp = Date.now();
+      const url = `/exchanges/my?_t=${timestamp}`;
+      console.log(`[API] 请求URL: ${url}`);
+      
+      // 获取当前的认证令牌
+      const token = localStorage.getItem('token');
+      console.log(`[API] 当前认证令牌: ${token ? '已设置' : '未设置'}`);
+      
+      // 添加超时处理
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+      
+      try {
+        const response = await apiClient.get<Exchange[]>(url);
+        clearTimeout(timeoutId);
+        
+        console.log('[API] 获取兑换记录响应:', JSON.stringify(response));
+        
+        // 检查响应中的数据
+        if (response.success && Array.isArray(response.data)) {
+          console.log(`[API] 成功获取到 ${response.data.length} 条兑换记录`);
+          
+          // 打印每条记录的详细信息
+          response.data.forEach((exchange, index) => {
+            console.log(`[API] 兑换记录 ${index + 1}:`, {
+              id: exchange.id,
+              reward_name: exchange.reward_name,
+              status: exchange.status,
+              date: exchange.exchange_date
+            });
+          });
+          
+          // 确保返回的是一个数组
+          return {
+            ...response,
+            data: Array.isArray(response.data) ? response.data : []
+          };
+        } else {
+          console.log('[API] 响应成功但没有数据或数据不是数组');
+          
+          // 返回一个空数组而不是null或undefined
+          return {
+            ...response,
+            data: []
+          };
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
+      }
+    } catch (error) {
+      console.error('[API] 获取兑换记录出错:', error);
+      
+      // 返回一个标准格式的错误响应，但包含空数组
+      return {
+        success: false,
+        data: [],
+        error: error instanceof Error ? error.message : '获取兑换记录失败',
+        status: 500
+      };
+    }
+  },
 
   // 获取家庭的兑换记录
   getByFamily: (familyId: number) =>

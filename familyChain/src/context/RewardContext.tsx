@@ -93,7 +93,14 @@ export const RewardProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       if (response.success) {
         // 确保即使返回的数据为null或undefined也将rewards设置为空数组
         console.log('获取到的奖品列表:', response.data);
-        setRewards(response.data || []);
+        
+        // 过滤掉库存为0的奖品
+        const filteredRewards = (response.data || []).filter(reward => 
+          reward.stock > 0 && reward.active
+        );
+        console.log('过滤后的奖品列表 (仅显示有库存的):', filteredRewards);
+        
+        setRewards(filteredRewards);
       } else {
         // 当出现404错误时，表示没有奖品记录，将rewards设置为空数组
         if (response.status === 404) {

@@ -29,7 +29,7 @@ export interface RewardUpdateRequest {
   stock?: number;
 }
 
-export type ExchangeStatus = 'pending' | 'completed' | 'cancelled';
+export type ExchangeStatus = 'pending' | 'completed' | 'cancelled' | 'confirmed' | 'failed';
 
 export interface Exchange {
   id: number;

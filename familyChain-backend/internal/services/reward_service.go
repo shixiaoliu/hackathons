@@ -227,23 +227,9 @@ func (s *RewardService) ExchangeReward(ctx context.Context, childID uint, req mo
 		fmt.Printf("开始后台处理兑换交易，兑换ID: %d, 奖品ID: %d, 前端已销毁代币: %v\n",
 			exchange.ID, req.RewardID, req.TokenBurned)
 
-		// 如果前端已经销毁了代币，则不需要再次销毁
-		if req.TokenBurned {
-			fmt.Printf("前端已销毁代币，跳过区块链交易步骤\n")
-
-			// 更新奖品库存
-			if err := s.rewardRepo.UpdateStock(uint(req.RewardID), -1); err != nil {
-				fmt.Printf("更新奖品库存失败: %v\n", err)
-			}
-
-			// 更新兑换状态为已确认
-			updateErr := s.exchangeRepo.UpdateStatus(exchange.ID, models.ExchangeStatusConfirmed, "前端已销毁代币，交易已确认")
-			if updateErr != nil {
-				fmt.Printf("更新兑换状态失败: %v\n", updateErr)
-			}
-
-			return
-		}
+		// 无论前端是否已经销毁了代币，都调用区块链合约进行兑换
+		// 这确保了代币被正确销毁并记录在区块链上
+		fmt.Printf("调用区块链合约进行兑换和代币销毁\n")
 
 		// 改进的重试机制
 		var tx *types.Transaction
