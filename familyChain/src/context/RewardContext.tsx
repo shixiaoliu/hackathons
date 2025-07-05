@@ -220,6 +220,7 @@ export const RewardProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const response = await exchangeApi.getByFamily(parseInt(selectedFamily.id));
       if (response.success) {
         // 确保即使返回的数据为null或undefined也将exchanges设置为空数组
+        console.log('获取到家庭兑换记录:', response.data);
         setExchanges(response.data || []);
       } else {
         // 当出现404错误时，表示没有兑换记录，将exchanges设置为空数组

@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { formatDistanceToNow } from '../../utils/dateUtils';
 import { Exchange } from '../../services/api';
-import { Check, XIcon, Clock, ShoppingBag, AlertTriangle } from 'lucide-react';
+import { Check, XIcon, Clock, ShoppingBag, AlertTriangle, User } from 'lucide-react';
 import Card, { CardBody } from '../common/Card';
 
 interface ExchangeCardProps {
@@ -28,6 +28,7 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
           </div>
         );
       case 'completed':
+      case 'confirmed':
         return (
           <div className="flex items-center px-2 py-1 rounded bg-green-100 text-green-800 text-xs font-medium">
             <Check className="h-3 w-3 mr-1" />
@@ -39,13 +40,6 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
           <div className="flex items-center px-2 py-1 rounded bg-red-100 text-red-800 text-xs font-medium">
             <XIcon className="h-3 w-3 mr-1" />
             已取消
-          </div>
-        );
-      case 'confirmed':
-        return (
-          <div className="flex items-center px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs font-medium">
-            <Check className="h-3 w-3 mr-1" />
-            已确认
           </div>
         );
       case 'failed':
@@ -103,6 +97,16 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
               <span title={new Date(exchange.exchange_date).toLocaleString()}>
                 {formatTime(exchange.exchange_date)}
               </span>
+              {/* 显示兑换的孩子姓名 */}
+              {exchange.child_name && !isChild && (
+                <>
+                  <span className="mx-2">•</span>
+                  <span className="flex items-center">
+                    <User className="h-3 w-3 mr-1" />
+                    {exchange.child_name}
+                  </span>
+                </>
+              )}
             </div>
             
             {exchange.notes && (

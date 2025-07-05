@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Package, Gift, RefreshCw, Filter, AlertCircle } from 'lucide-react';
+import { PlusCircle, Package, Gift, RefreshCw, AlertCircle } from 'lucide-react';
 import Button from '../components/common/Button';
 import { useFamily } from '../context/FamilyContext';
 import { useReward } from '../context/RewardContext';
@@ -53,8 +53,10 @@ const RewardManagement = () => {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     if (activeTab === 'available') {
+      console.log('手动刷新奖品数据');
       await fetchRewards();
     } else {
+      console.log('手动刷新兑换记录数据');
       await fetchExchanges();
     }
     setTimeout(() => setIsRefreshing(false), 500); // 提供视觉反馈
@@ -146,13 +148,44 @@ const RewardManagement = () => {
   // 统计待处理的兑换请求数量
   const pendingExchangesCount = exchanges.filter(e => e.status === 'pending').length;
   
+  // 监听标签页切换
+  useEffect(() => {
+    console.log('标签页切换:', activeTab);
+    if (selectedFamily) {
+      console.log('当前选择的家庭:', selectedFamily);
+      if (activeTab === 'available') {
+        console.log('获取奖品列表');
+        fetchRewards();
+      } else {
+        console.log('获取兑换记录');
+        fetchExchanges();
+      }
+    } else {
+      console.log('未选择家庭，无法获取数据');
+    }
+  }, [activeTab]);
+  
   // 监听家庭变更
   useEffect(() => {
+    console.log('家庭变更:', selectedFamily);
     if (selectedFamily) {
-      fetchRewards();
-      fetchExchanges();
+      if (activeTab === 'available') {
+        console.log('获取奖品列表');
+        fetchRewards();
+      } else {
+        console.log('获取兑换记录');
+        fetchExchanges();
+      }
     }
   }, [selectedFamily]);
+  
+  // 组件加载时打印信息
+  useEffect(() => {
+    console.log('RewardManagement 组件加载');
+    console.log('当前用户:', user);
+    console.log('当前选择的家庭:', selectedFamily);
+    console.log('当前认证令牌:', localStorage.getItem('auth_token'));
+  }, []);
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -161,6 +194,22 @@ const RewardManagement = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Reward Management</h1>
           <p className="text-gray-600 mb-4">
             Manage your rewards and exchanges here.
+            {activeTab === 'exchanged' && exchanges.length === 0 && (
+              <button 
+                className="ml-2 text-primary-600 hover:underline"
+                onClick={() => {
+                  console.log('手动刷新兑换记录');
+                  if (selectedFamily) {
+                    console.log('当前选择的家庭:', selectedFamily);
+                    fetchExchanges();
+                  } else {
+                    console.log('未选择家庭');
+                  }
+                }}
+              >
+                点击刷新兑换记录
+              </button>
+            )}
           </p>
         </div>
         
@@ -207,93 +256,6 @@ const RewardManagement = () => {
           >
             My Exchange Records
           </button>
-        </div>
-      </div>
-      
-      {/* 筛选器 */}
-      <div className="mb-8">
-        <div className="flex items-center space-x-2">
-          <Filter className="h-4 w-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700">Filter:</span>
-          
-          {/* 根据当前标签页显示不同的筛选选项 */}
-          {activeTab === 'available' ? (
-            <div className="flex space-x-2">
-              <button
-                className={`px-3 py-1 text-sm rounded-full ${
-                  filter === 'all'
-                    ? 'bg-primary-100 text-primary-800'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                onClick={() => setFilter('all')}
-              >
-                All
-              </button>
-              <button
-                className={`px-3 py-1 text-sm rounded-full ${
-                  filter === 'active'
-                    ? 'bg-primary-100 text-primary-800'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                onClick={() => setFilter('active')}
-              >
-                Active
-              </button>
-              <button
-                className={`px-3 py-1 text-sm rounded-full ${
-                  filter === 'inactive'
-                    ? 'bg-primary-100 text-primary-800'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                onClick={() => setFilter('inactive')}
-              >
-                Inactive
-              </button>
-            </div>
-          ) : (
-            <div className="flex space-x-2">
-              <button
-                className={`px-3 py-1 text-sm rounded-full ${
-                  filter === 'all'
-                    ? 'bg-primary-100 text-primary-800'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                onClick={() => setFilter('all')}
-              >
-                All
-              </button>
-              <button
-                className={`px-3 py-1 text-sm rounded-full ${
-                  filter === 'pending'
-                    ? 'bg-primary-100 text-primary-800'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                onClick={() => setFilter('pending')}
-              >
-                Pending
-              </button>
-              <button
-                className={`px-3 py-1 text-sm rounded-full ${
-                  filter === 'completed'
-                    ? 'bg-primary-100 text-primary-800'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                onClick={() => setFilter('completed')}
-              >
-                Completed
-              </button>
-              <button
-                className={`px-3 py-1 text-sm rounded-full ${
-                  filter === 'cancelled'
-                    ? 'bg-primary-100 text-primary-800'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                onClick={() => setFilter('cancelled')}
-              >
-                Cancelled
-              </button>
-            </div>
-          )}
         </div>
       </div>
       
@@ -373,6 +335,26 @@ const RewardManagement = () => {
                   <div className="text-center py-12">
                     <Package className="mx-auto h-12 w-12 text-gray-400" />
                     <p className="mt-2 text-gray-500 text-lg">No exchange requests</p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {selectedFamily ? 
+                        `当前家庭 "${selectedFamily.name}" 没有兑换记录` :
+                        '请选择一个家庭查看兑换记录'
+                      }
+                    </p>
+                    <div className="mt-4 flex flex-col items-center gap-2">
+                      <button 
+                        className="text-primary-600 hover:underline"
+                        onClick={() => {
+                          console.log('尝试刷新兑换记录');
+                          if (selectedFamily) {
+                            console.log('刷新家庭兑换记录:', selectedFamily);
+                            fetchExchanges();
+                          }
+                        }}
+                      >
+                        点击刷新兑换记录
+                      </button>
+                    </div>
                   </div>
                 )}
               </>

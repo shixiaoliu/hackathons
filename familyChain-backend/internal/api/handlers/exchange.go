@@ -163,6 +163,20 @@ func (h *ExchangeHandler) GetChildExchanges(c *gin.Context) {
 
 	fmt.Printf("获取孩子兑换记录，childID: %v, 类型: %T\n", childID, childID)
 
+	// 检查URL参数是否包含child_id，如果有则使用该ID
+	childIDParam := c.Query("child_id")
+	if childIDParam != "" {
+		childIDInt, err := strconv.ParseUint(childIDParam, 10, 64)
+		if err == nil {
+			fmt.Printf("使用URL参数中的child_id: %s\n", childIDParam)
+			childID = uint(childIDInt)
+		} else {
+			fmt.Printf("解析URL参数child_id失败: %v\n", err)
+		}
+	}
+
+	fmt.Printf("最终使用的childID: %v\n", childID)
+
 	// 获取兑换记录
 	exchanges, err := h.rewardService.GetChildExchanges(c.Request.Context(), childID.(uint))
 	if err != nil {
@@ -228,6 +242,7 @@ func (h *ExchangeHandler) GetFamilyExchanges(c *gin.Context) {
 	familyIDStr := c.Param("family_id")
 	familyID, err := strconv.ParseUint(familyIDStr, 10, 64)
 	if err != nil {
+		fmt.Printf("无效的家庭ID: %s, 错误: %v\n", familyIDStr, err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   "无效的家庭ID",
@@ -235,15 +250,44 @@ func (h *ExchangeHandler) GetFamilyExchanges(c *gin.Context) {
 		return
 	}
 
+	fmt.Printf("获取家庭兑换记录，familyID: %d\n", familyID)
+
+	// 获取认证信息
+	userID, exists := c.Get("user_id")
+	if !exists {
+		fmt.Printf("用户未认证\n")
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   "用户未认证",
+		})
+		return
+	}
+
+	userRole, _ := c.Get("user_role")
+	fmt.Printf("请求用户信息 - ID: %v, 角色: %v\n", userID, userRole)
+
 	// 获取兑换记录
 	exchanges, err := h.rewardService.GetFamilyExchanges(c.Request.Context(), uint(familyID))
 	if err != nil {
+		fmt.Printf("获取家庭兑换记录失败: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   "获取兑换记录失败: " + err.Error(),
 		})
 		return
 	}
+
+	fmt.Printf("成功获取到家庭 %d 的 %d 条兑换记录\n", familyID, len(exchanges))
+	for i, exchange := range exchanges {
+		fmt.Printf("兑换记录 %d: ID=%d, 奖品=%s, 孩子=%s, 状态=%s\n",
+			i+1, exchange.ID, exchange.RewardName, exchange.ChildName, exchange.Status)
+	}
+
+	// 打印完整的响应数据
+	fmt.Printf("响应数据: %+v\n", gin.H{
+		"success": true,
+		"data":    exchanges,
+	})
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

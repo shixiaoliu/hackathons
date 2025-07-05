@@ -59,13 +59,89 @@ func (r *ExchangeRepository) GetByRewardID(rewardID uint) ([]*models.Exchange, e
 // GetByFamilyID 获取家庭的兑换记录
 func (r *ExchangeRepository) GetByFamilyID(familyID uint) ([]*models.Exchange, error) {
 	var exchanges []*models.Exchange
-	err := r.db.Table("exchanges").
-		Joins("JOIN children ON exchanges.child_id = children.id").
-		Where("children.family_id = ?", familyID).
-		Order("exchanges.exchange_date DESC").
+
+	fmt.Printf("获取家庭兑换记录，familyID: %d\n", familyID)
+
+	// 先获取该家庭的 parent_address
+	var parentAddress string
+	fmt.Printf("执行SQL: SELECT parent_address FROM families WHERE id = %d\n", familyID)
+	err := r.db.Table("families").
+		Select("parent_address").
+		Where("id = ?", familyID).
+		Pluck("parent_address", &parentAddress).Error
+
+	if err != nil {
+		fmt.Printf("获取家庭parent_address失败: %v\n", err)
+		return nil, err
+	}
+
+	if parentAddress == "" {
+		fmt.Printf("未找到家庭 %d 的parent_address\n", familyID)
+		return []*models.Exchange{}, nil
+	}
+
+	fmt.Printf("家庭 %d 的parent_address: %s\n", familyID, parentAddress)
+
+	// 获取该家庭下所有孩子的ID
+	var childIDs []uint
+	fmt.Printf("执行SQL: SELECT id FROM children WHERE parent_address = '%s'\n", parentAddress)
+	err = r.db.Table("children").
+		Select("id").
+		Where("parent_address = ?", parentAddress).
+		Pluck("id", &childIDs).Error
+
+	if err != nil {
+		fmt.Printf("获取家庭孩子ID失败: %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("家庭 %d 有 %d 个孩子，IDs: %v\n", familyID, len(childIDs), childIDs)
+
+	if len(childIDs) == 0 {
+		// 如果没有孩子，返回空数组
+		fmt.Printf("家庭 %d 没有孩子，返回空兑换记录\n", familyID)
+		return []*models.Exchange{}, nil
+	}
+
+	// 获取这些孩子的所有兑换记录
+	fmt.Printf("执行SQL: SELECT * FROM exchanges WHERE child_id IN (%v) ORDER BY exchange_date DESC\n", childIDs)
+	err = r.db.Where("child_id IN ?", childIDs).
+		Order("exchange_date DESC").
 		Find(&exchanges).Error
 
-	return exchanges, err
+	if err != nil {
+		fmt.Printf("获取家庭兑换记录失败: %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("查询到 %d 条兑换记录\n", len(exchanges))
+
+	// 为每条记录添加详细信息
+	for _, exchange := range exchanges {
+		// 获取奖品名称和图片
+		var reward models.Reward
+		fmt.Printf("获取奖品信息，奖品ID: %d\n", exchange.RewardID)
+		if err := r.db.Select("name, image_url").First(&reward, exchange.RewardID).Error; err == nil {
+			exchange.RewardName = reward.Name
+			exchange.RewardImage = reward.ImageURL
+			fmt.Printf("兑换记录 %d: 奖品名称=%s\n", exchange.ID, reward.Name)
+		} else {
+			fmt.Printf("获取奖品信息失败，兑换ID: %d, 奖品ID: %d, 错误: %v\n", exchange.ID, exchange.RewardID, err)
+		}
+
+		// 获取孩子名称
+		var child models.Child
+		fmt.Printf("获取孩子信息，孩子ID: %d\n", exchange.ChildID)
+		if err := r.db.Select("name").First(&child, exchange.ChildID).Error; err == nil {
+			exchange.ChildName = child.Name
+			fmt.Printf("兑换记录 %d: 孩子名称=%s\n", exchange.ID, child.Name)
+		} else {
+			fmt.Printf("获取孩子信息失败，兑换ID: %d, 孩子ID: %d, 错误: %v\n", exchange.ID, exchange.ChildID, err)
+		}
+	}
+
+	fmt.Printf("返回家庭 %d 的 %d 条兑换记录\n", familyID, len(exchanges))
+	return exchanges, nil
 }
 
 // UpdateStatus 更新兑换记录状态

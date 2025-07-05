@@ -6,7 +6,7 @@ import Button from '../components/common/Button';
 import { useReward } from '../context/RewardContext';
 import { useFamily } from '../context/FamilyContext';
 import { useAuthContext } from '../context/AuthContext';
-import { exchangeApi, contractApi, Reward, Exchange } from '../services/api';
+import { exchangeApi, contractApi, Reward, Exchange, apiClient } from '../services/api';
 import ExchangeCard from '../components/reward/ExchangeCard';
 import { getTokenBalance, updateLocalBalance, clearBalanceCache, burnTokens } from '../services/tokenService';
 
@@ -101,6 +101,16 @@ const RewardStore = () => {
     try {
       console.log('开始获取兑换记录，当前孩子ID:', currentChild.id);
       
+      // 打印认证和用户信息，用于调试
+      const token = localStorage.getItem('auth_token');
+      const userData = localStorage.getItem('user_data');
+      const userRole = localStorage.getItem('user_role');
+      console.log('认证信息:', {
+        token: token ? '已设置' : '未设置',
+        userData: userData ? JSON.parse(userData) : null,
+        userRole
+      });
+      
       // 添加延迟，确保后端有足够时间处理之前的请求
       await new Promise(resolve => setTimeout(resolve, 500));
       
@@ -114,13 +124,22 @@ const RewardStore = () => {
         response.data.forEach((exchange, index) => {
           console.log(`兑换记录 ${index + 1}:`, {
             id: exchange.id,
+            reward_id: exchange.reward_id,
+            child_id: exchange.child_id,
             reward_name: exchange.reward_name,
             status: exchange.status,
             date: exchange.exchange_date
           });
         });
         
-        setExchanges(response.data);
+        // 处理后端返回的数据，确保status字段正确映射
+        const processedExchanges = response.data.map(exchange => ({
+          ...exchange,
+          // 确保status字段符合前端期望的值，将confirmed映射为completed
+          status: exchange.status === 'confirmed' ? 'completed' : exchange.status
+        }));
+        
+        setExchanges(processedExchanges);
       } else {
         console.error('获取兑换记录失败:', response.error || '未知错误', '状态码:', response.status);
         
@@ -300,8 +319,25 @@ const RewardStore = () => {
   useEffect(() => {
     if (currentChild) {
       console.log('当前孩子信息:', currentChild);
+      // 将当前孩子信息存储到localStorage，以便API调用时可以获取
+      localStorage.setItem('current_child', JSON.stringify({
+        id: currentChild.id,
+        name: currentChild.name,
+        walletAddress: currentChild.walletAddress
+      }));
+      
       // 不要在useEffect内部调用hooks
       console.log('当前选择的家庭:', selectedFamily);
+      
+      // 打印认证信息，用于调试
+      const token = localStorage.getItem('auth_token');
+      const userData = localStorage.getItem('user_data');
+      const userRole = localStorage.getItem('user_role');
+      console.log('认证信息:', {
+        token: token ? '已设置' : '未设置',
+        userData: userData ? JSON.parse(userData) : null,
+        userRole
+      });
       
       // 立即获取数据
       fetchRewards();
@@ -480,21 +516,6 @@ const RewardStore = () => {
           >
             My Exchange Records
           </button>
-          
-          {/* 强制刷新按钮 */}
-          {activeTab === 'exchanged' && (
-            <button
-              className="ml-auto px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex items-center"
-              onClick={() => {
-                console.log('强制刷新兑换记录');
-                fetchExchanges();
-              }}
-              disabled={loadingExchanges}
-            >
-              <RefreshCw className={`h-3 w-3 mr-1 ${loadingExchanges ? 'animate-spin' : ''}`} />
-              刷新记录
-            </button>
-          )}
         </div>
       </div>
       
@@ -565,52 +586,6 @@ const RewardStore = () => {
               <History className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No exchange requests</h3>
               <p className="text-gray-600">You have not exchanged any rewards yet.</p>
-              
-              {/* 调试按钮 - 仅在开发模式下显示 */}
-              {process.env.NODE_ENV === 'development' && (
-                <button
-                  className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                  onClick={() => {
-                    console.log('添加测试兑换记录');
-                    
-                    // 创建测试兑换记录
-                    const testExchange1 = {
-                      id: 1001,
-                      reward_id: 1,
-                      child_id: currentChild ? Number(currentChild.id) : 1,
-                      token_amount: 10,
-                      status: 'confirmed' as 'confirmed',
-                      exchange_date: new Date().toISOString(),
-                      notes: '测试兑换记录1',
-                      created_at: new Date().toISOString(),
-                      updated_at: new Date().toISOString(),
-                      reward_name: '测试奖品1',
-                      reward_image: 'https://via.placeholder.com/150',
-                      child_name: currentChild ? currentChild.name : '测试用户'
-                    };
-                    
-                    const testExchange2 = {
-                      id: 1002,
-                      reward_id: 2,
-                      child_id: currentChild ? Number(currentChild.id) : 1,
-                      token_amount: 20,
-                      status: 'confirmed' as 'confirmed',
-                      exchange_date: new Date().toISOString(),
-                      notes: '测试兑换记录2',
-                      created_at: new Date().toISOString(),
-                      updated_at: new Date().toISOString(),
-                      reward_name: '测试奖品2',
-                      reward_image: 'https://via.placeholder.com/150',
-                      child_name: currentChild ? currentChild.name : '测试用户'
-                    };
-                    
-                    // 添加到兑换记录
-                    setExchanges([testExchange1, testExchange2]);
-                  }}
-                >
-                  添加测试数据（仅开发环境）
-                </button>
-              )}
             </div>
           ) : (
             <>

@@ -262,9 +262,23 @@ class ApiClient {
 
   // GET 请求
   async get<T>(endpoint: string): Promise<ApiResponse<T>> {
-    // 添加cache buster参数以避免缓存
-    const updatedEndpoint = this.addCacheBusters(endpoint);
-    return this.request<T>(updatedEndpoint, { method: 'GET' });
+    console.log(`[API] 发起GET请求: ${endpoint}`);
+    
+    // 打印当前认证状态
+    const token = this.getToken();
+    console.log(`[API] 当前认证状态: ${token ? '已认证' : '未认证'}`);
+    
+    try {
+      const response = await this.request<T>(endpoint, {
+        method: 'GET',
+      });
+      
+      console.log(`[API] GET ${endpoint} 响应:`, response);
+      return response;
+    } catch (error) {
+      console.error(`[API] GET ${endpoint} 错误:`, error);
+      throw error;
+    }
   }
 
   // POST 请求
@@ -624,12 +638,46 @@ export const exchangeApi = {
   getByChild: async () => {
     console.log('[API] 开始获取孩子的兑换记录...');
     try {
+      // 获取用户数据，用于获取child_id
+      const userData = localStorage.getItem('user_data');
+      let childIdParam = '';
+      
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          console.log('[API] 当前用户数据:', {
+            id: user.id,
+            wallet_address: user.wallet_address,
+            role: user.role
+          });
+          
+          // 如果当前用户是child角色，尝试从localStorage获取child_id
+          if (user.role === 'child') {
+            // 从localStorage获取当前孩子信息
+            const currentChildData = localStorage.getItem('current_child');
+            if (currentChildData) {
+              try {
+                const currentChild = JSON.parse(currentChildData);
+                if (currentChild && currentChild.id) {
+                  childIdParam = `&child_id=${currentChild.id}`;
+                  console.log(`[API] 使用当前孩子ID: ${currentChild.id}`);
+                }
+              } catch (e) {
+                console.error('[API] 解析当前孩子数据失败:', e);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('[API] 解析用户数据失败:', e);
+        }
+      }
+      
       const timestamp = Date.now();
-      const url = `/exchanges/my?_t=${timestamp}`;
+      const url = `/exchanges/my?_t=${timestamp}${childIdParam}`;
       console.log(`[API] 请求URL: ${url}`);
       
       // 获取当前的认证令牌
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       console.log(`[API] 当前认证令牌: ${token ? '已设置' : '未设置'}`);
       
       // 添加超时处理
@@ -650,6 +698,8 @@ export const exchangeApi = {
           response.data.forEach((exchange, index) => {
             console.log(`[API] 兑换记录 ${index + 1}:`, {
               id: exchange.id,
+              reward_id: exchange.reward_id,
+              child_id: exchange.child_id,
               reward_name: exchange.reward_name,
               status: exchange.status,
               date: exchange.exchange_date
@@ -688,8 +738,87 @@ export const exchangeApi = {
   },
 
   // 获取家庭的兑换记录
-  getByFamily: (familyId: number) =>
-    apiClient.get<Exchange[]>(`/families/${familyId}/exchanges`),
+  getByFamily: async (familyId: number) => {
+    console.log('[API] 开始获取家庭兑换记录，familyId:', familyId);
+    
+    // 确保familyId是有效的数字
+    if (!familyId || isNaN(Number(familyId))) {
+      console.error(`[API] 无效的familyId: ${familyId}`);
+      return { 
+        success: false, 
+        data: [],
+        error: '无效的家庭ID', 
+        status: 400 
+      };
+    }
+    
+    try {
+      // 添加时间戳避免缓存问题
+      const timestamp = Date.now();
+      const url = `/exchanges/family/${familyId}?_t=${timestamp}`;
+      console.log(`[API] 请求URL: ${url}`);
+      
+      // 获取当前的认证令牌
+      const token = localStorage.getItem('auth_token');
+      console.log(`[API] 当前认证令牌: ${token ? '已设置' : '未设置'}`);
+      
+      // 添加超时处理
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+      
+      try {
+        const response = await apiClient.get<Exchange[]>(url);
+        clearTimeout(timeoutId);
+        
+        console.log('[API] 获取家庭兑换记录响应:', response);
+        
+        // 检查响应中的数据
+        if (response.success && Array.isArray(response.data)) {
+          console.log(`[API] 成功获取到 ${response.data.length} 条家庭兑换记录`);
+          
+          // 打印每条记录的详细信息
+          response.data.forEach((exchange, index) => {
+            console.log(`[API] 家庭兑换记录 ${index + 1}:`, {
+              id: exchange.id,
+              reward_id: exchange.reward_id,
+              child_id: exchange.child_id,
+              reward_name: exchange.reward_name,
+              child_name: exchange.child_name,
+              status: exchange.status,
+              date: exchange.exchange_date
+            });
+          });
+          
+          // 确保返回的是一个数组
+          return {
+            ...response,
+            data: Array.isArray(response.data) ? response.data : []
+          };
+        } else {
+          console.log('[API] 响应成功但没有数据或数据不是数组');
+          
+          // 返回一个空数组而不是null或undefined
+          return {
+            ...response,
+            data: []
+          };
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
+      }
+    } catch (error) {
+      console.error('[API] 获取家庭兑换记录出错:', error);
+      
+      // 返回一个标准格式的错误响应，但包含空数组
+      return {
+        success: false,
+        data: [],
+        error: error instanceof Error ? error.message : '获取家庭兑换记录失败',
+        status: 500
+      };
+    }
+  },
 
   // 获取兑换详情
   getById: (id: number) => apiClient.get<Exchange>(`/exchanges/${id}`),

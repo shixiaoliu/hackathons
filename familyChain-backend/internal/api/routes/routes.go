@@ -124,7 +124,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config, contractManager *blockchain.Co
 			}
 
 			// 家庭兑换记录路由
-			protected.GET("/exchanges/family/:family_id", middleware.RequireRole("parent"), exchangeHandler.GetFamilyExchanges)
+			protected.GET("/exchanges/family/:family_id", exchangeHandler.GetFamilyExchanges)
 		}
 
 		// 在 v1 路由组下添加健康检查路由
