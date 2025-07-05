@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -206,64 +205,7 @@ func (s *RewardService) ExchangeReward(ctx context.Context, childID uint, req mo
 	// 使用孩子的地址调用合约进行兑换
 	rewardIdBig := new(big.Int).SetUint64(uint64(req.RewardID))
 
-	// 添加重试机制处理nonce错误
-	var tx *types.Transaction
-	var txErr error
-	maxRetries := 3
-
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		// 获取孩子的交易选项
-		txOpts, err := s.contractClient.GetChildTransactOpts(ctx, childAddress)
-		if err != nil {
-			return 0, fmt.Errorf("failed to get transaction options: %w", err)
-		}
-
-		// 记录尝试信息
-		fmt.Printf("尝试兑换奖品 (尝试 %d/%d), 使用nonce: %d\n",
-			attempt+1, maxRetries, txOpts.Nonce.Uint64())
-
-		// 执行交易
-		tx, txErr = s.contractClient.RewardRegistry.ExchangeReward(txOpts, rewardIdBig)
-
-		// 如果成功或者不是nonce错误，跳出循环
-		if txErr == nil {
-			break
-		}
-
-		// 检查是否是nonce错误
-		if !strings.Contains(txErr.Error(), "nonce too low") {
-			// 如果不是nonce错误，直接返回
-			return 0, fmt.Errorf("failed to exchange reward on chain: %w", txErr)
-		}
-
-		fmt.Printf("nonce错误，将重试 (尝试 %d/%d): %v\n",
-			attempt+1, maxRetries, txErr)
-
-		// 在重试前等待一段时间
-		time.Sleep(time.Second * 2)
-	}
-
-	// 检查是否所有尝试都失败了
-	if txErr != nil {
-		return 0, fmt.Errorf("failed to exchange reward after %d attempts: %w",
-			maxRetries, txErr)
-	}
-
-	// 等待交易确认
-	_, err = s.contractClient.WaitForTxReceipt(ctx, tx.Hash())
-	if err != nil {
-		return 0, fmt.Errorf("transaction failed: %w", err)
-	}
-
-	// 获取交换ID（从事件中解析）
-	// 简化处理，这里使用交换计数作为ID
-	callOpts := &bind.CallOpts{Context: ctx}
-	exchangeCount, err := s.contractClient.RewardRegistry.ExchangeCount(callOpts)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get exchange count: %w", err)
-	}
-
-	// 创建数据库兑换记录
+	// 创建数据库兑换记录 - 先创建记录，即使区块链交易失败也能跟踪
 	exchange := &models.Exchange{
 		RewardID:    uint(req.RewardID),
 		ChildID:     childID,
@@ -276,12 +218,150 @@ func (s *RewardService) ExchangeReward(ctx context.Context, childID uint, req mo
 		return 0, fmt.Errorf("failed to create exchange in database: %w", err)
 	}
 
-	// 更新奖品库存
-	if err := s.rewardRepo.UpdateStock(uint(req.RewardID), -1); err != nil {
-		return 0, fmt.Errorf("failed to update reward stock: %w", err)
-	}
+	// 启动一个goroutine来处理区块链交易，避免阻塞API响应
+	go func() {
+		// 创建新的上下文，不受原始请求上下文的限制
+		bgCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+		defer cancel()
 
-	return uint(exchangeCount.Uint64()), nil
+		fmt.Printf("开始后台处理兑换交易，兑换ID: %d, 奖品ID: %d, 前端已销毁代币: %v\n",
+			exchange.ID, req.RewardID, req.TokenBurned)
+
+		// 如果前端已经销毁了代币，则不需要再次销毁
+		if req.TokenBurned {
+			fmt.Printf("前端已销毁代币，跳过区块链交易步骤\n")
+
+			// 更新奖品库存
+			if err := s.rewardRepo.UpdateStock(uint(req.RewardID), -1); err != nil {
+				fmt.Printf("更新奖品库存失败: %v\n", err)
+			}
+
+			// 更新兑换状态为已确认
+			updateErr := s.exchangeRepo.UpdateStatus(exchange.ID, models.ExchangeStatusConfirmed, "前端已销毁代币，交易已确认")
+			if updateErr != nil {
+				fmt.Printf("更新兑换状态失败: %v\n", updateErr)
+			}
+
+			return
+		}
+
+		// 改进的重试机制
+		var tx *types.Transaction
+		var txErr error
+		maxRetries := 5
+		backoffTime := 2 * time.Second // 初始退避时间
+
+		for attempt := 0; attempt < maxRetries; attempt++ {
+			// 获取孩子的交易选项
+			txCtx, txCancel := context.WithTimeout(bgCtx, 15*time.Second)
+			txOpts, err := s.contractClient.GetChildTransactOpts(txCtx, childAddress)
+			txCancel()
+
+			if err != nil {
+				fmt.Printf("获取交易选项失败 (尝试 %d/%d): %v\n", attempt+1, maxRetries, err)
+				time.Sleep(backoffTime)
+				backoffTime *= 2 // 指数退避
+				continue
+			}
+
+			// 记录尝试信息
+			fmt.Printf("尝试兑换奖品 (尝试 %d/%d), 使用nonce: %d\n",
+				attempt+1, maxRetries, txOpts.Nonce.Uint64())
+
+			// 执行交易
+			txCtx, txCancel = context.WithTimeout(bgCtx, 20*time.Second)
+			tx, txErr = s.contractClient.RewardRegistry.ExchangeReward(txOpts, rewardIdBig)
+			txCancel()
+
+			// 如果成功，跳出循环
+			if txErr == nil {
+				fmt.Printf("交易提交成功，交易哈希: %s\n", tx.Hash().Hex())
+				break
+			}
+
+			// 详细记录错误信息
+			fmt.Printf("交易失败 (尝试 %d/%d): %v\n", attempt+1, maxRetries, txErr)
+
+			// 分析错误类型
+			if strings.Contains(txErr.Error(), "nonce too low") ||
+				strings.Contains(txErr.Error(), "replacement transaction underpriced") {
+				fmt.Printf("检测到nonce或价格错误，将在下次尝试时使用更新的值\n")
+				time.Sleep(backoffTime)
+				backoffTime *= 2
+				continue
+			} else if strings.Contains(txErr.Error(), "insufficient funds") {
+				// 更新兑换状态为失败
+				updateErr := s.exchangeRepo.UpdateStatus(exchange.ID, models.ExchangeStatusFailed, "账户余额不足")
+				if updateErr != nil {
+					fmt.Printf("更新兑换状态失败: %v\n", updateErr)
+				}
+				return // 终止goroutine
+			}
+
+			// 其他错误，等待后重试
+			time.Sleep(backoffTime)
+			backoffTime *= 2
+		}
+
+		// 检查是否所有尝试都失败了
+		if txErr != nil {
+			fmt.Printf("所有交易尝试均失败，更新兑换状态为失败\n")
+			updateErr := s.exchangeRepo.UpdateStatus(exchange.ID, models.ExchangeStatusFailed, "区块链交易错误，请稍后再试")
+			if updateErr != nil {
+				fmt.Printf("更新兑换状态失败: %v\n", updateErr)
+			}
+			return
+		}
+
+		// 交易已提交，但不等待确认，避免阻塞
+		fmt.Printf("交易已提交，哈希: %s，更新兑换状态为处理中\n", tx.Hash().Hex())
+
+		// 更新奖品库存
+		if err := s.rewardRepo.UpdateStock(uint(req.RewardID), -1); err != nil {
+			fmt.Printf("更新奖品库存失败: %v\n", err)
+		}
+
+		// 启动另一个goroutine来等待交易确认
+		go func() {
+			// 创建新的上下文，专门用于等待交易确认
+			confirmCtx, confirmCancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer confirmCancel()
+
+			fmt.Printf("开始等待交易确认，交易哈希: %s\n", tx.Hash().Hex())
+			receipt, err := s.contractClient.WaitForTxReceipt(confirmCtx, tx.Hash())
+
+			if err != nil {
+				fmt.Printf("交易确认失败: %v\n", err)
+				// 不更新状态，保持为处理中
+				return
+			}
+
+			// 检查交易状态
+			if receipt.Status == types.ReceiptStatusSuccessful {
+				fmt.Printf("交易确认成功，区块号: %d\n", receipt.BlockNumber.Uint64())
+				// 更新兑换状态为已确认
+				updateErr := s.exchangeRepo.UpdateStatus(exchange.ID, models.ExchangeStatusConfirmed, "区块链交易已确认")
+				if updateErr != nil {
+					fmt.Printf("更新兑换状态失败: %v\n", updateErr)
+				}
+			} else {
+				fmt.Printf("交易失败，状态码: %d\n", receipt.Status)
+				// 更新兑换状态为失败
+				updateErr := s.exchangeRepo.UpdateStatus(exchange.ID, models.ExchangeStatusFailed, "区块链交易执行失败")
+				if updateErr != nil {
+					fmt.Printf("更新兑换状态失败: %v\n", updateErr)
+				}
+
+				// 恢复奖品库存
+				if err := s.rewardRepo.UpdateStock(uint(req.RewardID), 1); err != nil {
+					fmt.Printf("恢复奖品库存失败: %v\n", err)
+				}
+			}
+		}()
+	}()
+
+	// 立即返回兑换ID，不等待区块链交易完成
+	return exchange.ID, nil
 }
 
 // UpdateExchangeStatus 更新兑换状态

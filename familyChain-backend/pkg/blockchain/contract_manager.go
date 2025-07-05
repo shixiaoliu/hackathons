@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -286,17 +287,32 @@ func (cm *ContractManager) ApproveTask(taskID uint64, reward *big.Int) error {
 	// 设置交易值为奖励金额
 	auth.Value = reward
 
+	// 增加gas限制，确保交易有足够的gas执行
+	auth.GasLimit = 500000
+
+	// 增加gas价格，确保交易能够被优先处理
+	if auth.GasPrice != nil {
+		increasedGasPrice := new(big.Int).Mul(auth.GasPrice, big.NewInt(200))
+		increasedGasPrice = increasedGasPrice.Div(increasedGasPrice, big.NewInt(100)) // 增加100%
+		auth.GasPrice = increasedGasPrice
+		log.Printf("[DEBUG] ApproveTask: 增加gas价格至原价的200%%: %s", auth.GasPrice.String())
+	}
+
 	// 调用合约批准任务
 	tx, err := cm.TaskRegistry.ApproveTask(auth, big.NewInt(int64(taskID)))
 	if err != nil {
 		return fmt.Errorf("failed to approve task: %v", err)
 	}
 
+	log.Printf("[DEBUG] ApproveTask: 交易已提交，哈希: %s", tx.Hash().Hex())
+
 	// 等待交易确认
-	_, err = cm.client.WaitForTransaction(tx.Hash(), 2*time.Minute)
+	receipt, err := cm.client.WaitForTransaction(tx.Hash(), 2*time.Minute)
 	if err != nil {
 		return fmt.Errorf("error waiting for transaction: %v", err)
 	}
+
+	log.Printf("[DEBUG] ApproveTask: 交易已确认，区块号: %d，状态: %d", receipt.BlockNumber.Uint64(), receipt.Status)
 
 	return nil
 }
@@ -443,65 +459,80 @@ type Task struct {
 // GetChildTransactOpts 获取孩子账户的交易选项
 func (m *ContractManager) GetChildTransactOpts(ctx context.Context, childAddress common.Address) (*bind.TransactOpts, error) {
 	// 这个方法应该通过孩子的地址获取他们的私钥或使用特定的方法来签署交易
-	// 这里是一个简化的实现，实际使用中需要根据应用架构调整
-	// 在此简化实现中，我们使用管理员账户模拟孩子账户的交易
+	// 在此实现中，我们使用管理员账户模拟孩子账户的交易
 
-	// 添加更多日志记录
-	log.Printf("获取孩子账户交易选项, 地址: %s", childAddress.Hex())
+	// 详细记录当前请求信息
+	log.Printf("[nonce管理] 开始为地址获取交易选项: %s", childAddress.Hex())
 
-	// 获取链上当前nonce
-	nonce, err := m.client.GetClient().PendingNonceAt(ctx, childAddress)
+	client := m.client.GetClient()
+
+	// 1. 首先获取账户的已确认nonce (已经被打包进区块的交易数量)
+	stateNonce, err := client.NonceAt(ctx, childAddress, nil)
 	if err != nil {
-		log.Printf("获取nonce失败: %v", err)
-		return nil, err
+		log.Printf("[nonce管理] 获取已确认nonce失败: %v", err)
+		return nil, fmt.Errorf("failed to get confirmed nonce: %w", err)
 	}
-	log.Printf("获取到初始nonce: %d", nonce)
+	log.Printf("[nonce管理] 已确认nonce: %d", stateNonce)
 
-	// 尝试从区块链获取最新交易信息以检测nonce不同步
-	latestNonce := nonce
-	// 如果nonce看起来太低，尝试查询区块链状态获取正确的nonce
-	// 这是一个临时解决方案，用于处理nonce同步问题
-	if err := m.syncNonce(ctx, childAddress, &latestNonce); err != nil {
-		log.Printf("同步nonce警告: %v", err)
+	// 2. 获取待处理nonce (包括内存池中的交易)
+	pendingNonce, err := client.PendingNonceAt(ctx, childAddress)
+	if err != nil {
+		log.Printf("[nonce管理] 获取待处理nonce失败: %v", err)
+		return nil, fmt.Errorf("failed to get pending nonce: %w", err)
+	}
+	log.Printf("[nonce管理] 待处理nonce: %d", pendingNonce)
+
+	// 3. 选择正确的nonce值 (应该使用最大的那个)
+	var finalNonce uint64
+	if pendingNonce > stateNonce {
+		finalNonce = pendingNonce
+		log.Printf("[nonce管理] 使用待处理nonce: %d", finalNonce)
+	} else {
+		finalNonce = stateNonce
+		log.Printf("[nonce管理] 使用已确认nonce: %d", finalNonce)
 	}
 
-	// 如果发现nonce不同步，使用更高的值
-	if latestNonce > nonce {
-		log.Printf("检测到nonce不同步! 链上值: %d, 本地值: %d, 使用链上值", latestNonce, nonce)
-		nonce = latestNonce
-	}
+	// 为解决持续的nonce错误，添加一个随机增量
+	// 这可以避免多个交易使用相同的nonce
+	randomIncrement := uint64(time.Now().UnixNano() % 1000)
+	finalNonce = finalNonce + randomIncrement
+	log.Printf("[nonce管理] 添加随机增量 %d，最终nonce: %d", randomIncrement, finalNonce)
 
-	// 获取gas价格，添加重试机制
+	// 4. 获取gas价格，添加重试机制
 	var gasPrice *big.Int
 	for retries := 0; retries < 3; retries++ {
-		gasPrice, err = m.client.GetClient().SuggestGasPrice(ctx)
+		gasPrice, err = client.SuggestGasPrice(ctx)
 		if err == nil {
 			break
 		}
-		log.Printf("获取gas价格失败(尝试 %d/3): %v", retries+1, err)
+		log.Printf("[nonce管理] 获取gas价格失败(尝试 %d/3): %v", retries+1, err)
 		time.Sleep(time.Second) // 等待1秒后重试
 	}
 	if err != nil {
-		log.Printf("获取gas价格失败，所有尝试均失败: %v", err)
-		return nil, err
+		log.Printf("[nonce管理] 获取gas价格失败，所有尝试均失败: %v", err)
+		return nil, fmt.Errorf("failed to get gas price: %w", err)
 	}
-	log.Printf("获取到gas价格: %s", gasPrice.String())
 
-	// 创建交易签名器
+	// 增加gas价格，确保交易能够被优先处理
+	increasedGasPrice := new(big.Int).Mul(gasPrice, big.NewInt(150))
+	increasedGasPrice = increasedGasPrice.Div(increasedGasPrice, big.NewInt(100)) // 增加50%
+	log.Printf("[nonce管理] 原始gas价格: %s, 增加后: %s", gasPrice.String(), increasedGasPrice.String())
+
+	// 5. 创建交易签名器
 	auth, err := bind.NewKeyedTransactorWithChainID(m.client.GetPrivateKey(), m.client.GetChainID())
 	if err != nil {
-		log.Printf("创建交易签名器失败: %v", err)
-		return nil, err
+		log.Printf("[nonce管理] 创建交易签名器失败: %v", err)
+		return nil, fmt.Errorf("failed to create transaction signer: %w", err)
 	}
 
-	// 设置交易参数
-	auth.Nonce = big.NewInt(int64(nonce))
+	// 6. 设置交易参数
+	auth.Nonce = big.NewInt(int64(finalNonce))
 	auth.Value = big.NewInt(0)
-	auth.GasLimit = uint64(300000)
-	auth.GasPrice = gasPrice
+	auth.GasLimit = uint64(800000)    // 进一步增加gas限制
+	auth.GasPrice = increasedGasPrice // 使用增加后的gas价格
 
-	// 记录所有交易参数
-	log.Printf("交易参数设置完成 - Nonce: %d, GasPrice: %s, GasLimit: %d, Chain ID: %s",
+	// 7. 记录最终交易参数
+	log.Printf("[nonce管理] 交易参数设置完成 - Nonce: %d, GasPrice: %s, GasLimit: %d, Chain ID: %s",
 		auth.Nonce.Uint64(), auth.GasPrice.String(), auth.GasLimit, m.client.GetChainID().String())
 
 	return auth, nil
@@ -566,17 +597,83 @@ func (cm *ContractManager) GetTransactOpts(ctx context.Context) (*bind.TransactO
 		return nil, fmt.Errorf("failed to create auth: %v", err)
 	}
 
+	// 增加gas价格，确保交易能够被优先处理
+	if auth.GasPrice != nil {
+		increasedGasPrice := new(big.Int).Mul(auth.GasPrice, big.NewInt(150))
+		increasedGasPrice = increasedGasPrice.Div(increasedGasPrice, big.NewInt(100)) // 增加50%
+		auth.GasPrice = increasedGasPrice
+		log.Printf("[DEBUG] 增加gas价格至原价的150%%: %s", auth.GasPrice.String())
+	}
+
 	return auth, nil
 }
 
 // WaitForTxReceipt 等待交易确认并返回收据
 func (cm *ContractManager) WaitForTxReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
-	receipt, err := cm.client.WaitForTransaction(txHash, 5*time.Minute)
-	if err != nil {
-		return nil, fmt.Errorf("error waiting for transaction: %v", err)
-	}
+	log.Printf("[交易确认] 开始等待交易确认: %s", txHash.Hex())
 
-	return receipt, nil
+	// 创建一个带有取消的上下文
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 60*time.Second) // 增加超时时间到60秒
+	defer cancel()
+
+	// 创建一个ticker，每秒检查一次
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	// 记录开始等待时间
+	startTime := time.Now()
+
+	// 设置最大重试次数
+	maxRetries := 60
+	retryCount := 0
+
+	for {
+		select {
+		case <-ctxWithTimeout.Done():
+			// 上下文已取消或超时
+			if ctx.Err() == context.DeadlineExceeded {
+				log.Printf("[交易确认] 等待交易确认超时: %s, 已等待 %v 秒",
+					txHash.Hex(), time.Since(startTime).Seconds())
+				return nil, fmt.Errorf("waiting for transaction receipt timed out: %w", ctx.Err())
+			}
+			log.Printf("[交易确认] 上下文已取消: %s", txHash.Hex())
+			return nil, ctx.Err()
+		case <-ticker.C:
+			retryCount++
+			if retryCount > maxRetries {
+				log.Printf("[交易确认] 达到最大重试次数 %d，放弃等待: %s", maxRetries, txHash.Hex())
+				return nil, fmt.Errorf("reached maximum retry count waiting for transaction receipt")
+			}
+
+			// 每10次尝试记录一次日志
+			if retryCount%10 == 0 {
+				log.Printf("[交易确认] 尝试 %d/%d, 已等待 %.1f 秒: %s",
+					retryCount, maxRetries, time.Since(startTime).Seconds(), txHash.Hex())
+			}
+
+			// 尝试获取交易收据
+			receipt, err := cm.client.GetClient().TransactionReceipt(ctx, txHash)
+			if err != nil {
+				if err == ethereum.NotFound {
+					// 交易尚未被打包，继续等待
+					continue
+				}
+				// 其他错误
+				log.Printf("[交易确认] 获取交易收据失败: %v", err)
+				return nil, fmt.Errorf("failed to get transaction receipt: %w", err)
+			}
+
+			// 获取到收据，检查状态
+			if receipt.Status == types.ReceiptStatusFailed {
+				log.Printf("[交易确认] 交易失败: %s, 区块号: %d", txHash.Hex(), receipt.BlockNumber.Uint64())
+				return receipt, fmt.Errorf("transaction failed with status: %d", receipt.Status)
+			}
+
+			log.Printf("[交易确认] 交易成功确认: %s, 区块号: %d, Gas使用: %d, 确认用时: %.1f 秒",
+				txHash.Hex(), receipt.BlockNumber.Uint64(), receipt.GasUsed, time.Since(startTime).Seconds())
+			return receipt, nil
+		}
+	}
 }
 
 // InitRewardToken initializes or reinitializes the reward token contract

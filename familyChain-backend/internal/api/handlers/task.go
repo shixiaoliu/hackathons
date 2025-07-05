@@ -721,6 +721,15 @@ func (h *TaskHandler) ApproveTask(c *gin.Context) {
 			} else {
 				log.Printf("[DEBUG] 成功获取交易选项，使用地址: %s", auth.From.Hex())
 
+				// 设置更高的gas限制和价格
+				auth.GasLimit = 1000000 // 设置更高的gas限制
+				if auth.GasPrice != nil {
+					increasedGasPrice := new(big.Int).Mul(auth.GasPrice, big.NewInt(250))
+					increasedGasPrice = increasedGasPrice.Div(increasedGasPrice, big.NewInt(100)) // 增加150%
+					auth.GasPrice = increasedGasPrice
+					log.Printf("[DEBUG] 铸造代币: 增加gas价格至原价的250%%: %s", auth.GasPrice.String())
+				}
+
 				// 执行铸币操作
 				childAddress := common.HexToAddress(task.AssignedChild.WalletAddress)
 				log.Printf("[DEBUG] 孩子钱包地址: %s", childAddress.Hex())
@@ -1013,9 +1022,77 @@ func (h *TaskHandler) initializeRewardToken(tokenAddress string) error {
 
 	// 检查是否已经初始化
 	if h.contractManager.RewardToken != nil {
-		return nil // 已经初始化，不需要再次初始化
+		// 合约已初始化，检查铸币权限
+		log.Printf("[DEBUG] 代币合约已初始化，检查铸币权限")
+		return h.ensureMinterRole()
 	}
 
 	// 使用新的公共方法初始化代币合约
-	return h.contractManager.InitRewardToken(tokenAddress)
+	err := h.contractManager.InitRewardToken(tokenAddress)
+	if err != nil {
+		return err
+	}
+
+	// 初始化后检查并确保铸币权限
+	return h.ensureMinterRole()
+}
+
+// ensureMinterRole 确保当前账户有铸币权限
+func (h *TaskHandler) ensureMinterRole() error {
+	if h.contractManager == nil || h.contractManager.RewardToken == nil {
+		return fmt.Errorf("合约管理器或代币合约未初始化")
+	}
+
+	// 获取当前账户地址
+	auth, err := h.contractManager.GetTransactOpts(context.Background())
+	if err != nil {
+		return fmt.Errorf("获取交易选项失败: %v", err)
+	}
+
+	// 检查当前账户是否有铸币权限
+	isMinter, err := h.contractManager.RewardToken.AuthorizedMinters(nil, auth.From)
+	if err != nil {
+		log.Printf("[ERROR] 检查铸币权限失败: %v", err)
+		return err
+	}
+
+	if isMinter {
+		log.Printf("[DEBUG] 当前账户 %s 已有铸币权限", auth.From.Hex())
+		return nil
+	}
+
+	log.Printf("[WARN] 当前账户 %s 没有铸币权限，尝试添加...", auth.From.Hex())
+
+	// 尝试添加铸币权限（需要合约所有者权限）
+	ownerAuth, err := h.contractManager.GetTransactOpts(context.Background())
+	if err != nil {
+		return fmt.Errorf("获取所有者交易选项失败: %v", err)
+	}
+
+	// 设置更高的gas限制和价格
+	ownerAuth.GasLimit = 1000000
+	if ownerAuth.GasPrice != nil {
+		increasedGasPrice := new(big.Int).Mul(ownerAuth.GasPrice, big.NewInt(250))
+		increasedGasPrice = increasedGasPrice.Div(increasedGasPrice, big.NewInt(100))
+		ownerAuth.GasPrice = increasedGasPrice
+	}
+
+	// 调用合约添加铸币权限
+	tx, err := h.contractManager.RewardToken.AddMinter(ownerAuth, auth.From)
+	if err != nil {
+		log.Printf("[ERROR] 添加铸币权限失败: %v", err)
+		return err
+	}
+
+	log.Printf("[DEBUG] 添加铸币权限交易已提交，哈希: %s", tx.Hash().Hex())
+
+	// 等待交易确认
+	receipt, err := h.contractManager.WaitForTxReceipt(context.Background(), tx.Hash())
+	if err != nil {
+		log.Printf("[ERROR] 等待添加铸币权限交易确认失败: %v", err)
+		return err
+	}
+
+	log.Printf("[SUCCESS] 成功添加铸币权限，区块号: %d，状态: %d", receipt.BlockNumber.Uint64(), receipt.Status)
+	return nil
 }

@@ -25,20 +25,20 @@ async function main() {
     console.log("RewardToken deployed to:", rewardToken.address);
     deployedAddresses.RewardToken = rewardToken.address;
     
-    // // 3. 部署 RewardRegistry (使用已部署的 RewardToken 地址)
-    // console.log("\n--- Deploying RewardRegistry ---");
-    // const RewardRegistry = await ethers.getContractFactory("RewardRegistry");
-    // const rewardRegistry = await RewardRegistry.deploy(rewardToken.address);
-    // await rewardRegistry.deployed();
-    // console.log("RewardRegistry deployed to:", rewardRegistry.address);
-    // deployedAddresses.RewardRegistry = rewardRegistry.address;
+    // 3. 部署 RewardRegistry (使用已部署的 RewardToken 地址)
+    console.log("\n--- Deploying RewardRegistry ---");
+    const RewardRegistry = await ethers.getContractFactory("RewardRegistry");
+    const rewardRegistry = await RewardRegistry.deploy(rewardToken.address);
+    await rewardRegistry.deployed();
+    console.log("RewardRegistry deployed to:", rewardRegistry.address);
+    deployedAddresses.RewardRegistry = rewardRegistry.address;
     
-    // // 4. 设置 RewardRegistry 为 RewardToken 的授权铸造者
-    // console.log("\n--- Setting up contract permissions ---");
-    // console.log("Setting RewardRegistry as authorized minter for RewardToken...");
-    // const tx = await rewardToken.addMinter(rewardRegistry.address);
-    // await tx.wait();
-    // console.log(`RewardRegistry (${rewardRegistry.address}) is now an authorized minter for RewardToken`);
+    // 4. 设置 RewardRegistry 为 RewardToken 的授权铸造者
+    console.log("\n--- Setting up contract permissions ---");
+    console.log("Setting RewardRegistry as authorized minter for RewardToken...");
+    const tx = await rewardToken.addMinter(rewardRegistry.address);
+    await tx.wait();
+    console.log(`RewardRegistry (${rewardRegistry.address}) is now an authorized minter for RewardToken`);
     
     // // 保存所有合约地址到 JSON 文件
     // const deployedAddressesPath = path.join(__dirname, "..", "deployed_addresses.json");

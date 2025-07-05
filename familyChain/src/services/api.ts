@@ -90,7 +90,7 @@ interface Exchange {
   reward_id: number;
   child_id: number;
   token_amount: number;
-  status: 'pending' | 'completed' | 'cancelled';
+  status: 'pending' | 'completed' | 'cancelled' | 'confirmed' | 'failed';
   exchange_date: string;
   completed_date?: string;
   notes?: string;
@@ -99,6 +99,7 @@ interface Exchange {
   reward_name?: string;
   reward_image?: string;
   child_name?: string;
+  token_burned?: boolean; // 标记代币是否已在前端销毁
 }
 
 // HTTP 请求工具函数

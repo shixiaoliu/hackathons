@@ -12,6 +12,10 @@ const (
 	ExchangeStatusCompleted ExchangeStatus = "completed"
 	// ExchangeStatusCancelled 表示已取消的兑换
 	ExchangeStatusCancelled ExchangeStatus = "cancelled"
+	// ExchangeStatusConfirmed 表示区块链交易已确认的兑换
+	ExchangeStatusConfirmed ExchangeStatus = "confirmed"
+	// ExchangeStatusFailed 表示失败的兑换
+	ExchangeStatusFailed ExchangeStatus = "failed"
 )
 
 // Exchange 表示孩子兑换奖品的记录
@@ -38,14 +42,15 @@ func (Exchange) TableName() string {
 	return "exchanges"
 }
 
-// ExchangeCreateRequest 表示创建兑换请求
+// ExchangeCreateRequest 创建兑换请求的参数
 type ExchangeCreateRequest struct {
-	RewardID int    `json:"reward_id" binding:"required"`
-	Notes    string `json:"notes"`
+	RewardID    uint   `json:"reward_id" validate:"required"`
+	Notes       string `json:"notes"`
+	TokenBurned bool   `json:"token_burned"` // 标记代币是否已在前端销毁
 }
 
-// ExchangeUpdateRequest 表示更新兑换状态的请求
+// ExchangeUpdateRequest 更新兑换状态的参数
 type ExchangeUpdateRequest struct {
-	Status ExchangeStatus `json:"status" binding:"required,oneof=pending completed cancelled"`
+	Status ExchangeStatus `json:"status" validate:"required"`
 	Notes  string         `json:"notes"`
 }

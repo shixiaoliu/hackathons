@@ -1,8 +1,12 @@
 package handlers
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"eth-for-babies-backend/internal/models"
 	"eth-for-babies-backend/internal/services"
@@ -17,7 +21,7 @@ type ExchangeHandler struct {
 	childService  *services.ChildService
 }
 
-// NewExchangeHandler 创建一个新的兑换处理器
+// NewExchangeHandler 创建新的兑换处理器
 func NewExchangeHandler(rewardService *services.RewardService, childService *services.ChildService) *ExchangeHandler {
 	return &ExchangeHandler{
 		rewardService: rewardService,
@@ -75,25 +79,68 @@ func (h *ExchangeHandler) ExchangeReward(c *gin.Context) {
 	// 净化输入数据
 	req.Notes = utils.SanitizeString(req.Notes)
 
+	// 创建一个带超时的上下文
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second) // 设置60秒超时
+	defer cancel()
+
+	// 记录开始处理时间
+	startTime := time.Now()
+	fmt.Printf("开始处理兑换请求，时间: %v, 奖品ID: %d, 用户: %s\n",
+		startTime.Format(time.RFC3339), req.RewardID, child.Name)
+
 	// 兑换奖品
-	exchangeID, err := h.rewardService.ExchangeReward(c.Request.Context(), child.ID, req)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+	exchangeID, err := h.rewardService.ExchangeReward(ctx, child.ID, req)
+
+	// 计算处理时间
+	processingTime := time.Since(startTime)
+	fmt.Printf("兑换请求处理完成，耗时: %v\n", processingTime)
+
+	// 检查是否因为上下文超时而取消
+	if ctx.Err() == context.DeadlineExceeded {
+		fmt.Printf("兑换请求超时，处理时间超过60秒\n")
+		c.JSON(http.StatusRequestTimeout, gin.H{
 			"success": false,
-			"error":   "兑换奖品失败: " + err.Error(),
+			"error":   "请求超时，请稍后再试",
+		})
+		return
+	}
+
+	if err != nil {
+		// 详细记录错误信息
+		fmt.Printf("兑换奖品失败: %v, 奖品ID: %d, 用户: %s\n",
+			err, req.RewardID, child.Name)
+
+		// 根据错误类型返回不同的状态码
+		statusCode := http.StatusInternalServerError
+		errorMessage := "兑换奖品失败: " + err.Error()
+
+		if strings.Contains(err.Error(), "insufficient funds") {
+			statusCode = http.StatusBadRequest
+			errorMessage = "余额不足，无法兑换奖品"
+		} else if strings.Contains(err.Error(), "nonce too low") {
+			errorMessage = "区块链交易错误，请稍后再试 (nonce错误)"
+		}
+
+		c.JSON(statusCode, gin.H{
+			"success": false,
+			"error":   errorMessage,
 		})
 		return
 	}
 
 	// 获取兑换详情
-	exchange, err := h.rewardService.GetExchange(c.Request.Context(), exchangeID)
+	exchange, err := h.rewardService.GetExchange(ctx, exchangeID)
 	if err != nil {
+		fmt.Printf("获取兑换详情失败: %v, 兑换ID: %d\n", err, exchangeID)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "获取兑换详情失败",
+			"error":   "获取兑换详情失败: " + err.Error(),
 		})
 		return
 	}
+
+	fmt.Printf("兑换成功，兑换ID: %d, 奖品: %s, 用户: %s\n",
+		exchangeID, exchange.RewardName, child.Name)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,

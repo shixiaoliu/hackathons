@@ -11,6 +11,7 @@ interface RewardContextType {
   loading: boolean;
   error: string | null;
   fetchRewards: () => Promise<void>;
+  setRewards: React.Dispatch<React.SetStateAction<Reward[]>>;
   createReward: (rewardData: {
     name: string;
     description: string;
@@ -301,6 +302,7 @@ export const RewardProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     loading,
     error,
     fetchRewards,
+    setRewards,
     createReward,
     updateReward,
     deleteReward,

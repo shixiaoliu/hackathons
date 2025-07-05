@@ -12,7 +12,7 @@ import { getTokenBalance } from '../services/tokenService';
 
 const RewardStore = () => {
   const navigate = useNavigate();
-  const { rewards, loading, error, fetchRewards } = useReward();
+  const { rewards, loading, error, fetchRewards, setRewards } = useReward();
   const { currentChild, selectedFamily } = useFamily();
   const { user } = useAuthContext();
   const [activeTab, setActiveTab] = useState<'available' | 'exchanged'>('available');
@@ -108,18 +108,46 @@ const RewardStore = () => {
           walletAddress: currentChild.walletAddress,
         }
       });
-      
+
+      // 直接调用后端API处理兑换，让后端处理代币销毁
       const response = await exchangeApi.create({
         reward_id: reward.id,
-        notes: `由${currentChild.name}兑换`
+        notes: `由${currentChild.name}兑换`,
+        token_burned: false // 告诉后端由后端处理代币销毁
       });
+      
+      console.log('兑换响应:', response);
       
       if (response.success) {
         alert('兑换申请已提交');
-        // 刷新数据
-        refreshBalance();
-        fetchExchanges();
-        fetchRewards();
+        
+        // 立即从本地状态中更新余额
+        const newBalance = (parseFloat(balance) - reward.token_price).toString();
+        console.log('更新余额:', balance, '->', newBalance);
+        setBalance(newBalance);
+        
+        // 立即从本地状态中移除已兑换的奖品
+        console.log('从本地移除奖品:', reward.id);
+        const updatedRewards = rewards.filter(r => r.id !== reward.id);
+        console.log('更新后的奖品列表:', updatedRewards);
+        
+        // 直接更新本地奖品列表状态
+        setRewards(updatedRewards);
+        
+        // 添加到兑换记录
+        if (response.data) {
+          console.log('添加到兑换记录:', response.data);
+          setExchanges(prev => [response.data as Exchange, ...prev]);
+        }
+        
+        // 后台刷新数据
+        console.log('开始后台刷新数据...');
+        setTimeout(() => {
+          console.log('执行后台刷新...');
+          refreshBalance();
+          fetchExchanges();
+          fetchRewards();
+        }, 1000);
       } else {
         console.error('兑换失败详情:', response);
         alert(`兑换失败: ${response.error || '未知错误'}`);
