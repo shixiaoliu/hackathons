@@ -141,7 +141,6 @@ contract RewardRegistry is Ownable {
     function exchangeReward(uint256 _rewardId) public returns (uint256) {
         Reward storage reward = rewards[_rewardId];
         
-        require(reward.active, "Reward is not active");
         require(reward.stock > 0, "Reward out of stock");
         
         uint256 tokenPrice = reward.tokenPrice;
