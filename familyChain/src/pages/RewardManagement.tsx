@@ -42,11 +42,11 @@ const RewardManagement = () => {
   const [exchangeActionModal, setExchangeActionModal] = useState<{
     open: boolean;
     exchange: Exchange | null;
-    action: 'approve' | 'cancel';
+    actionType: 'approve' | 'cancel';
   }>({
     open: false,
     exchange: null,
-    action: 'approve'
+    actionType: 'approve'
   });
   
   // 处理刷新数据
@@ -64,20 +64,83 @@ const RewardManagement = () => {
   
   // 处理添加奖品
   const handleAddReward = async (data: RewardCreateRequest) => {
-    const result = await createReward(data);
-    if (result) {
-      setAddModalOpen(false);
+    // 检查图片URL是否为placeholder.com的URL
+    if (data.image_url && data.image_url.includes('placeholder.com')) {
+      // 使用安全的Base64编码函数
+      const safeBase64Encode = (str: string): string => {
+        try {
+          return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => 
+            String.fromCharCode(Number.parseInt(p1, 16))
+          ));
+        } catch (e) {
+          console.error('编码失败:', e);
+          return '';
+        }
+      };
+      
+      // 替换为内联SVG
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+        <rect width="400" height="300" fill="#f0f0f0"/>
+        <text x="200" y="150" font-family="Arial" font-size="24" text-anchor="middle" fill="#888888">${data.name || '奖品'}</text>
+      </svg>`;
+      
+      data.image_url = `data:image/svg+xml;base64,${safeBase64Encode(svg)}`;
+    }
+    
+    try {
+      console.log('开始创建奖品，数据:', data);
+      const result = await createReward(data);
+      if (result) {
+        console.log('创建奖品成功:', result);
+        // 刷新奖品列表
+        fetchRewards();
+        // 关闭模态框
+        setAddModalOpen(false);
+      }
+    } catch (error) {
+      console.error('创建奖品失败:', error);
     }
   };
   
   // 处理编辑奖品
   const handleEditReward = async (data: RewardUpdateRequest) => {
+    // 检查图片URL是否为placeholder.com的URL
+    if (data.image_url && data.image_url.includes('placeholder.com')) {
+      // 使用安全的Base64编码函数
+      const safeBase64Encode = (str: string): string => {
+        try {
+          return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => 
+            String.fromCharCode(Number.parseInt(p1, 16))
+          ));
+        } catch (e) {
+          console.error('编码失败:', e);
+          return '';
+        }
+      };
+      
+      // 替换为内联SVG
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+        <rect width="400" height="300" fill="#f0f0f0"/>
+        <text x="200" y="150" font-family="Arial" font-size="24" text-anchor="middle" fill="#888888">${data.name || '奖品'}</text>
+      </svg>`;
+      
+      data.image_url = `data:image/svg+xml;base64,${safeBase64Encode(svg)}`;
+    }
+    
     if (!selectedReward) return;
     
-    const success = await updateReward(selectedReward.id, data);
-    if (success) {
-      setEditModalOpen(false);
-      setSelectedReward(null);
+    try {
+      console.log('开始更新奖品，数据:', data);
+      const result = await updateReward(selectedReward.id, data);
+      if (result) {
+        console.log('更新奖品成功');
+        // 刷新奖品列表
+        fetchRewards();
+        // 关闭模态框
+        setEditModalOpen(false);
+      }
+    } catch (error) {
+      console.error('更新奖品失败:', error);
     }
   };
   
@@ -93,7 +156,7 @@ const RewardManagement = () => {
     setExchangeActionModal({
       open: true,
       exchange,
-      action: 'approve'
+      actionType: 'approve'
     });
   };
   
@@ -102,7 +165,7 @@ const RewardManagement = () => {
     setExchangeActionModal({
       open: true,
       exchange,
-      action: 'cancel'
+      actionType: 'cancel'
     });
   };
   
@@ -113,7 +176,7 @@ const RewardManagement = () => {
     const exchangeId = exchangeActionModal.exchange.id;
     let success = false;
     
-    if (exchangeActionModal.action === 'approve') {
+    if (exchangeActionModal.actionType === 'approve') {
       success = await approveExchange(exchangeId, notes);
     } else {
       success = await cancelExchange(exchangeId, notes);
@@ -123,7 +186,7 @@ const RewardManagement = () => {
       setExchangeActionModal({
         open: false,
         exchange: null,
-        action: 'approve'
+        actionType: 'approve'
       });
     }
   };
@@ -392,11 +455,11 @@ const RewardManagement = () => {
           onClose={() => setExchangeActionModal({
             open: false,
             exchange: null,
-            action: 'approve'
+            actionType: 'approve'
           })}
           onConfirm={confirmExchangeAction}
           exchange={exchangeActionModal.exchange}
-          actionType={exchangeActionModal.action}
+          actionType={exchangeActionModal.actionType}
           isLoading={loading}
         />
       )}

@@ -10,6 +10,7 @@ export interface Reward {
   stock: number;
   created_at: string;
   updated_at: string;
+  blockchain_id?: number;
 }
 
 export interface RewardCreateRequest {
@@ -18,6 +19,8 @@ export interface RewardCreateRequest {
   image_url: string;
   token_price: number;
   stock: number;
+  blockchain_id?: number;
+  create_on_blockchain?: boolean;
 }
 
 export interface RewardUpdateRequest {
@@ -27,6 +30,7 @@ export interface RewardUpdateRequest {
   token_price?: number;
   active?: boolean;
   stock?: number;
+  blockchain_id?: number;
 }
 
 export type ExchangeStatus = 'pending' | 'completed' | 'cancelled' | 'confirmed' | 'failed';

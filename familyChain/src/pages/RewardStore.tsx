@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingBag, Check, History, Wallet, BarChart4, RefreshCw } from 'lucide-react';
 import Card, { CardBody, CardHeader } from '../components/common/Card';
@@ -8,7 +8,8 @@ import { useFamily } from '../context/FamilyContext';
 import { useAuthContext } from '../context/AuthContext';
 import { exchangeApi, contractApi, Reward, Exchange, apiClient } from '../services/api';
 import ExchangeCard from '../components/reward/ExchangeCard';
-import { getTokenBalance, updateLocalBalance, clearBalanceCache, burnTokens } from '../services/tokenService';
+import { getTokenBalance, updateLocalBalance, clearBalanceCache, exchangeRewardWithContract, burnTokens } from '../services/tokenService';
+import { ethers } from 'ethers';
 
 const RewardStore = () => {
   const navigate = useNavigate();
@@ -28,6 +29,9 @@ const RewardStore = () => {
     
     setLoadingBalance(true);
     try {
+      // 强制清除缓存，确保获取最新数据
+      clearBalanceCache(currentChild.walletAddress);
+      
       // 使用tokenService获取余额，它会处理缓存逻辑
       console.log('[RewardStore] 获取代币余额...');
       const balance = await getTokenBalance(currentChild.walletAddress);
@@ -36,7 +40,19 @@ const RewardStore = () => {
         console.log('[RewardStore] 成功获取余额:', balance);
         setBalance(balance);
       } else {
-        console.log('[RewardStore] 获取余额为0，可能需要进一步检查');
+        console.log('[RewardStore] 获取余额为0，尝试通过API获取');
+        // 尝试通过API获取余额
+        try {
+          const response = await contractApi.getBalance(currentChild.walletAddress);
+          if (response.success && response.data && response.data.balance) {
+            console.log('[RewardStore] API获取余额成功:', response.data.balance);
+            setBalance(response.data.balance);
+          } else {
+            console.log('[RewardStore] API获取余额失败或为0');
+          }
+        } catch (apiError) {
+          console.error('[RewardStore] API获取余额失败:', apiError);
+        }
       }
     } catch (error) {
       console.error('[RewardStore] 获取余额失败:', error);
@@ -181,127 +197,108 @@ const RewardStore = () => {
         }
       });
 
-      // 首先尝试销毁代币
-      let tokenBurned = false;
-      if (currentChild.walletAddress) {
-        try {
-          console.log('尝试销毁代币...');
-          tokenBurned = await burnTokens(currentChild.walletAddress, reward.token_price);
-          console.log('代币销毁结果:', tokenBurned ? '成功' : '失败');
-        } catch (burnError) {
-          console.error('销毁代币时出错:', burnError);
-          // 如果销毁失败，继续处理，让后端处理代币销毁
+      // 先尝试通过RewardRegistry合约兑换奖品
+      let exchangeSuccess = false;
+      try {
+        console.log('尝试通过RewardRegistry合约兑换奖品...');
+        exchangeSuccess = await exchangeRewardWithContract(reward.id);
+        console.log('合约兑换结果:', exchangeSuccess ? '成功' : '失败');
+        
+        // 如果合约兑换成功，立即更新余额显示
+        if (exchangeSuccess) {
+          // 清除余额缓存
+          clearBalanceCache(currentChild.walletAddress);
+          
+          // 获取最新余额
+          const newBalance = await getTokenBalance(currentChild.walletAddress);
+          console.log('合约兑换成功，更新余额:', balance, '->', newBalance);
+          
+          // 更新本地状态
+          setBalance(newBalance);
         }
+      } catch (contractError) {
+        console.error('通过RewardRegistry合约兑换奖品失败:', contractError);
       }
 
-      // 调用后端API处理兑换
-      const response = await exchangeApi.create({
-        reward_id: reward.id,
-        notes: `由${currentChild.name}兑换`,
-        token_burned: tokenBurned // 告诉后端代币是否已在前端销毁
-      });
-      
-      console.log('兑换响应:', response);
-      
-      if (response.success) {
-        alert('兑换申请已提交');
+      // 如果合约兑换失败，使用API方式兑换
+      if (!exchangeSuccess) {
+        // 调用后端API处理兑换
+        const response = await exchangeApi.create({
+          reward_id: reward.id,
+          notes: `由${currentChild.name}兑换`,
+          token_burned: true // 告诉后端代币未在前端销毁，需要后端处理
+        });
         
-        // 计算新余额
-        const newBalance = (parseFloat(balance) - reward.token_price).toString();
-        console.log('更新余额:', balance, '->', newBalance);
+        console.log('API兑换响应:', response);
         
-        // 更新本地状态
-        setBalance(newBalance);
-        
-        // 更新本地缓存的余额，确保刷新页面后余额仍然正确
-        if (currentChild.walletAddress) {
-          updateLocalBalance(currentChild.walletAddress, newBalance);
+        if (response.success) {
+          alert('兑换申请已提交');
+          
+          // 计算新余额
+          const newBalance = (parseFloat(balance) - reward.token_price).toString();
+          console.log('更新余额:', balance, '->', newBalance);
+          
+          // 更新本地状态
+          setBalance(newBalance);
+          
+          // 更新本地缓存的余额，确保刷新页面后余额仍然正确
+          if (currentChild.walletAddress) {
+            updateLocalBalance(currentChild.walletAddress, newBalance);
+          }
+          
+          // 立即从本地状态中移除已兑换的奖品
+          console.log('从本地移除奖品:', reward.id);
+          const updatedRewards = rewards.filter(r => r.id !== reward.id);
+          console.log('更新后的奖品列表:', updatedRewards);
+          
+          // 直接更新本地奖品列表状态
+          setRewards(updatedRewards);
+          
+          // 添加到兑换记录
+          if (response.data) {
+            console.log('添加到兑换记录:', response.data);
+            // 确保response.data是一个有效的Exchange对象
+            const newExchange = response.data as Exchange;
+            
+            // 添加额外的字段，确保显示正确
+            const enhancedExchange = {
+              ...newExchange,
+              reward_name: reward.name,
+              reward_image: reward.image_url,
+              child_name: currentChild.name,
+              token_amount: reward.token_price,
+              token_burned: false // 记录代币是否已经被销毁
+            };
+            
+            console.log('增强后的兑换记录:', enhancedExchange);
+            
+            // 添加到兑换记录列表的开头
+            setExchanges(prev => [enhancedExchange, ...prev]);
+            
+            // 切换到兑换记录标签
+            setActiveTab('exchanged');
+          }
+        } else {
+          alert(`兑换失败: ${response.error || '未知错误'}`);
         }
+      } else {
+        // 如果合约兑换成功，更新UI
+        alert('兑换成功！');
         
         // 立即从本地状态中移除已兑换的奖品
         console.log('从本地移除奖品:', reward.id);
         const updatedRewards = rewards.filter(r => r.id !== reward.id);
-        console.log('更新后的奖品列表:', updatedRewards);
-        
-        // 直接更新本地奖品列表状态
         setRewards(updatedRewards);
         
-        // 添加到兑换记录
-        if (response.data) {
-          console.log('添加到兑换记录:', response.data);
-          // 确保response.data是一个有效的Exchange对象
-          const newExchange = response.data as Exchange;
-          
-          // 添加额外的字段，确保显示正确
-          const enhancedExchange = {
-            ...newExchange,
-            reward_name: reward.name,
-            reward_image: reward.image_url,
-            child_name: currentChild.name,
-            token_amount: reward.token_price
-          };
-          
-          console.log('增强后的兑换记录:', enhancedExchange);
-          
-          // 添加到兑换记录列表的开头
-          setExchanges(prev => [enhancedExchange, ...prev]);
-          
-          // 切换到兑换记录标签
-          setActiveTab('exchanged');
-        }
+        // 刷新兑换记录
+        fetchExchanges();
         
-        // 后台刷新数据
-        console.log('开始后台刷新数据...');
-        setTimeout(() => {
-          console.log('执行后台刷新...');
-          refreshBalance();
-          fetchExchanges();
-          fetchRewards();
-        }, 1000);
-      } else {
-        console.error('兑换失败详情:', response);
-        
-        // 检查是否是库存不足错误
-        const isOutOfStock = response.error && response.error.includes('out of stock');
-        
-        if (isOutOfStock) {
-          console.log('检测到库存不足错误，从本地移除奖品');
-          // 即使兑换失败，也从本地列表中移除商品（因为后端已经认为它没有库存）
-          const updatedRewards = rewards.filter(r => r.id !== reward.id);
-          setRewards(updatedRewards);
-          
-          // 强制刷新奖品列表
-          setTimeout(() => {
-            fetchRewards();
-          }, 500);
-          
-          alert('兑换失败: 该奖品已被兑换完毕');
-        } else {
-          alert(`兑换失败: ${response.error || '未知错误'}`);
-        }
+        // 切换到兑换记录标签
+        setActiveTab('exchanged');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('兑换过程出错:', error);
-      
-      // 检查错误信息中是否包含库存不足
-      const errorMessage = error.response?.data?.error || error.message || '未知错误';
-      const isOutOfStock = errorMessage.includes('out of stock');
-      
-      if (isOutOfStock) {
-        console.log('检测到库存不足错误，从本地移除奖品');
-        // 即使兑换失败，也从本地列表中移除商品（因为后端已经认为它没有库存）
-        const updatedRewards = rewards.filter(r => r.id !== reward.id);
-        setRewards(updatedRewards);
-        
-        alert('兑换失败: 该奖品已被兑换完毕');
-        
-        // 强制刷新奖品列表
-        setTimeout(() => {
-          fetchRewards();
-        }, 500);
-      } else {
-        alert(`兑换过程发生错误: ${errorMessage}`);
-      }
+      alert(`兑换过程出错: ${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
       setExchangeInProgress(false);
     }
@@ -341,6 +338,7 @@ const RewardStore = () => {
       
       // 立即获取数据
       fetchRewards();
+      // 使用普通的fetchBalance而不是强制刷新
       fetchBalance();
       fetchExchanges();
     }
@@ -383,6 +381,36 @@ const RewardStore = () => {
     .filter(exchange => exchange.status !== 'cancelled')
     .reduce((total, exchange) => total + exchange.token_amount, 0);
   
+  // 生成默认图片的数据URL
+  const generateDefaultImageDataUrl = (text: string): string => {
+    try {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+        <rect width="400" height="300" fill="#f0f0f0"/>
+        <text x="200" y="150" font-family="Arial" font-size="24" text-anchor="middle" fill="#888888">${text || '奖品'}</text>
+      </svg>`;
+      return `data:image/svg+xml;base64,${btoa(svg)}`;
+    } catch (error) {
+      console.error('生成默认图片失败:', error);
+      // 提供一个极简的备用数据URL
+      return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    }
+  };
+
+  // 处理图片加载错误
+  const handleImageError = (reward: Reward) => {
+    console.log('图片加载失败:', reward.image_url);
+    // 创建一个新的奖品对象，替换图片URL为默认图片
+    const updatedReward = {
+      ...reward,
+      image_url: generateDefaultImageDataUrl(reward.name)
+    };
+    
+    // 更新奖品列表中的对应项
+    setRewards(prevRewards => 
+      prevRewards.map(r => r.id === reward.id ? updatedReward : r)
+    );
+  };
+  
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-8 flex justify-between items-center">
@@ -404,7 +432,7 @@ const RewardStore = () => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
+        <Card className="flex-1">
           <CardBody className="flex items-center">
             <div className="flex-shrink-0 mr-4">
               <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
@@ -533,42 +561,49 @@ const RewardStore = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {availableRewards.map(reward => (
-                <Card key={reward.id} className="overflow-hidden">
-                  <div className="h-48 bg-gray-200 overflow-hidden">
-                    {reward.image_url ? (
-                      <img
-                        src={reward.image_url}
-                        alt={reward.name}
+              {availableRewards.map((reward) => (
+                <div key={reward.id} className="w-full">
+                  <Card 
+                    className="h-full cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                    onClick={() => handleExchange(reward)}
+                  >
+                    {/* 奖品图片 */}
+                    <div className="relative w-full h-48 bg-gray-100 overflow-hidden flex items-center justify-center">
+                      <img 
+                        src={reward.image_url || generateDefaultImageDataUrl(reward.name)} 
+                        alt={reward.name} 
                         className="w-full h-full object-contain"
+                        onError={() => handleImageError(reward)}
+                        loading="lazy"
                       />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                        <ShoppingBag className="h-12 w-12 text-gray-400" />
-                      </div>
-                    )}
-                  </div>
-                  <CardBody>
-                    <h3 className="font-semibold text-lg mb-2">{reward.name}</h3>
-                    <p className="text-gray-600 text-sm mb-3">{reward.description}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="text-primary-600 font-bold">
-                        {Math.floor(reward.token_price)} FCT
-                      </div>
-                      <div className="text-sm text-gray-500">
-                      Limited: 1
+                      <div className="absolute top-0 left-0 bg-blue-500 text-white px-2 py-1 text-xs font-bold">
+                        Limited: 1
                       </div>
                     </div>
-                    <Button
-                      className="w-full mt-4"
-                      variant="primary"
-                      onClick={() => handleExchange(reward)}
-                      disabled={parseFloat(balance) < reward.token_price || exchangeInProgress}
-                    >
-                      {exchangeInProgress ? 'Processing...' : 'Exchange'}
-                    </Button>
-                  </CardBody>
-                </Card>
+                    
+                    <CardBody>
+                      <div className="mb-2 flex justify-between items-start">
+                        <h3 className="text-lg font-semibold text-gray-900">{reward.name}</h3>
+                        <div className="px-2 py-1 bg-primary-100 text-primary-800 text-sm font-medium rounded-md">
+                          {reward.token_price} FCT
+                        </div>
+                      </div>
+                      <p className="text-gray-600 text-sm mb-4">
+                        {reward.description || '暂无描述'}
+                      </p>
+                      <div className="mt-auto pt-2 border-t border-gray-100 flex justify-between items-center">
+                        <span className="text-sm text-gray-500">Limited: 1</span>
+                        <Button 
+                          variant="primary" 
+                          size="sm"
+                          disabled={parseFloat(balance) < reward.token_price || exchangeInProgress}
+                        >
+                          {exchangeInProgress ? '处理中...' : '兑换奖品'}
+                        </Button>
+                      </div>
+                    </CardBody>
+                  </Card>
+                </div>
               ))}
             </div>
           )}

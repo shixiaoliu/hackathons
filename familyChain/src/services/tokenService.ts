@@ -198,10 +198,96 @@ export const updateLocalBalance = (walletAddress: string, newBalance: string): v
 export const clearBalanceCache = (walletAddress?: string): void => {
   if (walletAddress) {
     delete cachedBalances[walletAddress];
-    console.log(`已清除地址 ${walletAddress} 的余额缓存`);
+    console.log(`已清除钱包地址 ${walletAddress} 的余额缓存`);
   } else {
     cachedBalances = {};
     console.log('已清除所有余额缓存');
+  }
+};
+
+/**
+ * 通过合约兑换奖品
+ * @param rewardId 奖品ID
+ * @returns 交易结果
+ */
+export const exchangeRewardWithContract = async (rewardId: number): Promise<boolean> => {
+  try {
+    console.log(`通过合约兑换奖品: rewardId=${rewardId}`);
+    
+    // 检查是否有window.ethereum
+    if (!window.ethereum) {
+      console.error('未找到MetaMask或其他以太坊提供者');
+      return false;
+    }
+    
+    // 创建provider和signer
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const signerAddress = await signer.getAddress();
+    
+    console.log('当前签名者地址:', signerAddress);
+    
+    // 获取RewardRegistry合约地址
+    const rewardRegistryAddress = import.meta.env.VITE_REWARD_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000';
+    if (!rewardRegistryAddress || rewardRegistryAddress === '0x0000000000000000000000000000000000000000') {
+      console.error('RewardRegistry合约地址未配置，请检查环境变量VITE_REWARD_CONTRACT_ADDRESS');
+      return false;
+    }
+    
+    console.log('使用RewardRegistry合约地址:', rewardRegistryAddress);
+    
+    try {
+      // 使用硬编码的ABI，包含exchangeReward方法
+      const rewardRegistryABI = [
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "_rewardId",
+              "type": "uint256"
+            }
+          ],
+          "name": "exchangeReward",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        }
+      ];
+      
+      // 创建合约实例
+      const rewardRegistryContract = new ethers.Contract(rewardRegistryAddress, rewardRegistryABI, signer);
+      
+      // 调用exchangeReward方法
+      console.log('调用exchangeReward方法, rewardId:', rewardId);
+      const tx = await rewardRegistryContract.exchangeReward(
+        rewardId,
+        {
+          gasLimit: 3000000 // 设置较大的gas限制
+        }
+      );
+      console.log('exchangeReward方法调用成功，交易哈希:', tx.hash);
+      
+      // 等待交易确认
+      const receipt = await tx.wait();
+      console.log('兑换交易已确认:', receipt);
+      
+      // 清除余额缓存，确保下次获取最新余额
+      clearBalanceCache();
+      
+      return true;
+    } catch (contractError) {
+      console.error('调用合约方法失败:', contractError);
+      return false;
+    }
+  } catch (error) {
+    console.error('通过合约兑换奖品失败:', error);
+    return false;
   }
 };
 
@@ -247,6 +333,9 @@ export const burnTokens = async (address: string, amount: number): Promise<boole
     // 创建provider和signer
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
+    const signerAddress = await signer.getAddress();
+    
+    console.log('当前签名者地址:', signerAddress);
     
     // 获取合约地址
     let contractAddress = TOKEN_CONTRACT_ADDRESS;
@@ -280,54 +369,265 @@ export const burnTokens = async (address: string, amount: number): Promise<boole
     const amountInWei = ethers.parseUnits(amount.toString(), 18);
     console.log('销毁数量(wei):', amountInWei.toString());
     
+    // 检查当前用户是否有权限销毁代币
+    let isMinter = false;
+    try {
+      if (typeof tokenContract.authorizedMinters === 'function') {
+        isMinter = await tokenContract.authorizedMinters(signerAddress);
+        console.log('当前用户是否为授权铸币者:', isMinter);
+      }
+    } catch (error) {
+      console.log('检查铸币权限失败:', error);
+    }
+    
     // 尝试不同的销毁方法
     let tx;
     try {
-      // 首先尝试burn方法
-      console.log('尝试burn方法...');
-      tx = await tokenContract.burn(address, amountInWei);
+      // 检查合约方法
+      console.log('检查合约方法...');
+      try {
+        // 使用正确的方式获取合约函数
+        const functionFragments = tokenContract.interface.fragments.filter(f => f.type === 'function');
+        const functionNames = functionFragments.map(f => {
+          // 使用类型断言或检查属性存在性
+          const fragment = f as { name?: string };
+          return fragment.name || 'unknown';
+        });
+        console.log('可用合约方法:', functionNames);
+      } catch (error) {
+        console.error('获取合约方法失败:', error);
+      }
+      
+      // 如果当前用户是铸币者，尝试直接burn
+      if (isMinter) {
+        console.log('尝试burn方法(作为铸币者)...');
+        // 根据RewardToken.sol合约，burn方法需要两个参数: from和amount
+        tx = await tokenContract.burn(address, amountInWei);
+        console.log('burn方法调用成功，交易哈希:', tx.hash);
+      } else {
+        // 如果当前用户不是铸币者，尝试使用标准ERC20的transfer方法
+        throw new Error('当前用户不是授权铸币者，尝试其他方法');
+      }
     } catch (burnError) {
       console.error('burn方法失败:', burnError);
       
-      try {
-        // 尝试transfer方法，将代币转移到0地址
-        console.log('尝试transfer方法，转移到0地址...');
-        const zeroAddress = '0x0000000000000000000000000000000000000000';
-        tx = await tokenContract.transfer(zeroAddress, amountInWei);
-      } catch (transferError) {
-        console.error('transfer方法失败:', transferError);
-        
-        // 尝试通过API销毁代币
-        console.log('尝试通过API销毁代币...');
+      // 检查当前签名者是否是代币持有者
+      const isTokenHolder = address.toLowerCase() === signerAddress.toLowerCase();
+      console.log('当前签名者是否是代币持有者:', isTokenHolder);
+      
+      if (isTokenHolder) {
+        // 如果当前签名者就是代币持有者，尝试使用标准ERC20的transfer方法
         try {
-          const response = await contractApi.transfer('0x0000000000000000000000000000000000000000', amount.toString());
-          if (response.success) {
-            console.log('通过API销毁代币成功');
-            return true;
-          } else {
-            console.error('通过API销毁代币失败:', response.error);
-            return false;
-          }
-        } catch (apiError) {
-          console.error('API销毁代币失败:', apiError);
+          console.log('尝试使用标准ERC20 transfer方法，转移到0地址...');
+          const zeroAddress = '0x0000000000000000000000000000000000000000';
+          tx = await tokenContract.transfer(zeroAddress, amountInWei);
+          console.log('transfer方法调用成功，交易哈希:', tx.hash);
+        } catch (transferError) {
+          console.error('transfer方法失败:', transferError);
           return false;
         }
+      } else {
+        console.error('当前签名者不是代币持有者，无法销毁代币');
+        return false;
       }
     }
     
-    console.log('销毁交易已提交:', tx.hash);
-    
     // 等待交易确认
-    const receipt = await tx.wait();
-    console.log('销毁交易已确认:', receipt);
-    
-    // 更新本地缓存的余额
-    const newBalance = (parseFloat(await getTokenBalance(address)) - amount).toString();
-    updateLocalBalance(address, newBalance);
-    
-    return true;
+    try {
+      const receipt = await tx.wait();
+      console.log('销毁代币交易已确认:', receipt);
+      
+      // 清除余额缓存，确保下次获取最新余额
+      clearBalanceCache(address);
+      
+      return true;
+    } catch (waitError) {
+      console.error('等待交易确认失败:', waitError);
+      return false;
+    }
   } catch (error) {
     console.error('销毁代币失败:', error);
     return false;
+  }
+}; 
+
+/**
+ * 通过合约创建奖品
+ * @param familyId 家庭ID
+ * @param name 奖品名称
+ * @param description 奖品描述
+ * @param imageURI 奖品图片URI
+ * @param tokenPrice 代币价格
+ * @param stock 库存数量
+ * @returns 创建的奖品ID，如果失败则返回0
+ */
+export const createRewardWithContract = async (
+  familyId: number,
+  name: string,
+  description: string,
+  imageURI: string,
+  tokenPrice: number,
+  stock: number
+): Promise<number> => {
+  try {
+    console.log(`通过合约创建奖品: 家庭ID=${familyId}, 名称=${name}, 价格=${tokenPrice}, 库存=${stock}`);
+    
+    // 检查是否有window.ethereum
+    if (!(window as any).ethereum) {
+      console.error('未找到MetaMask或其他以太坊提供者');
+      return 0;
+    }
+    
+    // 创建provider和signer
+    const provider = new ethers.BrowserProvider((window as any).ethereum);
+    const signer = await provider.getSigner();
+    const signerAddress = await signer.getAddress();
+    
+    console.log('当前签名者地址:', signerAddress);
+    
+    // 获取RewardRegistry合约地址
+    const rewardRegistryAddress = import.meta.env.VITE_REWARD_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000';
+    if (!rewardRegistryAddress || rewardRegistryAddress === '0x0000000000000000000000000000000000000000') {
+      console.error('RewardRegistry合约地址未配置，请检查环境变量VITE_REWARD_CONTRACT_ADDRESS');
+      return 0;
+    }
+    
+    console.log('使用RewardRegistry合约地址:', rewardRegistryAddress);
+    
+    try {
+      // 使用RewardRegistry的ABI，只包含createReward方法
+      const rewardRegistryABI = [
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "_familyId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "_name",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "_description",
+              "type": "string"
+            },
+            {
+              "internalType": "string",
+              "name": "_imageURI",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_tokenPrice",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_stock",
+              "type": "uint256"
+            }
+          ],
+          "name": "createReward",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        }
+      ];
+      
+      // 创建合约实例
+      const rewardRegistryContract = new ethers.Contract(rewardRegistryAddress, rewardRegistryABI, signer);
+      
+      // 将tokenPrice转换为合适的单位
+      // 不使用parseUnits直接转换为wei，而是使用较小的值
+      const tokenPriceValue = typeof tokenPrice === 'string' ? parseFloat(tokenPrice) : tokenPrice;
+      
+      // 直接使用原始值，不再乘以10^18
+      // 合约内部会处理单位转换
+      const tokenPriceForContract = BigInt(Math.floor(tokenPriceValue));
+      
+      console.log('处理后的代币价格:', tokenPriceForContract.toString());
+      
+      // 处理图片URI，避免数据过大
+      let processedImageURI = imageURI;
+      
+      // 检查是否为base64编码的图片数据
+      if (imageURI && imageURI.startsWith('data:image')) {
+        console.log('检测到base64编码的图片，使用外部URL替代');
+        // 使用占位图片URL替代base64数据
+        processedImageURI = 'https://via.placeholder.com/400x300?text=Reward';
+      }
+      
+      // 限制description长度
+      const shortDescription = description.length > 100 ? description.substring(0, 100) + '...' : description;
+      
+      // 调用createReward方法，增加gas限制
+      console.log('调用createReward方法，参数:', {
+        familyId,
+        name,
+        description: shortDescription,
+        imageURI: '图片URL已处理', // 不打印完整URL
+        tokenPrice: tokenPriceForContract.toString(),
+        stock
+      });
+      
+      const tx = await rewardRegistryContract.createReward(
+        familyId,
+        name,
+        shortDescription,
+        processedImageURI,
+        tokenPriceForContract,
+        stock,
+        { 
+          gasLimit: 3000000 // 设置较大的gas限制
+        }
+      );
+      
+      console.log('createReward方法调用成功，交易哈希:', tx.hash);
+      
+      // 等待交易确认
+      const receipt = await tx.wait();
+      console.log('创建奖品交易已确认:', receipt);
+      
+      // 从事件中提取奖品ID
+      if (receipt && receipt.logs) {
+        for (const log of receipt.logs) {
+          try {
+            // 尝试解析事件
+            const parsedLog = rewardRegistryContract.interface.parseLog({
+              topics: log.topics as string[],
+              data: log.data
+            });
+            
+            // 检查是否是RewardCreated事件
+            if (parsedLog && parsedLog.name === 'RewardCreated') {
+              const rewardId = parsedLog.args[0]; // 第一个参数应该是rewardId
+              console.log('从事件中提取的奖品ID:', rewardId);
+              return Number(rewardId);
+            }
+          } catch (parseError) {
+            // 忽略解析错误，继续检查下一个日志
+            console.log('解析日志失败，继续检查下一个');
+          }
+        }
+      }
+      
+      // 如果无法从事件中提取ID，返回1表示成功但无法获取ID
+      return 1;
+    } catch (contractError) {
+      console.error('调用合约方法失败:', contractError);
+      return 0;
+    }
+  } catch (error) {
+    console.error('通过合约创建奖品失败:', error);
+    return 0;
   }
 }; 

@@ -631,7 +631,7 @@ export const rewardApi = {
 // 兑换相关 API
 export const exchangeApi = {
   // 兑换奖品
-  create: (data: { reward_id: number; notes?: string }) =>
+  create: (data: { reward_id: number; notes?: string; token_burned?: boolean }) =>
     apiClient.post<Exchange>('/exchanges', data),
 
   // 获取孩子的兑换记录

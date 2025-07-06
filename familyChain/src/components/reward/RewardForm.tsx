@@ -11,10 +11,24 @@ interface RewardFormProps {
     image_url: string;
     token_price: number;
     stock: number;
+    create_on_blockchain?: boolean;
   }) => void;
   onCancel: () => void;
   isLoading?: boolean;
 }
+
+// 安全的Base64编码函数，支持Unicode字符
+const safeBase64Encode = (str: string): string => {
+  try {
+    // 对于现代浏览器，使用内置的编码API
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => 
+      String.fromCharCode(parseInt(p1, 16))
+    ));
+  } catch (e) {
+    console.error('编码失败:', e);
+    return '';
+  }
+};
 
 const RewardForm: React.FC<RewardFormProps> = ({
   initialData,
@@ -30,7 +44,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
   const [previewImage, setPreviewImage] = useState<string | null>(initialData?.image_url || null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-      // 表单验证
+  // 表单验证
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     
@@ -43,14 +57,30 @@ const RewardForm: React.FC<RewardFormProps> = ({
     }
     
     // 库存固定为1，移除验证
-        
-    // 恢复图片URL验证
-    if (!imageUrl.trim()) {
-      newErrors.imageUrl = '请上传图片或提供图片URL';
+    
+    // 图片验证 - 如果没有预览图片，则使用默认图片
+    if (!previewImage && !imageUrl) {
+      // 不再将缺少图片视为错误，将使用默认图片
+      console.log('将使用默认图片');
     }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // 生成默认图片的数据URL
+  const generateDefaultImageDataUrl = (text: string): string => {
+    try {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+        <rect width="400" height="300" fill="#f0f0f0"/>
+        <text x="200" y="150" font-family="Arial" font-size="24" text-anchor="middle" fill="#888888">${text || '奖品'}</text>
+      </svg>`;
+      return `data:image/svg+xml;base64,${safeBase64Encode(svg)}`;
+    } catch (error) {
+      console.error('生成默认图片失败:', error);
+      // 提供一个极简的备用数据URL
+      return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    }
   };
 
   // 提交表单
@@ -62,14 +92,15 @@ const RewardForm: React.FC<RewardFormProps> = ({
     }
     
     // 使用用户选择的图片或默认图片
-    const finalImageUrl = imageUrl || 'https://via.placeholder.com/400x300?text=%E5%A5%96%E5%93%81';
+    const finalImageUrl = imageUrl || generateDefaultImageDataUrl(name);
     
     onSubmit({
       name,
       description,
       image_url: finalImageUrl,
       token_price: tokenPrice,
-      stock: 1  // 库存固定为1
+      stock: 1,  // 库存固定为1
+      create_on_blockchain: true // 默认在区块链上创建
     });
   };
 
@@ -84,9 +115,9 @@ const RewardForm: React.FC<RewardFormProps> = ({
       return;
     }
     
-    // 文件大小限制（2MB）
-    if (file.size > 2 * 1024 * 1024) {
-      setErrors({...errors, imageUrl: '图片大小不能超过2MB'});
+    // 文件大小限制（500KB）
+    if (file.size > 500 * 1024) {
+      setErrors({...errors, imageUrl: '图片大小不能超过500KB'});
       return;
     }
     
@@ -94,22 +125,11 @@ const RewardForm: React.FC<RewardFormProps> = ({
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
+      console.log('图片已加载，设置预览和URL');
       setPreviewImage(result);
-      setImageUrl(result); // Base64编码的图片数据
+      setImageUrl(result);
     };
     reader.readAsDataURL(file);
-    
-    // 清除错误
-    if (errors.imageUrl) {
-      const { imageUrl, ...restErrors } = errors;
-      setErrors(restErrors);
-    }
-  };
-
-  // 处理外部图片URL
-  const handleExternalImageUrl = (url: string) => {
-    setImageUrl(url);
-    setPreviewImage(url);
     
     // 清除错误
     if (errors.imageUrl) {
@@ -188,7 +208,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
           ) : (
             <div className="w-full h-48 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center bg-gray-50">
               <ImagePlus className="h-12 w-12 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-500">点击上传图片或输入图片URL</p>
+              <p className="mt-2 text-sm text-gray-500">点击上传图片</p>
             </div>
           )}
           
@@ -210,23 +230,16 @@ const RewardForm: React.FC<RewardFormProps> = ({
                 选择图片
               </label>
             </div>
-            <div className="flex-1">
-              <input
-                type="text"
-                value={imageUrl}
-                onChange={(e) => handleExternalImageUrl(e.target.value)}
-                placeholder="或输入图片URL"
-                className={`w-full px-3 py-2 border ${
-                  errors.imageUrl ? 'border-red-500' : 'border-gray-300'
-                } rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500`}
-                disabled={isLoading}
-              />
-            </div>
           </div>
           
           {errors.imageUrl && (
             <p className="text-sm text-red-500 self-start">{errors.imageUrl}</p>
           )}
+          
+          {/* 添加提示信息 */}
+          <p className="text-xs text-gray-500 self-start">
+            上传图片将被转换为内联格式，无需依赖外部图片服务
+          </p>
         </div>
       </div>
       
