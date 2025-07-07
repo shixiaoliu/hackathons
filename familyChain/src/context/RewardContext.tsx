@@ -18,6 +18,7 @@ interface RewardContextType {
     image_url: string;
     token_price: number;
     stock: number;
+    contract_reward_id?: number;
   }) => Promise<Reward | null>;
   updateReward: (id: number, data: Partial<Reward>) => Promise<boolean>;
   deleteReward: (id: number) => Promise<boolean>;
@@ -132,6 +133,7 @@ export const RewardProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     image_url: string;
     token_price: number;
     stock: number;
+    contract_reward_id?: number;
   }): Promise<Reward | null> => {
     if (!selectedFamily || !selectedFamily.id) {
       setError('没有选择家庭，无法创建奖品');

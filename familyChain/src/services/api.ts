@@ -581,7 +581,8 @@ export const rewardApi = {
     description: string;
     image_url: string;
     token_price: number;
-    stock: number; // 兼容旧接口，但前端固定为1
+    stock: number;
+    contract_reward_id?: number; // 添加区块链合约奖品ID
   }) => apiClient.post<Reward>(`/rewards/family/${familyId}`, rewardData),
 
   // 获取家庭奖品列表

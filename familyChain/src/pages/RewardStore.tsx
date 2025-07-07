@@ -201,7 +201,17 @@ const RewardStore = () => {
       let exchangeSuccess = false;
       try {
         console.log('尝试通过RewardRegistry合约兑换奖品...');
-        exchangeSuccess = await exchangeRewardWithContract(reward.id);
+        if (!reward.contract_reward_id) {
+          console.warn('奖品没有关联的区块链ID，无法使用合约兑换:', reward.id);
+          throw new Error('奖品没有关联的区块链ID');
+        }
+        
+        console.log('使用区块链奖品ID进行兑换:', {
+          app_reward_id: reward.id,
+          blockchain_reward_id: reward.contract_reward_id
+        });
+        
+        exchangeSuccess = await exchangeRewardWithContract(reward.contract_reward_id);
         console.log('合约兑换结果:', exchangeSuccess ? '成功' : '失败');
         
         // 如果合约兑换成功，立即更新余额显示

@@ -49,14 +49,20 @@ func (s *RewardService) CreateReward(ctx context.Context, userID uint, familyID 
 
 	// 创建数据库记录
 	reward := &models.Reward{
-		FamilyID:    familyID,
-		Name:        req.Name,
-		Description: req.Description,
-		ImageURL:    req.ImageURL,
-		TokenPrice:  req.TokenPrice,
-		CreatedBy:   userID,
-		Active:      true,
-		Stock:       req.Stock,
+		FamilyID:         familyID,
+		Name:             req.Name,
+		Description:      req.Description,
+		ImageURL:         req.ImageURL,
+		TokenPrice:       req.TokenPrice,
+		CreatedBy:        userID,
+		Active:           true,
+		Stock:            req.Stock,
+		ContractRewardID: req.ContractRewardID,
+	}
+
+	// 如果有区块链奖品ID，记录日志
+	if req.ContractRewardID != nil {
+		fmt.Printf("关联区块链奖品ID: %d\n", *req.ContractRewardID)
 	}
 
 	fmt.Printf("准备保存到数据库的奖品记录: %+v\n", reward)
@@ -156,6 +162,10 @@ func (s *RewardService) UpdateReward(ctx context.Context, id uint, req models.Re
 	if req.Active != nil {
 		updates["active"] = *req.Active
 	}
+	if req.ContractRewardID != nil {
+		updates["contract_reward_id"] = *req.ContractRewardID
+		fmt.Printf("更新区块链奖品ID为: %d\n", *req.ContractRewardID)
+	}
 
 	fmt.Printf("更新数据库记录: %+v\n", updates)
 	err = s.rewardRepo.Update(id, updates)
@@ -196,16 +206,7 @@ func (s *RewardService) ExchangeReward(ctx context.Context, childID uint, req mo
 		return 0, fmt.Errorf("reward is out of stock")
 	}
 
-	// 获取孩子的以太坊地址
-	childAddress := common.HexToAddress(child.WalletAddress)
-	if (childAddress == common.Address{}) {
-		return 0, fmt.Errorf("invalid child wallet address")
-	}
-
-	// 使用孩子的地址调用合约进行兑换
-	rewardIdBig := new(big.Int).SetUint64(uint64(req.RewardID))
-
-	// 创建数据库兑换记录 - 先创建记录，即使区块链交易失败也能跟踪
+	// 创建数据库兑换记录
 	exchange := &models.Exchange{
 		RewardID:    uint(req.RewardID),
 		ChildID:     childID,
@@ -218,6 +219,12 @@ func (s *RewardService) ExchangeReward(ctx context.Context, childID uint, req mo
 		return 0, fmt.Errorf("failed to create exchange in database: %w", err)
 	}
 
+	// 更新奖品库存
+	if err := s.rewardRepo.UpdateStock(uint(req.RewardID), -1); err != nil {
+		fmt.Printf("更新奖品库存失败: %v\n", err)
+		// 继续执行，不返回错误
+	}
+
 	// 启动一个goroutine来处理区块链交易，避免阻塞API响应
 	go func() {
 		// 创建新的上下文，不受原始请求上下文的限制
@@ -227,9 +234,19 @@ func (s *RewardService) ExchangeReward(ctx context.Context, childID uint, req mo
 		fmt.Printf("开始后台处理兑换交易，兑换ID: %d, 奖品ID: %d, 前端已销毁代币: %v\n",
 			exchange.ID, req.RewardID, req.TokenBurned)
 
-		// 无论前端是否已经销毁了代币，都调用区块链合约进行兑换
+		// 获取孩子的以太坊地址
+		childAddress := common.HexToAddress(child.WalletAddress)
+		if (childAddress == common.Address{}) {
+			fmt.Printf("无效的孩子钱包地址，跳过区块链交易\n")
+			return
+		}
+
+		// 使用孩子的地址调用合约进行兑换
+		rewardIdBig := new(big.Int).SetUint64(uint64(req.RewardID))
+
+		// 无论前端是否已经销毁了代币，都尝试调用区块链合约进行兑换
 		// 这确保了代币被正确销毁并记录在区块链上
-		fmt.Printf("调用区块链合约进行兑换和代币销毁\n")
+		fmt.Printf("尝试调用区块链合约进行兑换和代币销毁\n")
 
 		// 改进的重试机制
 		var tx *types.Transaction
@@ -276,11 +293,9 @@ func (s *RewardService) ExchangeReward(ctx context.Context, childID uint, req mo
 				backoffTime *= 2
 				continue
 			} else if strings.Contains(txErr.Error(), "insufficient funds") {
-				// 更新兑换状态为失败
-				updateErr := s.exchangeRepo.UpdateStatus(exchange.ID, models.ExchangeStatusFailed, "账户余额不足")
-				if updateErr != nil {
-					fmt.Printf("更新兑换状态失败: %v\n", updateErr)
-				}
+				fmt.Printf("账户余额不足，记录错误但不影响兑换状态\n")
+				// 记录错误但不更新兑换状态为失败
+				s.exchangeRepo.AddNotes(exchange.ID, "区块链交易失败: 账户余额不足，但兑换请求已记录")
 				return // 终止goroutine
 			}
 
@@ -291,21 +306,15 @@ func (s *RewardService) ExchangeReward(ctx context.Context, childID uint, req mo
 
 		// 检查是否所有尝试都失败了
 		if txErr != nil {
-			fmt.Printf("所有交易尝试均失败，更新兑换状态为失败\n")
-			updateErr := s.exchangeRepo.UpdateStatus(exchange.ID, models.ExchangeStatusFailed, "区块链交易错误，请稍后再试")
-			if updateErr != nil {
-				fmt.Printf("更新兑换状态失败: %v\n", updateErr)
-			}
+			fmt.Printf("所有区块链交易尝试均失败，但兑换请求已成功记录\n")
+			// 记录错误但不更新兑换状态为失败
+			s.exchangeRepo.AddNotes(exchange.ID, "区块链交易失败，但兑换请求已记录")
 			return
 		}
 
 		// 交易已提交，但不等待确认，避免阻塞
-		fmt.Printf("交易已提交，哈希: %s，更新兑换状态为处理中\n", tx.Hash().Hex())
-
-		// 更新奖品库存
-		if err := s.rewardRepo.UpdateStock(uint(req.RewardID), -1); err != nil {
-			fmt.Printf("更新奖品库存失败: %v\n", err)
-		}
+		fmt.Printf("交易已提交，哈希: %s，记录交易信息\n", tx.Hash().Hex())
+		s.exchangeRepo.AddNotes(exchange.ID, fmt.Sprintf("区块链交易已提交，交易哈希: %s", tx.Hash().Hex()))
 
 		// 启动另一个goroutine来等待交易确认
 		go func() {
@@ -318,30 +327,20 @@ func (s *RewardService) ExchangeReward(ctx context.Context, childID uint, req mo
 
 			if err != nil {
 				fmt.Printf("交易确认失败: %v\n", err)
-				// 不更新状态，保持为处理中
+				// 记录错误但不更新兑换状态
+				s.exchangeRepo.AddNotes(exchange.ID, fmt.Sprintf("区块链交易确认失败: %v", err))
 				return
 			}
 
 			// 检查交易状态
 			if receipt.Status == types.ReceiptStatusSuccessful {
 				fmt.Printf("交易确认成功，区块号: %d\n", receipt.BlockNumber.Uint64())
-				// 更新兑换状态为已确认
-				updateErr := s.exchangeRepo.UpdateStatus(exchange.ID, models.ExchangeStatusConfirmed, "区块链交易已确认")
-				if updateErr != nil {
-					fmt.Printf("更新兑换状态失败: %v\n", updateErr)
-				}
+				// 添加交易确认信息
+				s.exchangeRepo.AddNotes(exchange.ID, fmt.Sprintf("区块链交易已确认，区块号: %d", receipt.BlockNumber.Uint64()))
 			} else {
 				fmt.Printf("交易失败，状态码: %d\n", receipt.Status)
-				// 更新兑换状态为失败
-				updateErr := s.exchangeRepo.UpdateStatus(exchange.ID, models.ExchangeStatusFailed, "区块链交易执行失败")
-				if updateErr != nil {
-					fmt.Printf("更新兑换状态失败: %v\n", updateErr)
-				}
-
-				// 恢复奖品库存
-				if err := s.rewardRepo.UpdateStock(uint(req.RewardID), 1); err != nil {
-					fmt.Printf("恢复奖品库存失败: %v\n", err)
-				}
+				// 记录错误但不更新兑换状态
+				s.exchangeRepo.AddNotes(exchange.ID, "区块链交易执行失败，但兑换请求仍然有效")
 			}
 		}()
 	}()

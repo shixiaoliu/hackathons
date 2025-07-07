@@ -11,6 +11,7 @@ import AddRewardModal from '../components/reward/AddRewardModal';
 import EditRewardModal from '../components/reward/EditRewardModal';
 import ExchangeActionModal from '../components/reward/ExchangeActionModal';
 import { Reward, Exchange, RewardCreateRequest, RewardUpdateRequest } from '../types/reward';
+import { createRewardWithContract } from '../services/tokenService';
 
 const RewardManagement = () => {
   const navigate = useNavigate();
@@ -89,13 +90,55 @@ const RewardManagement = () => {
     
     try {
       console.log('开始创建奖品，数据:', data);
-      const result = await createReward(data);
-      if (result) {
-        console.log('创建奖品成功:', result);
-        // 刷新奖品列表
-        fetchRewards();
-        // 关闭模态框
-        setAddModalOpen(false);
+      
+      // 检查是否需要在区块链上创建奖品
+      if (data.create_on_blockchain) {
+        console.log('在区块链上创建奖品');
+        
+        if (!selectedFamily || !selectedFamily.id) {
+          console.error('未选择家庭，无法在区块链上创建奖品');
+          return;
+        }
+        
+        // 调用合约创建奖品
+        const familyId = parseInt(selectedFamily.id);
+        const contractRewardId = await createRewardWithContract(
+          familyId,
+          data.name,
+          data.description || '',
+          data.image_url,
+          data.token_price,
+          data.stock || 1
+        );
+        
+        if (contractRewardId > 0) {
+          console.log('区块链上创建奖品成功，奖品ID:', contractRewardId);
+          // 在后端创建奖品记录，并关联区块链ID
+          const result = await createReward({
+            ...data,
+            contract_reward_id: contractRewardId
+          });
+          
+          if (result) {
+            console.log('创建奖品成功:', result);
+            // 刷新奖品列表
+            fetchRewards();
+            // 关闭模态框
+            setAddModalOpen(false);
+          }
+        } else {
+          console.error('区块链上创建奖品失败');
+        }
+      } else {
+        // 仅在后端创建奖品
+        const result = await createReward(data);
+        if (result) {
+          console.log('创建奖品成功:', result);
+          // 刷新奖品列表
+          fetchRewards();
+          // 关闭模态框
+          setAddModalOpen(false);
+        }
       }
     } catch (error) {
       console.error('创建奖品失败:', error);

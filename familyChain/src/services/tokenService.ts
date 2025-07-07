@@ -263,6 +263,21 @@ export const exchangeRewardWithContract = async (rewardId: number): Promise<bool
       // 创建合约实例
       const rewardRegistryContract = new ethers.Contract(rewardRegistryAddress, rewardRegistryABI, signer);
       
+      // 在调用前查询用户余额
+      let beforeBalance = "0";
+      let decimals = 18;
+      try {
+        const tokenContract = await getRewardTokenContract();
+        if (tokenContract) {
+          const balance = await tokenContract.balanceOf(signerAddress);
+          decimals = await tokenContract.decimals();
+          beforeBalance = ethers.formatUnits(balance, decimals);
+          console.log(`交易前余额: ${beforeBalance} FCT`);
+        }
+      } catch (balanceError) {
+        console.error('查询交易前余额失败:', balanceError);
+      }
+      
       // 调用exchangeReward方法
       console.log('调用exchangeReward方法, rewardId:', rewardId);
       const tx = await rewardRegistryContract.exchangeReward(
@@ -276,6 +291,22 @@ export const exchangeRewardWithContract = async (rewardId: number): Promise<bool
       // 等待交易确认
       const receipt = await tx.wait();
       console.log('兑换交易已确认:', receipt);
+      
+      // 在交易后查询用户余额
+      try {
+        const tokenContract = await getRewardTokenContract();
+        if (tokenContract) {
+          const balance = await tokenContract.balanceOf(signerAddress);
+          const afterBalance = ethers.formatUnits(balance, decimals);
+          console.log(`交易后余额: ${afterBalance} FCT`);
+          
+          // 计算消耗的代币数量
+          const consumedTokens = parseFloat(beforeBalance) - parseFloat(afterBalance);
+          console.log(`消耗的代币数量: ${consumedTokens.toFixed(18)} FCT`);
+        }
+      } catch (balanceError) {
+        console.error('查询交易后余额失败:', balanceError);
+      }
       
       // 清除余额缓存，确保下次获取最新余额
       clearBalanceCache();
@@ -495,7 +526,7 @@ export const createRewardWithContract = async (
     console.log('使用RewardRegistry合约地址:', rewardRegistryAddress);
     
     try {
-      // 使用RewardRegistry的ABI，只包含createReward方法
+      // 定义扩展的ABI，包含createReward方法和rewardCount方法
       const rewardRegistryABI = [
         {
           "inputs": [
@@ -540,19 +571,34 @@ export const createRewardWithContract = async (
           ],
           "stateMutability": "nonpayable",
           "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "rewardCount",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
         }
       ];
       
       // 创建合约实例
       const rewardRegistryContract = new ethers.Contract(rewardRegistryAddress, rewardRegistryABI, signer);
       
-      // 将tokenPrice转换为合适的单位
-      // 不使用parseUnits直接转换为wei，而是使用较小的值
+      // 先获取当前的rewardCount，用于后续比较
+      const beforeCount = await rewardRegistryContract.rewardCount();
+      console.log('创建奖品前的rewardCount:', Number(beforeCount));
+      
+      // 将tokenPrice转换为合适的单位，确保正确地乘以10^18
       const tokenPriceValue = typeof tokenPrice === 'string' ? parseFloat(tokenPrice) : tokenPrice;
       
-      // 直接使用原始值，不再乘以10^18
-      // 合约内部会处理单位转换
-      const tokenPriceForContract = BigInt(Math.floor(tokenPriceValue));
+      // 将代币价格乘以10^18，以符合ERC20代币的小数位数
+      const tokenPriceForContract = ethers.parseUnits(tokenPriceValue.toString(), 18);
       
       console.log('处理后的代币价格:', tokenPriceForContract.toString());
       
@@ -597,31 +643,20 @@ export const createRewardWithContract = async (
       const receipt = await tx.wait();
       console.log('创建奖品交易已确认:', receipt);
       
-      // 从事件中提取奖品ID
-      if (receipt && receipt.logs) {
-        for (const log of receipt.logs) {
-          try {
-            // 尝试解析事件
-            const parsedLog = rewardRegistryContract.interface.parseLog({
-              topics: log.topics as string[],
-              data: log.data
-            });
-            
-            // 检查是否是RewardCreated事件
-            if (parsedLog && parsedLog.name === 'RewardCreated') {
-              const rewardId = parsedLog.args[0]; // 第一个参数应该是rewardId
-              console.log('从事件中提取的奖品ID:', rewardId);
-              return Number(rewardId);
-            }
-          } catch (parseError) {
-            // 忽略解析错误，继续检查下一个日志
-            console.log('解析日志失败，继续检查下一个');
-          }
-        }
+      // 直接调用rewardCount方法获取当前计数器值
+      // 这个值应该就是我们刚刚创建的奖品ID
+      const afterCount = await rewardRegistryContract.rewardCount();
+      const rewardId = Number(afterCount);
+      console.log('创建奖品后的rewardCount:', rewardId);
+      
+      // 验证rewardCount是否增加了1
+      if (Number(afterCount) === Number(beforeCount) + 1) {
+        console.log('rewardCount成功增加，新奖品ID应为:', rewardId);
+      } else {
+        console.warn(`rewardCount变化异常: ${Number(beforeCount)} -> ${rewardId}`);
       }
       
-      // 如果无法从事件中提取ID，返回1表示成功但无法获取ID
-      return 1;
+      return rewardId;
     } catch (contractError) {
       console.error('调用合约方法失败:', contractError);
       return 0;
