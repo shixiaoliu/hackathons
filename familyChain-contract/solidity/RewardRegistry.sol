@@ -149,9 +149,6 @@ contract RewardRegistry is Ownable {
         // 扣除代币
         tokenContract.burn(msg.sender, tokenPrice);
         
-        // 减少库存
-        reward.stock--;
-        
         // 创建兑换记录
         exchangeCount++;
         exchanges[exchangeCount] = Exchange(
