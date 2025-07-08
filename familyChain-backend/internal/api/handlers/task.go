@@ -35,6 +35,7 @@ type CreateTaskRequest struct {
 	Description     string  `json:"description" binding:"required"`
 	RewardAmount    string  `json:"reward_amount" binding:"required"`
 	Difficulty      string  `json:"difficulty" binding:"required"`
+	ImageUrl        string  `json:"image_url,omitempty"`
 	AssignedChildID *uint   `json:"assigned_child_id,omitempty"`
 	DueDate         string  `json:"due_date,omitempty"`
 	ContractTaskID  *uint64 `json:"contract_task_id,omitempty"`
@@ -46,6 +47,7 @@ type UpdateTaskRequest struct {
 	RewardAmount    string `json:"reward_amount,omitempty"`
 	Difficulty      string `json:"difficulty,omitempty"`
 	Status          string `json:"status,omitempty"`
+	ImageUrl        string `json:"image_url,omitempty"`
 	AssignedChildID *uint  `json:"assigned_child_id,omitempty"`
 	DueDate         string `json:"due_date,omitempty"`
 }
@@ -125,6 +127,12 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		Status:          "pending",
 		CreatedBy:       walletAddress.(string),
 		AssignedChildID: req.AssignedChildID,
+	}
+
+	// 设置图片URL（如果前端提供了）
+	if req.ImageUrl != "" {
+		imageUrl := req.ImageUrl
+		task.ImageUrl = &imageUrl
 	}
 
 	// 设置合约任务ID（如果前端提供了）
@@ -384,6 +392,10 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	}
 	if req.Status != "" && utils.IsValidTaskStatus(req.Status) {
 		task.Status = req.Status
+	}
+	if req.ImageUrl != "" {
+		imageUrl := req.ImageUrl
+		task.ImageUrl = &imageUrl
 	}
 	if req.AssignedChildID != nil {
 		// 验证孩子是否属于当前父母

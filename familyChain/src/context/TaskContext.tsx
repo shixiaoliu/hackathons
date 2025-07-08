@@ -100,7 +100,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
               createdAt: apiTask.created_at,
               updatedAt: apiTask.updated_at,
               completionCriteria: apiTask.description, // 使用description作为完成标准
-              contractTaskId: apiTask.contract_task_id ? apiTask.contract_task_id.toString() : undefined // 添加合约任务ID
+              contractTaskId: apiTask.contract_task_id ? apiTask.contract_task_id.toString() : undefined, // 添加合约任务ID
+              imageUrl: apiTask.image_url // 添加图片URL
             };
           });
           console.log('[TaskContext] 成功获取任务:', apiTasks.length, '个任务');
@@ -185,7 +186,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         due_date: formattedDueDate,
         created_by: creatorAddress,
         status: 'pending' as const,
-        contract_task_id: taskData.contractTaskId ? Number(taskData.contractTaskId) : undefined // Add contract task ID
+        contract_task_id: taskData.contractTaskId ? Number(taskData.contractTaskId) : undefined, // Add contract task ID
+        image_url: taskData.imageUrl // Add image URL to API request
       };
       
       console.log('Sending API data:', apiTaskData);
@@ -207,7 +209,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
           createdAt: response.data.created_at,
           updatedAt: response.data.updated_at,
           completionCriteria: taskData.completionCriteria,
-          contractTaskId: response.data.contract_task_id?.toString() // Add contract task ID to response
+          contractTaskId: response.data.contract_task_id?.toString(), // Add contract task ID to response
+          imageUrl: response.data.image_url || taskData.imageUrl
         };
         setTasks(prev => [...prev, newTask]);
         console.log('Task added via API:', newTask);

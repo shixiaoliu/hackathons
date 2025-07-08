@@ -189,8 +189,8 @@ const CreateTask = () => {
         alert('未找到以太坊提供者');
         setLocalIsCreating(false);
         return;
-      }
-      
+      }      
+
       // 检查是否有MetaMask
       if (!((window as any).ethereum.isMetaMask)) {
         alert('请使用MetaMask钱包进行交易。如果已安装MetaMask，请确保它是您的默认钱包。');
@@ -276,7 +276,8 @@ const CreateTask = () => {
           createdBy: address,
           assignedChildId: selectedChild?.id || undefined,
           assignedTo: selectedChild?.walletAddress || undefined,
-          contractTaskId: contractTaskId // 将区块链任务ID传递给后端
+          contractTaskId: contractTaskId, // 将区块链任务ID传递给后端
+          imageUrl: imagePreview // 添加图片URL
         });
 
         // 3. 如果选中了子账户，分配任务给子账户
@@ -518,7 +519,8 @@ const CreateTask = () => {
                     <img
                       src={imagePreview}
                       alt="Task preview"
-                      className="w-full h-48 object-cover rounded-md"
+                      className="w-full object-contain rounded-md"
+                      style={{ maxHeight: "300px", width: "100%" }}
                     />
                     <button
                       type="button"
