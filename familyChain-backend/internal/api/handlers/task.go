@@ -71,6 +71,23 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		return
 	}
 
+	// 记录请求参数
+	log.Printf("创建任务请求: Title=%s, Description=%s, Difficulty=%s", req.Title, req.Description, req.Difficulty)
+
+	// 特别记录图片URL情况
+	if req.ImageUrl != "" {
+		urlLength := len(req.ImageUrl)
+		var prefix string
+		if urlLength > 30 {
+			prefix = req.ImageUrl[:30] + "..."
+		} else {
+			prefix = req.ImageUrl
+		}
+		log.Printf("请求包含图片URL: 长度=%d, 前缀=%s", urlLength, prefix)
+	} else {
+		log.Printf("请求中不包含图片URL")
+	}
+
 	// 获取当前用户信息
 	walletAddress, exists := c.Get("wallet_address")
 	if !exists {
@@ -131,8 +148,14 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 
 	// 设置图片URL（如果前端提供了）
 	if req.ImageUrl != "" {
+		log.Printf("准备保存图片URL: 长度=%d", len(req.ImageUrl))
+		// 检查图片URL是否过长，SQLite可能有限制
+		if len(req.ImageUrl) > 2000000 {
+			log.Printf("图片URL太长，可能会导致问题: %d 字符", len(req.ImageUrl))
+		}
 		imageUrl := req.ImageUrl
 		task.ImageUrl = &imageUrl
+		log.Printf("已设置图片URL到任务对象")
 	}
 
 	// 设置合约任务ID（如果前端提供了）

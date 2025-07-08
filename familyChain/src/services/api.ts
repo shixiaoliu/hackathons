@@ -67,6 +67,7 @@ interface Task {
   due_date?: string;
   created_at: string;
   updated_at: string;
+  image_url?: string;
 }
 
 // 奖品相关类型

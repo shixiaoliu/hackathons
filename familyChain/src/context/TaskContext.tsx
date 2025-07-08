@@ -187,8 +187,17 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         created_by: creatorAddress,
         status: 'pending' as const,
         contract_task_id: taskData.contractTaskId ? Number(taskData.contractTaskId) : undefined, // Add contract task ID
-        image_url: taskData.imageUrl // Add image URL to API request
+        image_url: taskData.imageUrl
       };
+      
+      // 添加详细的图片日志
+      if (taskData.imageUrl) {
+        console.log('原始图片URL长度:', taskData.imageUrl.length);
+        console.log('图片URL类型:', taskData.imageUrl.substring(0, 30) + '...');
+        console.log('发送到后端的image_url:', apiTaskData.image_url ? '有值(长度: ' + apiTaskData.image_url.length + ')' : 'undefined');
+      } else {
+        console.log('没有图片URL提供');
+      }
       
       console.log('Sending API data:', apiTaskData);
       

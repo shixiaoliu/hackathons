@@ -66,11 +66,81 @@ const CreateTask = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      // 检查文件类型是否为图片
+      if (!file.type.startsWith('image/')) {
+        alert('请上传有效的图片文件');
+        return;
+      }
+
+      console.log('上传图片类型:', file.type);
+      console.log('上传图片大小:', file.size / 1024, 'KB');
+
+      // 如果图片大于1MB，进行压缩
+      if (file.size > 1024 * 1024) {
+        console.log('图片过大，开始压缩...');
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const img = new Image();
+          img.onload = () => {
+            console.log('原始图片尺寸:', img.width, 'x', img.height);
+            const canvas = document.createElement('canvas');
+            // 保持原始宽高比，但最大限制为800px
+            const MAX_WIDTH = 800;
+            const MAX_HEIGHT = 800;
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+            
+            console.log('压缩后图片尺寸:', width, 'x', height);
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+            
+            // 转换为Blob
+            canvas.toBlob((blob) => {
+              if (blob) {
+                // 将Blob转换为data URL
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  const compressedDataURL = reader.result as string;
+                  console.log('压缩后图片长度:', compressedDataURL.length);
+                  console.log('压缩后图片类型:', compressedDataURL.substring(0, 30) + '...');
+                  setImagePreview(compressedDataURL);
+                  console.log('图片已压缩，大小约为:', Math.round(blob.size / 1024), 'KB');
+                };
+                reader.readAsDataURL(blob);
+              }
+            }, file.type, 0.7); // 0.7的质量比较好地平衡了大小和质量
+          };
+          img.src = reader.result as string;
+        };
+        reader.readAsDataURL(file);
+      } else {
+        // 小图片直接使用
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (reader.result && typeof reader.result === 'string') {
+            const dataURL = reader.result;
+            console.log('小图片长度:', dataURL.length);
+            console.log('小图片类型:', dataURL.substring(0, 30) + '...');
+            setImagePreview(dataURL);
+            console.log('使用原始图片，大小约为:', Math.round(file.size / 1024), 'KB');
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
   
