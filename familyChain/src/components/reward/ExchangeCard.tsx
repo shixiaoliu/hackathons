@@ -13,7 +13,7 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
   exchange, 
   isChild = false
 }) => {
-  // 状态徽章
+  // Status badge
   const renderStatusBadge = () => {
     switch (exchange.status) {
       case 'completed':
@@ -21,41 +21,41 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
         return (
           <div className="flex items-center px-2 py-1 rounded bg-green-100 text-green-800 text-xs font-medium">
             <Check className="h-3 w-3 mr-1" />
-            已完成
+            Completed
           </div>
         );
       case 'cancelled':
         return (
           <div className="flex items-center px-2 py-1 rounded bg-red-100 text-red-800 text-xs font-medium">
             <XIcon className="h-3 w-3 mr-1" />
-            已取消
+            Cancelled
           </div>
         );
       case 'failed':
         return (
           <div className="flex items-center px-2 py-1 rounded bg-red-100 text-red-800 text-xs font-medium">
             <AlertTriangle className="h-3 w-3 mr-1" />
-            失败
+            Failed
           </div>
         );
       default:
         return (
           <div className="flex items-center px-2 py-1 rounded bg-green-100 text-green-800 text-xs font-medium">
             <Check className="h-3 w-3 mr-1" />
-            已完成
+            Completed
           </div>
         );
     }
   };
   
-  // 格式化时间
+  // Format time
   const formatTime = (dateString: string) => {
     try {
       const date = new Date(dateString);
       return formatDistanceToNow(date);
     } catch (error) {
-      console.error('日期格式化错误:', error);
-      return '未知时间';
+      console.error('Date formatting error:', error);
+      return 'Unknown time';
     }
   };
 
@@ -67,7 +67,7 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
             {exchange.reward_image ? (
               <img
                 src={exchange.reward_image}
-                alt={exchange.reward_name || '奖品图片'}
+                alt={exchange.reward_name || 'Reward image'}
                 className="w-full h-full object-contain"
               />
             ) : (
@@ -80,7 +80,7 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
           <div className="flex-grow">
             <div className="flex items-center justify-between mb-1">
               <h3 className="font-medium text-gray-900">
-                {exchange.reward_name || '未命名奖品'}
+                {exchange.reward_name || 'Unnamed reward'}
               </h3>
               {renderStatusBadge()}
             </div>
@@ -91,7 +91,7 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
               <span title={new Date(exchange.exchange_date).toLocaleString()}>
                 {formatTime(exchange.exchange_date)}
               </span>
-              {/* 显示兑换的孩子姓名 */}
+              {/* Display child name */}
               {exchange.child_name && !isChild && (
                 <>
                   <span className="mx-2">•</span>

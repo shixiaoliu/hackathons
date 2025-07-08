@@ -159,7 +159,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
           className={`w-full px-3 py-2 border rounded-md ${
             errors.name ? 'border-red-500' : 'border-gray-300'
           } focus:outline-none focus:ring-1 focus:ring-primary-500`}
-          placeholder="输入奖品名称"
+          placeholder="Enter reward name"
           disabled={isLoading}
         />
         {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
@@ -176,7 +176,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
-          placeholder="输入奖品描述"
+          placeholder="Enter reward description"
           disabled={isLoading}
         ></textarea>
       </div>
@@ -208,7 +208,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
           ) : (
             <div className="w-full h-48 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center bg-gray-50">
               <ImagePlus className="h-12 w-12 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-500">点击上传图片</p>
+              <p className="mt-2 text-sm text-gray-500">Click to upload image</p>
             </div>
           )}
           
@@ -227,7 +227,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
                 htmlFor="image-upload"
                 className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
               >
-                选择图片
+                Choose Image
               </label>
             </div>
           </div>
@@ -238,7 +238,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
           
           {/* 添加提示信息 */}
           <p className="text-xs text-gray-500 self-start">
-            上传图片将被转换为内联格式，无需依赖外部图片服务
+            Uploaded images will be converted to inline format, no external image service needed
           </p>
         </div>
       </div>
@@ -262,7 +262,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
             disabled={isLoading}
           />
           <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            <span className="text-gray-500">代币</span>
+            <span className="text-gray-500">FCT</span>
           </div>
         </div>
         {errors.tokenPrice && (
@@ -280,14 +280,14 @@ const RewardForm: React.FC<RewardFormProps> = ({
           onClick={onCancel}
           disabled={isLoading}
         >
-          取消
+          Cancel
         </Button>
         <Button
           type="submit"
           isLoading={isLoading}
           disabled={isLoading}
         >
-          {initialData ? '更新奖品' : '创建奖品'}
+          {initialData ? 'Update Reward' : 'Create Reward'}
         </Button>
       </div>
     </form>

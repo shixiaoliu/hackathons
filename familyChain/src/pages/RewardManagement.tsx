@@ -9,7 +9,6 @@ import RewardCard from '../components/reward/RewardCard';
 import ExchangeCard from '../components/reward/ExchangeCard';
 import AddRewardModal from '../components/reward/AddRewardModal';
 import EditRewardModal from '../components/reward/EditRewardModal';
-import ExchangeActionModal from '../components/reward/ExchangeActionModal';
 import { Reward, Exchange, RewardCreateRequest, RewardUpdateRequest } from '../types/reward';
 import { createRewardWithContract } from '../services/tokenService';
 
@@ -315,7 +314,7 @@ const RewardManagement = () => {
         {loading && (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-primary-600"></div>
-            <p className="mt-2 text-gray-500">加载中...</p>
+            <p className="mt-2 text-gray-500">Loading...</p>
           </div>
         )}
         
@@ -327,7 +326,7 @@ const RewardManagement = () => {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-red-700">
-                  加载失败: {error}
+                  Loading failed: {error}
                 </p>
               </div>
             </div>
@@ -362,7 +361,7 @@ const RewardManagement = () => {
                         onClick={() => setAddModalOpen(true)}
                         className="mt-4"
                       >
-                        添加第一个奖品
+                        Add First Reward
                       </Button>
                     )}
                   </div>
@@ -386,22 +385,24 @@ const RewardManagement = () => {
                     <p className="mt-2 text-gray-500 text-lg">No exchange requests</p>
                     <p className="mt-1 text-sm text-gray-500">
                       {selectedFamily ? 
-                        `当前家庭 "${selectedFamily.name}" 没有兑换记录` :
-                        '请选择一个家庭查看兑换记录'
+                        `Family "${selectedFamily.name}" has no exchange records` :
+                        'Please select a family to view exchange records'
                       }
                     </p>
                     <div className="mt-4 flex flex-col items-center gap-2">
                       <button 
                         className="text-primary-600 hover:underline"
                         onClick={() => {
-                          console.log('尝试刷新兑换记录');
+                          console.log('手动刷新兑换记录');
                           if (selectedFamily) {
-                            console.log('刷新家庭兑换记录:', selectedFamily);
+                            console.log('当前选择的家庭:', selectedFamily);
                             fetchExchanges();
+                          } else {
+                            console.log('未选择家庭');
                           }
                         }}
                       >
-                        点击刷新兑换记录
+                        Click to Refresh Exchange Records
                       </button>
                     </div>
                   </div>
