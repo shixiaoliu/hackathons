@@ -11,6 +11,7 @@ import './index.css';
 import '@rainbow-me/rainbowkit/styles.css';
 import { http } from 'wagmi';
 import { getDefaultWallets } from '@rainbow-me/rainbowkit';
+import { Toaster } from 'react-hot-toast';
 
 const { wallets } = getDefaultWallets();
 
@@ -36,6 +37,7 @@ createRoot(document.getElementById('root')!).render(
           <AuthProvider>
             <BrowserRouter>
               <App />
+              <Toaster position="top-right" />
             </BrowserRouter>
           </AuthProvider>
         </RainbowKitProvider>

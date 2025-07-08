@@ -26,9 +26,7 @@ const RewardManagement = () => {
     createReward, 
     updateReward, 
     deleteReward, 
-    fetchExchanges,
-    approveExchange,
-    cancelExchange
+    fetchExchanges
   } = useReward();
   
   // 组件状态
@@ -40,15 +38,6 @@ const RewardManagement = () => {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
-  const [exchangeActionModal, setExchangeActionModal] = useState<{
-    open: boolean;
-    exchange: Exchange | null;
-    actionType: 'approve' | 'cancel';
-  }>({
-    open: false,
-    exchange: null,
-    actionType: 'approve'
-  });
   
   // 处理刷新数据
   const handleRefresh = async () => {
@@ -194,46 +183,6 @@ const RewardManagement = () => {
     }
   };
   
-  // 处理批准兑换
-  const handleApproveExchange = (exchange: Exchange) => {
-    setExchangeActionModal({
-      open: true,
-      exchange,
-      actionType: 'approve'
-    });
-  };
-  
-  // 处理拒绝兑换
-  const handleCancelExchange = (exchange: Exchange) => {
-    setExchangeActionModal({
-      open: true,
-      exchange,
-      actionType: 'cancel'
-    });
-  };
-  
-  // 确认批准或拒绝兑换
-  const confirmExchangeAction = async (notes?: string) => {
-    if (!exchangeActionModal.exchange) return;
-    
-    const exchangeId = exchangeActionModal.exchange.id;
-    let success = false;
-    
-    if (exchangeActionModal.actionType === 'approve') {
-      success = await approveExchange(exchangeId, notes);
-    } else {
-      success = await cancelExchange(exchangeId, notes);
-    }
-    
-    if (success) {
-      setExchangeActionModal({
-        open: false,
-        exchange: null,
-        actionType: 'approve'
-      });
-    }
-  };
-  
   // 根据过滤条件筛选奖品
   const filteredRewards = rewards.filter(reward => {
     if (filter === 'all') return true;
@@ -245,14 +194,10 @@ const RewardManagement = () => {
   // 根据状态过滤兑换请求
   const filteredExchanges = exchanges.filter(exchange => {
     if (filter === 'all') return true;
-    if (filter === 'pending') return exchange.status === 'pending';
     if (filter === 'completed') return exchange.status === 'completed';
     if (filter === 'cancelled') return exchange.status === 'cancelled';
     return true;
   });
-  
-  // 统计待处理的兑换请求数量
-  const pendingExchangesCount = exchanges.filter(e => e.status === 'pending').length;
   
   // 监听标签页切换
   useEffect(() => {
@@ -432,8 +377,6 @@ const RewardManagement = () => {
                       <ExchangeCard 
                         key={exchange.id}
                         exchange={exchange}
-                        onApprove={() => handleApproveExchange(exchange)}
-                        onCancel={() => handleCancelExchange(exchange)}
                       />
                     ))}
                   </div>
@@ -487,22 +430,6 @@ const RewardManagement = () => {
           }}
           onSubmit={handleEditReward}
           reward={selectedReward}
-          isLoading={loading}
-        />
-      )}
-      
-      {/* 兑换操作模态框 */}
-      {exchangeActionModal.exchange && (
-        <ExchangeActionModal 
-          isOpen={exchangeActionModal.open}
-          onClose={() => setExchangeActionModal({
-            open: false,
-            exchange: null,
-            actionType: 'approve'
-          })}
-          onConfirm={confirmExchangeAction}
-          exchange={exchangeActionModal.exchange}
-          actionType={exchangeActionModal.actionType}
           isLoading={loading}
         />
       )}

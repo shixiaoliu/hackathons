@@ -1,32 +1,21 @@
 import { FC } from 'react';
 import { formatDistanceToNow } from '../../utils/dateUtils';
 import { Exchange } from '../../services/api';
-import { Check, XIcon, Clock, ShoppingBag, AlertTriangle, User } from 'lucide-react';
+import { Check, XIcon, ShoppingBag, AlertTriangle, User } from 'lucide-react';
 import Card, { CardBody } from '../common/Card';
 
 interface ExchangeCardProps {
   exchange: Exchange;
   isChild?: boolean;
-  onApprove?: (exchangeId: number) => void;
-  onCancel?: (exchangeId: number) => void;
 }
 
 const ExchangeCard: FC<ExchangeCardProps> = ({ 
   exchange, 
-  isChild = false,
-  onApprove,
-  onCancel
+  isChild = false
 }) => {
   // 状态徽章
   const renderStatusBadge = () => {
     switch (exchange.status) {
-      case 'pending':
-        return (
-          <div className="flex items-center px-2 py-1 rounded bg-yellow-100 text-yellow-800 text-xs font-medium">
-            <Clock className="h-3 w-3 mr-1" />
-            待处理
-          </div>
-        );
       case 'completed':
       case 'confirmed':
         return (
@@ -50,7 +39,12 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
           </div>
         );
       default:
-        return null;
+        return (
+          <div className="flex items-center px-2 py-1 rounded bg-green-100 text-green-800 text-xs font-medium">
+            <Check className="h-3 w-3 mr-1" />
+            已完成
+          </div>
+        );
     }
   };
   
@@ -111,28 +105,6 @@ const ExchangeCard: FC<ExchangeCardProps> = ({
             
             {exchange.notes && (
               <p className="text-sm text-gray-600 mt-1">{exchange.notes}</p>
-            )}
-            
-            {!isChild && exchange.status === 'pending' && (
-              <div className="flex space-x-2 mt-2">
-                {onApprove && (
-                  <button
-                    onClick={() => onApprove(exchange.id)}
-                    className="text-sm px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
-                  >
-                    Approve
-                  </button>
-                )}
-                
-                {onCancel && (
-                  <button
-                    onClick={() => onCancel(exchange.id)}
-                    className="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
-                  >
-                    Reject
-                  </button>
-                )}
-              </div>
             )}
           </div>
         </div>

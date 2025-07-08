@@ -23,23 +23,20 @@ interface RewardContextType {
   updateReward: (id: number, data: Partial<Reward>) => Promise<boolean>;
   deleteReward: (id: number) => Promise<boolean>;
   fetchExchanges: () => Promise<void>;
-  approveExchange: (id: number, notes?: string) => Promise<boolean>;
-  cancelExchange: (id: number, notes?: string) => Promise<boolean>;
 }
 
 // 创建上下文
 export const RewardContext = createContext<RewardContextType | undefined>(undefined);
 
 // 提供者组件
-export const RewardProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export function RewardProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthContext();
+  const { selectedFamily } = useFamily();
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const { user } = useAuthContext();
-  const { selectedFamily, currentChild } = useFamily();
-
   // 获取家庭奖品列表
   const fetchRewards = async () => {
     let familyId: number | null = null;
@@ -209,90 +206,53 @@ export const RewardProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
-  // 获取兑换请求列表
+  // 获取所有兑换记录
   const fetchExchanges = async () => {
-    if (!selectedFamily || !selectedFamily.id) {
-      console.log('没有选择家庭，无法获取兑换请求');
+    if (!selectedFamily) {
+      console.log('未选择家庭，无法获取兑换记录');
       return;
     }
-
+    
     setLoading(true);
     setError(null);
+    
     try {
-      const response = await exchangeApi.getByFamily(parseInt(selectedFamily.id));
-      if (response.success) {
-        // 确保即使返回的数据为null或undefined也将exchanges设置为空数组
-        console.log('获取到家庭兑换记录:', response.data);
-        setExchanges(response.data || []);
+      console.log('获取家庭兑换记录:', selectedFamily.id);
+      
+      // 根据用户角色决定使用哪个API方法
+      const userRole = localStorage.getItem('user_role');
+      let response;
+      
+      if (userRole === 'parent') {
+        // 确保传递数字类型的ID
+        const familyId = typeof selectedFamily.id === 'string' 
+          ? parseInt(selectedFamily.id) 
+          : selectedFamily.id;
+        response = await exchangeApi.getByFamily(familyId);
       } else {
-        // 当出现404错误时，表示没有兑换记录，将exchanges设置为空数组
+        response = await exchangeApi.getByChild();
+      }
+      
+      console.log('获取兑换记录响应:', response);
+      
+      if (response.success && response.data) {
+        const processedExchanges = Array.isArray(response.data) ? response.data.map(exchange => ({
+          ...exchange,
+          status: exchange.status === 'confirmed' ? 'completed' : exchange.status
+        })) : [];
+        setExchanges(processedExchanges);
+      } else {
+        console.error('获取兑换记录失败:', response.error);
         if (response.status === 404) {
-          console.log('兑换请求列表为空');
+          console.log('没有找到兑换记录，设置为空数组');
           setExchanges([]);
         } else {
-          console.error('获取兑换请求列表返回错误:', response.error);
-          setError(response.error || '获取兑换请求列表失败');
+          setError(`获取兑换记录失败: ${response.error || '未知错误'}`);
         }
       }
-    } catch (err: any) {
-      console.error('获取兑换请求列表出错:', err);
-      // 当出现异常时，如果是404错误，表示没有兑换记录，将exchanges设置为空数组
-      if (err.response && err.response.status === 404) {
-        console.log('兑换请求列表为空 (404)');
-        setExchanges([]);
-      } else {
-        setError('获取兑换请求列表时发生错误');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 批准兑换请求
-  const approveExchange = async (id: number, notes?: string): Promise<boolean> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await exchangeApi.approve(id, notes);
-      if (response.success && response.data) {
-        // 更新列表
-        setExchanges(prev => prev.map(exchange => 
-          exchange.id === id ? { ...exchange, status: 'completed', notes: notes || exchange.notes } : exchange
-        ));
-        return true;
-      } else {
-        setError(response.error || '批准兑换请求失败');
-        return false;
-      }
-    } catch (err) {
-      console.error('批准兑换请求出错:', err);
-      setError('批准兑换请求时发生错误');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 取消兑换请求
-  const cancelExchange = async (id: number, notes?: string): Promise<boolean> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await exchangeApi.cancel(id, notes);
-      if (response.success && response.data) {
-        // 更新列表
-        setExchanges(prev => prev.map(exchange => 
-          exchange.id === id ? { ...exchange, status: 'cancelled', notes: notes || exchange.notes } : exchange
-        ));
-        return true;
-      } else {
-        setError(response.error || '取消兑换请求失败');
-        return false;
-      }
-    } catch (err) {
-      console.error('取消兑换请求出错:', err);
-      setError('取消兑换请求时发生错误');
-      return false;
+    } catch (error) {
+      console.error('获取兑换记录出错:', error);
+      setError('获取兑换记录失败，请稍后重试');
     } finally {
       setLoading(false);
     }
@@ -306,27 +266,25 @@ export const RewardProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }, [selectedFamily?.id, user]);
 
-  const contextValue: RewardContextType = {
-    rewards,
-    exchanges,
-    loading,
-    error,
-    fetchRewards,
-    setRewards,
-    createReward,
-    updateReward,
-    deleteReward,
-    fetchExchanges,
-    approveExchange,
-    cancelExchange
-  };
-
   return (
-    <RewardContext.Provider value={contextValue}>
+    <RewardContext.Provider
+      value={{
+        rewards,
+        exchanges,
+        loading,
+        error,
+        fetchRewards,
+        createReward,
+        updateReward,
+        deleteReward,
+        fetchExchanges,
+        setRewards
+      }}
+    >
       {children}
     </RewardContext.Provider>
   );
-};
+}
 
 // 自定义Hook，方便组件使用此上下文
 export const useReward = () => {
@@ -336,3 +294,4 @@ export const useReward = () => {
   }
   return context;
 }; 
+ 
