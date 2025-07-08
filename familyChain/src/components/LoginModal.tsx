@@ -34,32 +34,41 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         }
         // 使用手动输入的地址登录
         const success = await login(selectedRole, manualAddress);
+        console.log('Login result:', success);
         if (success) {
-          onClose();
+          // 确保onClose被调用
+          setTimeout(() => onClose(), 100);
         } else {
-          setLoginAttempts(prev => prev + 1);
-          // 如果失败3次或以上，显示重试按钮
-          if (loginAttempts >= 2) {
+          // 使用临时变量存储新的尝试次数，避免状态更新异步问题
+          const newAttempts = loginAttempts + 1;
+          setLoginAttempts(newAttempts);
+          // 根据新的尝试次数值来决定是否显示重试按钮
+          if (newAttempts >= 2) {
             setShowRetry(true);
           }
         }
       } else {
         // 使用钱包连接登录
         const success = await login(selectedRole);
+        console.log('Login result:', success);
         if (success) {
-          onClose();
+          // 确保onClose被调用
+          setTimeout(() => onClose(), 100);
         } else {
-          setLoginAttempts(prev => prev + 1);
-          // 如果失败3次或以上，显示重试按钮
-          if (loginAttempts >= 2) {
+          // 使用临时变量存储新的尝试次数，避免状态更新异步问题
+          const newAttempts = loginAttempts + 1;
+          setLoginAttempts(newAttempts);
+          // 根据新的尝试次数值来决定是否显示重试按钮
+          if (newAttempts >= 2) {
             setShowRetry(true);
           }
         }
       }
     } catch (err) {
       console.error('登录过程中发生错误:', err);
-      setLoginAttempts(prev => prev + 1);
-      if (loginAttempts >= 2) {
+      const newAttempts = loginAttempts + 1;
+      setLoginAttempts(newAttempts);
+      if (newAttempts >= 2) {
         setShowRetry(true);
       }
     }

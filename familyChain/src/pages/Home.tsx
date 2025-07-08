@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -17,7 +17,7 @@ interface HomeProps {
 
 const Home: React.FC<HomeProps> = ({ onLoginClick }) => {
   const { isConnected, address } = useAccount();
-  const { user } = useAuthContext();
+  const { user, isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
   const { setUserRole } = useUserRole();
   const { getAllChildren, loginAsChild } = useFamily();
@@ -27,6 +27,13 @@ const Home: React.FC<HomeProps> = ({ onLoginClick }) => {
 
   // 获取当前用户的钱包地址（优先使用user.wallet_address，其次使用wagmi的address）
   const currentWalletAddress = user?.wallet_address || address;
+  
+  // 当用户成功登录后，自动关闭登录模态窗口
+  useEffect(() => {
+    if (isAuthenticated) {
+      setShowLoginModal(false);
+    }
+  }, [isAuthenticated]);
 
   const handleRoleSelect = (role: 'parent' | 'child') => {
     if (role === 'child' && currentWalletAddress) {
