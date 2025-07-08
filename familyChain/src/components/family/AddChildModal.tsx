@@ -109,7 +109,6 @@ const AddChildModal: React.FC<AddChildModalProps> = ({ isOpen, onClose }) => {
                 <input
                   type="number"
                   min="1"
-                  max="17"
                   value={formData.age}
                   onChange={(e) => handleInputChange('age', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
