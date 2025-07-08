@@ -24,6 +24,9 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config, contractManager *blockchain.Co
 	router.Use(middleware.CORSMiddleware())
 	router.Use(gin.Recovery())
 
+	// 添加静态文件服务，使上传的图片可以通过URL访问
+	router.Static("/uploads", "./uploads")
+
 	// 创建仓库
 	rewardRepo := repository.NewRewardRepository(db)
 	exchangeRepo := repository.NewExchangeRepository(db)
@@ -94,6 +97,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config, contractManager *blockchain.Co
 				tasks.POST("/:id/complete", middleware.RequireRole("child"), taskHandler.CompleteTask)
 				tasks.POST("/:id/approve", middleware.RequireRole("parent"), taskHandler.ApproveTask)
 				tasks.POST("/:id/reject", middleware.RequireRole("parent"), taskHandler.RejectTask)
+				tasks.POST("/upload-image", taskHandler.UploadImage)
 			}
 
 			// 智能合约路由

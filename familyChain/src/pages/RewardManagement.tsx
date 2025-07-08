@@ -32,6 +32,8 @@ const RewardManagement = () => {
   const [activeTab, setActiveTab] = useState('available'); // 'available' 或 'exchanged'
   const [filter, setFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false); // 添加创建奖品的loading状态
+  const [editLoading, setEditLoading] = useState(false); // 添加编辑奖品的loading状态
   
   // 模态框状态
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -53,6 +55,7 @@ const RewardManagement = () => {
   
   // 处理添加奖品
   const handleAddReward = async (data: RewardCreateRequest) => {
+    setCreateLoading(true);
     // 检查图片URL是否为placeholder.com的URL
     if (data.image_url && data.image_url.includes('placeholder.com')) {
       // 使用安全的Base64编码函数
@@ -109,6 +112,8 @@ const RewardManagement = () => {
           
           if (result) {
             console.log('创建奖品成功:', result);
+            // 显示成功提示
+            alert(`奖品 "${data.name}" 创建成功！`);
             // 刷新奖品列表
             fetchRewards();
             // 关闭模态框
@@ -122,6 +127,8 @@ const RewardManagement = () => {
         const result = await createReward(data);
         if (result) {
           console.log('创建奖品成功:', result);
+          // 显示成功提示
+          alert(`奖品 "${data.name}" 创建成功！`);
           // 刷新奖品列表
           fetchRewards();
           // 关闭模态框
@@ -130,11 +137,16 @@ const RewardManagement = () => {
       }
     } catch (error) {
       console.error('创建奖品失败:', error);
+      // 显示错误提示
+      alert(`创建奖品失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setCreateLoading(false);
     }
   };
   
   // 处理编辑奖品
   const handleEditReward = async (data: RewardUpdateRequest) => {
+    setEditLoading(true);
     // 检查图片URL是否为placeholder.com的URL
     if (data.image_url && data.image_url.includes('placeholder.com')) {
       // 使用安全的Base64编码函数
@@ -158,13 +170,18 @@ const RewardManagement = () => {
       data.image_url = `data:image/svg+xml;base64,${safeBase64Encode(svg)}`;
     }
     
-    if (!selectedReward) return;
+    if (!selectedReward) {
+      setEditLoading(false);
+      return;
+    }
     
     try {
       console.log('开始更新奖品，数据:', data);
       const result = await updateReward(selectedReward.id, data);
       if (result) {
         console.log('更新奖品成功');
+        // 显示成功提示
+        alert(`奖品 "${data.name}" 更新成功！`);
         // 刷新奖品列表
         fetchRewards();
         // 关闭模态框
@@ -172,13 +189,25 @@ const RewardManagement = () => {
       }
     } catch (error) {
       console.error('更新奖品失败:', error);
+      // 显示错误提示
+      alert(`更新奖品失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setEditLoading(false);
     }
   };
   
   // 处理删除奖品
   const handleDeleteReward = async (reward: Reward) => {
     if (window.confirm(`确定要删除奖品 "${reward.name}" 吗？`)) {
-      await deleteReward(reward.id);
+      try {
+        const result = await deleteReward(reward.id);
+        if (result) {
+          alert(`奖品 "${reward.name}" 已成功删除！`);
+        }
+      } catch (error) {
+        console.error('删除奖品失败:', error);
+        alert(`删除奖品失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      }
     }
   };
   
@@ -418,7 +447,7 @@ const RewardManagement = () => {
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         onSubmit={handleAddReward}
-        isLoading={loading}
+        isLoading={createLoading}
       />
       
       {/* 编辑奖品模态框 */}
@@ -431,7 +460,7 @@ const RewardManagement = () => {
           }}
           onSubmit={handleEditReward}
           reward={selectedReward}
-          isLoading={loading}
+          isLoading={editLoading}
         />
       )}
     </div>

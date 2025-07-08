@@ -8,6 +8,7 @@ import { useTask } from '../context/TaskContext';
 import { useFamily } from '../context/FamilyContext';
 import { ethers } from 'ethers';
 import { getTaskContract, createTask as createTaskOnChain, TaskContractABI } from '../contracts/TaskContract';
+import { taskApi } from '../services/api';
 
 // Get contract address from environment variables
 const TASK_CONTRACT_ADDRESS = import.meta.env.VITE_TASK_CONTRACT_ADDRESS || '0x11dB634CFD2f58967e472a179ebDbaF8AB067144'; // Replace placeholder with actual fallback address
@@ -18,6 +19,8 @@ const CreateTask = () => {
   const { addTask } = useTask();
   const { getAllChildren, selectedChild } = useFamily();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const { switchChain } = useSwitchChain();
   const [localIsCreating, setLocalIsCreating] = useState(false);
   const [currentProvider, setCurrentProvider] = useState<any>(null);
@@ -63,7 +66,7 @@ const CreateTask = () => {
     }));
   };
   
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       // 检查文件类型是否为图片
@@ -72,80 +75,43 @@ const CreateTask = () => {
         return;
       }
 
-      console.log('上传图片类型:', file.type);
-      console.log('上传图片大小:', file.size / 1024, 'KB');
-
-      // 如果图片大于1MB，进行压缩
-      if (file.size > 1024 * 1024) {
-        console.log('图片过大，开始压缩...');
+      try {
+        // 显示上传进度状态
+        setIsUploadingImage(true);
+        
+        // 创建本地预览
         const reader = new FileReader();
         reader.onloadend = () => {
-          const img = new Image();
-          img.onload = () => {
-            console.log('原始图片尺寸:', img.width, 'x', img.height);
-            const canvas = document.createElement('canvas');
-            // 保持原始宽高比，但最大限制为800px
-            const MAX_WIDTH = 800;
-            const MAX_HEIGHT = 800;
-            let width = img.width;
-            let height = img.height;
-            
-            if (width > height) {
-              if (width > MAX_WIDTH) {
-                height *= MAX_WIDTH / width;
-                width = MAX_WIDTH;
-              }
-            } else {
-              if (height > MAX_HEIGHT) {
-                width *= MAX_HEIGHT / height;
-                height = MAX_HEIGHT;
-              }
-            }
-            
-            console.log('压缩后图片尺寸:', width, 'x', height);
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx?.drawImage(img, 0, 0, width, height);
-            
-            // 转换为Blob
-            canvas.toBlob((blob) => {
-              if (blob) {
-                // 将Blob转换为data URL
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                  const compressedDataURL = reader.result as string;
-                  console.log('压缩后图片长度:', compressedDataURL.length);
-                  console.log('压缩后图片类型:', compressedDataURL.substring(0, 30) + '...');
-                  setImagePreview(compressedDataURL);
-                  console.log('图片已压缩，大小约为:', Math.round(blob.size / 1024), 'KB');
-                };
-                reader.readAsDataURL(blob);
-              }
-            }, file.type, 0.7); // 0.7的质量比较好地平衡了大小和质量
-          };
-          img.src = reader.result as string;
+          setImagePreview(reader.result as string);
         };
         reader.readAsDataURL(file);
-      } else {
-        // 小图片直接使用
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (reader.result && typeof reader.result === 'string') {
-            const dataURL = reader.result;
-            console.log('小图片长度:', dataURL.length);
-            console.log('小图片类型:', dataURL.substring(0, 30) + '...');
-            setImagePreview(dataURL);
-            console.log('使用原始图片，大小约为:', Math.round(file.size / 1024), 'KB');
-          }
-        };
-        reader.readAsDataURL(file);
+        
+        // 上传图片到服务器
+        console.log('开始上传图片到服务器...');
+        const response = await taskApi.uploadImage(file);
+        
+        if (response.success && response.data) {
+          console.log('图片上传成功，URL:', response.data.url);
+          // 保存服务器返回的URL
+          setImageUrl(response.data.url);
+        } else {
+          console.error('图片上传失败:', response.error);
+          alert(`图片上传失败: ${response.error || '未知错误'}`);
+          setImagePreview(null);
+        }
+      } catch (error) {
+        console.error('图片上传过程中出错:', error);
+        alert('图片上传失败，请重试');
+        setImagePreview(null);
+      } finally {
+        setIsUploadingImage(false);
       }
     }
   };
   
   const removeImage = () => {
     setImagePreview(null);
+    setImageUrl(null);
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -347,7 +313,7 @@ const CreateTask = () => {
           assignedChildId: selectedChild?.id || undefined,
           assignedTo: selectedChild?.walletAddress || undefined,
           contractTaskId: contractTaskId, // 将区块链任务ID传递给后端
-          imageUrl: imagePreview // 添加图片URL
+          imageUrl: imageUrl // 使用服务器返回的URL而不是Base64数据
         });
 
         // 3. 如果选中了子账户，分配任务给子账户
@@ -575,6 +541,7 @@ const CreateTask = () => {
                             className="sr-only" 
                             accept="image/*"
                             onChange={handleImageChange}
+                            disabled={isUploadingImage}
                           />
                         </label>
                         <p className="pl-1">or drag and drop</p>
@@ -592,13 +559,24 @@ const CreateTask = () => {
                       className="w-full object-contain rounded-md"
                       style={{ maxHeight: "300px", width: "100%" }}
                     />
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-md">
+                        <div className="text-white">上传中...</div>
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={removeImage}
                       className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-md"
+                      disabled={isUploadingImage}
                     >
                       <X className="h-5 w-5 text-gray-600" />
                     </button>
+                    {imageUrl && (
+                      <div className="mt-2 text-xs text-green-600">
+                        图片已成功上传到服务器
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

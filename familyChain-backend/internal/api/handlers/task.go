@@ -6,7 +6,10 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"eth-for-babies-backend/internal/models"
@@ -15,6 +18,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -1130,4 +1134,67 @@ func (h *TaskHandler) ensureMinterRole() error {
 
 	log.Printf("[SUCCESS] 成功添加铸币权限，区块号: %d，状态: %d", receipt.BlockNumber.Uint64(), receipt.Status)
 	return nil
+}
+
+// UploadImage 处理图片上传并返回URL
+func (h *TaskHandler) UploadImage(c *gin.Context) {
+	// 从请求中获取文件
+	file, err := c.FormFile("image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "无法获取上传的文件: " + err.Error(),
+		})
+		return
+	}
+
+	// 检查文件类型是否为图片
+	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "只允许上传图片文件",
+		})
+		return
+	}
+
+	// 创建存储目录
+	uploadDir := "./uploads/images"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "创建上传目录失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 生成唯一文件名
+	fileExt := filepath.Ext(file.Filename)
+	uniqueID := uuid.New().String()
+	fileName := uniqueID + fileExt
+	filePath := filepath.Join(uploadDir, fileName)
+
+	// 保存文件到服务器
+	if err := c.SaveUploadedFile(file, filePath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "保存文件失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 构建可访问的URL
+	baseURL := c.Request.Host
+	protocol := "http"
+	if c.Request.TLS != nil {
+		protocol = "https"
+	}
+	imageURL := fmt.Sprintf("%s://%s/uploads/images/%s", protocol, baseURL, fileName)
+
+	// 返回文件URL
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"url": imageURL,
+		},
+	})
 }

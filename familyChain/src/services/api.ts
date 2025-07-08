@@ -518,6 +518,45 @@ export const taskApi = {
   create: (taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) =>
     apiClient.post<Task>('/tasks', taskData),
 
+  // 上传图片
+  uploadImage: async (imageFile: File): Promise<ApiResponse<{url: string}>> => {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+    const token = localStorage.getItem('auth_token');
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/tasks/upload-image`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || '上传图片失败',
+          status: response.status
+        };
+      }
+      
+      return {
+        success: true,
+        data: data.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '上传图片失败',
+      };
+    }
+  },
+
   // 获取任务列表
   getAll: (params?: { child_id?: number; status?: string }) => {
     const queryParams = new URLSearchParams();

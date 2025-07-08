@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, ImagePlus } from 'lucide-react';
+import { X, ImagePlus, Loader2 } from 'lucide-react';
 import Button from '../common/Button';
 import { Reward } from '../../types/reward';
+import { taskApi } from '../../services/api';
 
 interface RewardFormProps {
   initialData?: Reward;
@@ -43,6 +44,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
   const [stock, setStock] = useState(initialData?.stock || 1);
   const [previewImage, setPreviewImage] = useState<string | null>(initialData?.image_url || null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // 表单验证
   const validate = (): boolean => {
@@ -91,7 +93,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
       return;
     }
     
-    // 使用用户选择的图片或默认图片
+    // 使用上传到服务器的图片URL，如果没有则使用默认图片
     const finalImageUrl = imageUrl || generateDefaultImageDataUrl(name);
     
     onSubmit({
@@ -105,7 +107,7 @@ const RewardForm: React.FC<RewardFormProps> = ({
   };
 
   // 处理图片上传
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
@@ -115,23 +117,38 @@ const RewardForm: React.FC<RewardFormProps> = ({
       return;
     }
     
-    // 文件大小限制（500KB）
-    if (file.size > 500 * 1024) {
-      setErrors({...errors, imageUrl: '图片大小不能超过500KB'});
-      return;
+    try {
+      // 显示上传状态
+      setIsUploadingImage(true);
+      
+      // 创建本地预览
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      
+      // 上传图片到服务器
+      console.log('开始上传图片到服务器...');
+      const response = await taskApi.uploadImage(file);
+      
+      if (response.success && response.data) {
+        console.log('图片上传成功，URL:', response.data.url);
+        // 保存服务器返回的URL
+        setImageUrl(response.data.url);
+      } else {
+        console.error('图片上传失败:', response.error);
+        setErrors({...errors, imageUrl: `图片上传失败: ${response.error || '未知错误'}`});
+        // 不清除预览，让用户看到上传的是什么图片
+      }
+    } catch (error) {
+      console.error('图片上传过程中出错:', error);
+      setErrors({...errors, imageUrl: '图片上传失败，请重试'});
+    } finally {
+      setIsUploadingImage(false);
     }
     
-    // 创建预览URL
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      console.log('图片已加载，设置预览和URL');
-      setPreviewImage(result);
-      setImageUrl(result);
-    };
-    reader.readAsDataURL(file);
-    
-    // 清除错误
+    // 清除图片相关错误
     if (errors.imageUrl) {
       const { imageUrl, ...restErrors } = errors;
       setErrors(restErrors);
@@ -196,11 +213,17 @@ const RewardForm: React.FC<RewardFormProps> = ({
                 alt="奖品预览"
                 className="w-full h-full object-contain"
               />
+              {isUploadingImage && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-md">
+                  <Loader2 className="h-8 w-8 text-white animate-spin" />
+                  <span className="text-white ml-2">上传中...</span>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={clearImage}
                 className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-md hover:bg-gray-100"
-                disabled={isLoading}
+                disabled={isLoading || isUploadingImage}
               >
                 <X className="h-5 w-5 text-gray-500" />
               </button>
@@ -221,13 +244,13 @@ const RewardForm: React.FC<RewardFormProps> = ({
                 accept="image/*"
                 onChange={handleImageUpload}
                 className="hidden"
-                disabled={isLoading}
+                disabled={isLoading || isUploadingImage}
               />
               <label
                 htmlFor="image-upload"
-                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
+                className={`w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${isUploadingImage || isLoading ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-700 cursor-pointer hover:bg-gray-50'}`}
               >
-                Choose Image
+                {isUploadingImage ? 'Uploading...' : 'Choose Image'}
               </label>
             </div>
           </div>
@@ -237,8 +260,13 @@ const RewardForm: React.FC<RewardFormProps> = ({
           )}
           
           {/* 添加提示信息 */}
+          {imageUrl && (
+            <p className="text-xs text-green-600 self-start">
+              图片已成功上传到服务器
+            </p>
+          )}
           <p className="text-xs text-gray-500 self-start">
-            Uploaded images will be converted to inline format, no external image service needed
+            Recommended image size: 400x300px, max 5MB
           </p>
         </div>
       </div>
@@ -285,9 +313,9 @@ const RewardForm: React.FC<RewardFormProps> = ({
         <Button
           type="submit"
           isLoading={isLoading}
-          disabled={isLoading}
+          disabled={isLoading || isUploadingImage}
         >
-          {initialData ? 'Update Reward' : 'Create Reward'}
+          {isLoading ? (initialData ? "Updating..." : "Creating...") : (initialData ? 'Update Reward' : 'Create Reward')}
         </Button>
       </div>
     </form>
