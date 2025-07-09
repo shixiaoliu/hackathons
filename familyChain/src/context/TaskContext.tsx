@@ -983,7 +983,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
           createdAt: apiTask.created_at,
           updatedAt: apiTask.updated_at,
           completionCriteria: apiTask.description,
-          contractTaskId: apiTask.contract_task_id ? apiTask.contract_task_id.toString() : undefined
+          contractTaskId: apiTask.contract_task_id ? apiTask.contract_task_id.toString() : undefined,
+          imageUrl: apiTask.image_url
         };
       });
     } catch (error) {
