@@ -1,5 +1,7 @@
 # familyChain
 
+[English](README.en.md) | [中文](README.md)
+
 ## 📖 项目介绍与愿景
 
 familyChain 是一个基于以太坊区块链的家庭任务管理和奖励系统，旨在通过区块链技术培养孩子的责任感和金融素养。
