@@ -9,8 +9,8 @@ import RewardCard from '../components/reward/RewardCard';
 import ExchangeCard from '../components/reward/ExchangeCard';
 import AddRewardModal from '../components/reward/AddRewardModal';
 import EditRewardModal from '../components/reward/EditRewardModal';
-import ExchangeActionModal from '../components/reward/ExchangeActionModal';
 import { Reward, Exchange, RewardCreateRequest, RewardUpdateRequest } from '../types/reward';
+import { createRewardWithContract } from '../services/tokenService';
 
 const RewardManagement = () => {
   const navigate = useNavigate();
@@ -25,29 +25,20 @@ const RewardManagement = () => {
     createReward, 
     updateReward, 
     deleteReward, 
-    fetchExchanges,
-    approveExchange,
-    cancelExchange
+    fetchExchanges
   } = useReward();
   
   // 组件状态
   const [activeTab, setActiveTab] = useState('available'); // 'available' 或 'exchanged'
   const [filter, setFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false); // 添加创建奖品的loading状态
+  const [editLoading, setEditLoading] = useState(false); // 添加编辑奖品的loading状态
   
   // 模态框状态
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
-  const [exchangeActionModal, setExchangeActionModal] = useState<{
-    open: boolean;
-    exchange: Exchange | null;
-    actionType: 'approve' | 'cancel';
-  }>({
-    open: false,
-    exchange: null,
-    actionType: 'approve'
-  });
   
   // 处理刷新数据
   const handleRefresh = async () => {
@@ -64,6 +55,7 @@ const RewardManagement = () => {
   
   // 处理添加奖品
   const handleAddReward = async (data: RewardCreateRequest) => {
+    setCreateLoading(true);
     // 检查图片URL是否为placeholder.com的URL
     if (data.image_url && data.image_url.includes('placeholder.com')) {
       // 使用安全的Base64编码函数
@@ -89,21 +81,72 @@ const RewardManagement = () => {
     
     try {
       console.log('开始创建奖品，数据:', data);
-      const result = await createReward(data);
-      if (result) {
-        console.log('创建奖品成功:', result);
-        // 刷新奖品列表
-        fetchRewards();
-        // 关闭模态框
-        setAddModalOpen(false);
+      
+      // 检查是否需要在区块链上创建奖品
+      if (data.create_on_blockchain) {
+        console.log('在区块链上创建奖品');
+        
+        if (!selectedFamily || !selectedFamily.id) {
+          console.error('未选择家庭，无法在区块链上创建奖品');
+          return;
+        }
+        
+        // 调用合约创建奖品
+        const familyId = parseInt(selectedFamily.id);
+        const contractRewardId = await createRewardWithContract(
+          familyId,
+          data.name,
+          data.description || '',
+          data.image_url,
+          data.token_price,
+          data.stock || 1
+        );
+        
+        if (contractRewardId > 0) {
+          console.log('区块链上创建奖品成功，奖品ID:', contractRewardId);
+          // 在后端创建奖品记录，并关联区块链ID
+          const result = await createReward({
+            ...data,
+            contract_reward_id: contractRewardId
+          });
+          
+          if (result) {
+            console.log('创建奖品成功:', result);
+            // 显示成功提示
+            alert(`奖品 "${data.name}" 创建成功！`);
+            // 刷新奖品列表
+            fetchRewards();
+            // 关闭模态框
+            setAddModalOpen(false);
+          }
+        } else {
+          console.error('区块链上创建奖品失败');
+        }
+      } else {
+        // 仅在后端创建奖品
+        const result = await createReward(data);
+        if (result) {
+          console.log('创建奖品成功:', result);
+          // 显示成功提示
+          alert(`奖品 "${data.name}" 创建成功！`);
+          // 刷新奖品列表
+          fetchRewards();
+          // 关闭模态框
+          setAddModalOpen(false);
+        }
       }
     } catch (error) {
       console.error('创建奖品失败:', error);
+      // 显示错误提示
+      alert(`创建奖品失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setCreateLoading(false);
     }
   };
   
   // 处理编辑奖品
   const handleEditReward = async (data: RewardUpdateRequest) => {
+    setEditLoading(true);
     // 检查图片URL是否为placeholder.com的URL
     if (data.image_url && data.image_url.includes('placeholder.com')) {
       // 使用安全的Base64编码函数
@@ -127,13 +170,18 @@ const RewardManagement = () => {
       data.image_url = `data:image/svg+xml;base64,${safeBase64Encode(svg)}`;
     }
     
-    if (!selectedReward) return;
+    if (!selectedReward) {
+      setEditLoading(false);
+      return;
+    }
     
     try {
       console.log('开始更新奖品，数据:', data);
       const result = await updateReward(selectedReward.id, data);
       if (result) {
         console.log('更新奖品成功');
+        // 显示成功提示
+        alert(`奖品 "${data.name}" 更新成功！`);
         // 刷新奖品列表
         fetchRewards();
         // 关闭模态框
@@ -141,53 +189,25 @@ const RewardManagement = () => {
       }
     } catch (error) {
       console.error('更新奖品失败:', error);
+      // 显示错误提示
+      alert(`更新奖品失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setEditLoading(false);
     }
   };
   
   // 处理删除奖品
   const handleDeleteReward = async (reward: Reward) => {
     if (window.confirm(`确定要删除奖品 "${reward.name}" 吗？`)) {
-      await deleteReward(reward.id);
-    }
-  };
-  
-  // 处理批准兑换
-  const handleApproveExchange = (exchange: Exchange) => {
-    setExchangeActionModal({
-      open: true,
-      exchange,
-      actionType: 'approve'
-    });
-  };
-  
-  // 处理拒绝兑换
-  const handleCancelExchange = (exchange: Exchange) => {
-    setExchangeActionModal({
-      open: true,
-      exchange,
-      actionType: 'cancel'
-    });
-  };
-  
-  // 确认批准或拒绝兑换
-  const confirmExchangeAction = async (notes?: string) => {
-    if (!exchangeActionModal.exchange) return;
-    
-    const exchangeId = exchangeActionModal.exchange.id;
-    let success = false;
-    
-    if (exchangeActionModal.actionType === 'approve') {
-      success = await approveExchange(exchangeId, notes);
-    } else {
-      success = await cancelExchange(exchangeId, notes);
-    }
-    
-    if (success) {
-      setExchangeActionModal({
-        open: false,
-        exchange: null,
-        actionType: 'approve'
-      });
+      try {
+        const result = await deleteReward(reward.id);
+        if (result) {
+          alert(`奖品 "${reward.name}" 已成功删除！`);
+        }
+      } catch (error) {
+        console.error('删除奖品失败:', error);
+        alert(`删除奖品失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      }
     }
   };
   
@@ -202,14 +222,10 @@ const RewardManagement = () => {
   // 根据状态过滤兑换请求
   const filteredExchanges = exchanges.filter(exchange => {
     if (filter === 'all') return true;
-    if (filter === 'pending') return exchange.status === 'pending';
     if (filter === 'completed') return exchange.status === 'completed';
     if (filter === 'cancelled') return exchange.status === 'cancelled';
     return true;
   });
-  
-  // 统计待处理的兑换请求数量
-  const pendingExchangesCount = exchanges.filter(e => e.status === 'pending').length;
   
   // 监听标签页切换
   useEffect(() => {
@@ -327,7 +343,7 @@ const RewardManagement = () => {
         {loading && (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-primary-600"></div>
-            <p className="mt-2 text-gray-500">加载中...</p>
+            <p className="mt-2 text-gray-500">Loading...</p>
           </div>
         )}
         
@@ -339,7 +355,7 @@ const RewardManagement = () => {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-red-700">
-                  加载失败: {error}
+                  Loading failed: {error}
                 </p>
               </div>
             </div>
@@ -374,7 +390,7 @@ const RewardManagement = () => {
                         onClick={() => setAddModalOpen(true)}
                         className="mt-4"
                       >
-                        添加第一个奖品
+                        Add First Reward
                       </Button>
                     )}
                   </div>
@@ -389,8 +405,6 @@ const RewardManagement = () => {
                       <ExchangeCard 
                         key={exchange.id}
                         exchange={exchange}
-                        onApprove={() => handleApproveExchange(exchange)}
-                        onCancel={() => handleCancelExchange(exchange)}
                       />
                     ))}
                   </div>
@@ -400,22 +414,24 @@ const RewardManagement = () => {
                     <p className="mt-2 text-gray-500 text-lg">No exchange requests</p>
                     <p className="mt-1 text-sm text-gray-500">
                       {selectedFamily ? 
-                        `当前家庭 "${selectedFamily.name}" 没有兑换记录` :
-                        '请选择一个家庭查看兑换记录'
+                        `Family "${selectedFamily.name}" has no exchange records` :
+                        'Please select a family to view exchange records'
                       }
                     </p>
                     <div className="mt-4 flex flex-col items-center gap-2">
                       <button 
                         className="text-primary-600 hover:underline"
                         onClick={() => {
-                          console.log('尝试刷新兑换记录');
+                          console.log('手动刷新兑换记录');
                           if (selectedFamily) {
-                            console.log('刷新家庭兑换记录:', selectedFamily);
+                            console.log('当前选择的家庭:', selectedFamily);
                             fetchExchanges();
+                          } else {
+                            console.log('未选择家庭');
                           }
                         }}
                       >
-                        点击刷新兑换记录
+                        Click to Refresh Exchange Records
                       </button>
                     </div>
                   </div>
@@ -431,7 +447,7 @@ const RewardManagement = () => {
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         onSubmit={handleAddReward}
-        isLoading={loading}
+        isLoading={createLoading}
       />
       
       {/* 编辑奖品模态框 */}
@@ -444,23 +460,7 @@ const RewardManagement = () => {
           }}
           onSubmit={handleEditReward}
           reward={selectedReward}
-          isLoading={loading}
-        />
-      )}
-      
-      {/* 兑换操作模态框 */}
-      {exchangeActionModal.exchange && (
-        <ExchangeActionModal 
-          isOpen={exchangeActionModal.open}
-          onClose={() => setExchangeActionModal({
-            open: false,
-            exchange: null,
-            actionType: 'approve'
-          })}
-          onConfirm={confirmExchangeAction}
-          exchange={exchangeActionModal.exchange}
-          actionType={exchangeActionModal.actionType}
-          isLoading={loading}
+          isLoading={editLoading}
         />
       )}
     </div>

@@ -34,6 +34,13 @@ function App() {
     }
   }, [shouldShowLogin]);
 
+  // 当用户成功登录后，自动关闭登录模态窗口
+  useEffect(() => {
+    if (isAuthenticated) {
+      setShowLoginModal(false);
+    }
+  }, [isAuthenticated]);
+
   // 确保认证状态已经检查完毕
   useEffect(() => {
     if (!isLoading) {

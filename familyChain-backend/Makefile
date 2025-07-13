@@ -116,6 +116,18 @@ db-reset:
 	@rm -f $(DATA_DIR)/*.db
 	@echo "Database reset complete"
 
+# 数据库迁移
+.PHONY: migrate
+migrate:
+	@echo "Running database migrations..."
+	@mkdir -p $(DATA_DIR)
+	@if [ -f $(DATA_DIR)/database.db ]; then \
+		echo "Running migrations..."; \
+		goose -dir migrations sqlite3 $(DATA_DIR)/database.db up; \
+	else \
+		echo "Database file not found. Please run the application first to create it."; \
+	fi
+
 # 生产构建
 .PHONY: build-prod
 build-prod:
@@ -164,6 +176,7 @@ help:
 	@echo "  make clean         - Clean build files"
 	@echo "  make setup         - Setup project (create directories and .env)"
 	@echo "  make db-reset      - Reset database"
+	@echo "  make migrate       - Run database migrations"
 	@echo "  make build-prod    - Build for production"
 	@echo "  make docker-build  - Build Docker image"
 	@echo "  make docker-run    - Run Docker container"

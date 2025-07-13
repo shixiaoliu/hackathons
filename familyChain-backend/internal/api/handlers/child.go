@@ -23,7 +23,7 @@ func NewChildHandler(db *gorm.DB) *ChildHandler {
 type CreateChildRequest struct {
 	Name          string `json:"name" binding:"required"`
 	WalletAddress string `json:"wallet_address" binding:"required"`
-	Age           int    `json:"age" binding:"required,min=1,max=18"`
+	Age           int    `json:"age" binding:"required,min=1"`
 	Avatar        string `json:"avatar,omitempty"`
 }
 
@@ -456,7 +456,8 @@ func (h *ChildHandler) DeleteChild(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Delete(&child).Error; err != nil {
+	// 使用 Unscoped().Delete 实现永久删除，而不是软删除
+	if err := h.db.Unscoped().Delete(&child).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   "Failed to delete child",
@@ -466,6 +467,6 @@ func (h *ChildHandler) DeleteChild(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Child deleted successfully",
+		"message": "Child permanently deleted successfully",
 	})
 }

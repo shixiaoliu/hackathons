@@ -10,6 +10,7 @@ import { exchangeApi, contractApi, Reward, Exchange, apiClient } from '../servic
 import ExchangeCard from '../components/reward/ExchangeCard';
 import { getTokenBalance, updateLocalBalance, clearBalanceCache, exchangeRewardWithContract, burnTokens } from '../services/tokenService';
 import { ethers } from 'ethers';
+import { toast } from 'react-hot-toast';
 
 const RewardStore = () => {
   const navigate = useNavigate();
@@ -181,126 +182,157 @@ const RewardStore = () => {
       return;
     }
     
+    // 检查余额是否足够
     if (parseFloat(balance) < reward.token_price) {
-      alert('代币余额不足');
+      alert(`余额不足，需要 ${reward.token_price} FCT，当前余额 ${balance} FCT`);
       return;
     }
     
+    // 确认兑换
+    if (!window.confirm(`确定要兑换 ${reward.name} 吗？将消耗 ${reward.token_price} FCT`)) {
+      return;
+    }
+    
+    // 设置兑换中状态
     setExchangeInProgress(true);
+    
     try {
-      // 记录兑换请求详情，便于调试
-      console.log('兑换请求数据:', {
-        reward_id: reward.id,
-        childInfo: {
-          name: currentChild.name,
-          walletAddress: currentChild.walletAddress,
-        }
-      });
-
-      // 先尝试通过RewardRegistry合约兑换奖品
-      let exchangeSuccess = false;
-      try {
-        console.log('尝试通过RewardRegistry合约兑换奖品...');
-        exchangeSuccess = await exchangeRewardWithContract(reward.id);
-        console.log('合约兑换结果:', exchangeSuccess ? '成功' : '失败');
+      console.log('开始兑换奖品:', reward);
+      
+      // 检查奖品是否有关联的区块链ID
+      if (reward.contract_reward_id) {
+        console.log('此奖品有区块链ID，尝试通过智能合约兑换:', reward.contract_reward_id);
         
-        // 如果合约兑换成功，立即更新余额显示
-        if (exchangeSuccess) {
-          // 清除余额缓存
-          clearBalanceCache(currentChild.walletAddress);
-          
-          // 获取最新余额
-          const newBalance = await getTokenBalance(currentChild.walletAddress);
-          console.log('合约兑换成功，更新余额:', balance, '->', newBalance);
-          
-          // 更新本地状态
-          setBalance(newBalance);
-        }
-      } catch (contractError) {
-        console.error('通过RewardRegistry合约兑换奖品失败:', contractError);
-      }
-
-      // 如果合约兑换失败，使用API方式兑换
-      if (!exchangeSuccess) {
-        // 调用后端API处理兑换
-        const response = await exchangeApi.create({
-          reward_id: reward.id,
-          notes: `由${currentChild.name}兑换`,
-          token_burned: true // 告诉后端代币未在前端销毁，需要后端处理
-        });
+        // 调用智能合约进行兑换
+        const contractSuccess = await exchangeRewardWithContract(reward.contract_reward_id);
         
-        console.log('API兑换响应:', response);
-        
-        if (response.success) {
-          alert('兑换申请已提交');
+        if (contractSuccess) {
+          console.log('区块链兑换成功，清除余额缓存');
           
-          // 计算新余额
-          const newBalance = (parseFloat(balance) - reward.token_price).toString();
-          console.log('更新余额:', balance, '->', newBalance);
-          
-          // 更新本地状态
-          setBalance(newBalance);
-          
-          // 更新本地缓存的余额，确保刷新页面后余额仍然正确
-          if (currentChild.walletAddress) {
-            updateLocalBalance(currentChild.walletAddress, newBalance);
+          // 清除余额缓存，以便下次获取到最新余额
+          if (currentChild.wallet_address) {
+            clearBalanceCache(currentChild.wallet_address);
           }
           
-          // 立即从本地状态中移除已兑换的奖品
-          console.log('从本地移除奖品:', reward.id);
-          const updatedRewards = rewards.filter(r => r.id !== reward.id);
-          console.log('更新后的奖品列表:', updatedRewards);
+          // 获取最新余额
+          const newBalance = await getTokenBalance(currentChild.wallet_address);
+          console.log('兑换后新的余额:', newBalance);
+          setBalance(newBalance);
           
-          // 直接更新本地奖品列表状态
-          setRewards(updatedRewards);
+          toast.success('区块链兑换成功！', { duration: 4000 });
           
-          // 添加到兑换记录
-          if (response.data) {
-            console.log('添加到兑换记录:', response.data);
-            // 确保response.data是一个有效的Exchange对象
-            const newExchange = response.data as Exchange;
+          // 调用后端API记录兑换，标记为代币已在区块链上销毁
+          const response = await exchangeApi.create({
+            reward_id: reward.id,
+            notes: `由${currentChild.name}通过区块链兑换`,
+            token_burned: true // 告诉后端代币已在区块链上销毁
+          });
+          
+          console.log('API兑换响应:', response);
+          
+          if (response.success) {
+            // 从可用奖品列表中移除已兑换的奖品
+            const updatedAvailableRewards = rewards.filter(r => r.id !== reward.id);
+            setRewards(updatedAvailableRewards);
             
-            // 添加额外的字段，确保显示正确
-            const enhancedExchange = {
-              ...newExchange,
+            // 在兑换记录列表中添加新的兑换记录
+            const newExchange: Exchange = {
+              id: response.data.id,
+              reward_id: reward.id,
               reward_name: reward.name,
               reward_image: reward.image_url,
+              child_id: currentChild.id,
               child_name: currentChild.name,
               token_amount: reward.token_price,
-              token_burned: false // 记录代币是否已经被销毁
+              status: 'completed', // 已经自动完成
+              exchange_date: new Date().toISOString(),
+              completed_date: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              notes: `由${currentChild.name}通过区块链兑换，已自动完成`
             };
             
-            console.log('增强后的兑换记录:', enhancedExchange);
+            setExchanges(prev => [newExchange, ...prev]);
             
-            // 添加到兑换记录列表的开头
-            setExchanges(prev => [enhancedExchange, ...prev]);
-            
-            // 切换到兑换记录标签
+            // 切换到兑换记录标签页
             setActiveTab('exchanged');
           }
         } else {
-          alert(`兑换失败: ${response.error || '未知错误'}`);
+          console.log('区块链兑换失败，尝试通过API兑换');
+          toast.error('区块链兑换失败，正在尝试通过API处理...', { duration: 2000 });
+          
+          // 回退到API兑换方式
+          await handleApiExchange(reward);
         }
       } else {
-        // 如果合约兑换成功，更新UI
-        alert('兑换成功！');
-        
-        // 立即从本地状态中移除已兑换的奖品
-        console.log('从本地移除奖品:', reward.id);
-        const updatedRewards = rewards.filter(r => r.id !== reward.id);
-        setRewards(updatedRewards);
-        
-        // 刷新兑换记录
-        fetchExchanges();
-        
-        // 切换到兑换记录标签
-        setActiveTab('exchanged');
+        // 奖品没有关联的区块链ID，直接通过API兑换
+        console.log('奖品没有区块链ID，直接通过API兑换');
+        await handleApiExchange(reward);
       }
     } catch (error) {
-      console.error('兑换过程出错:', error);
-      alert(`兑换过程出错: ${error instanceof Error ? error.message : '未知错误'}`);
+      console.error('兑换过程中发生错误:', error);
+      toast.error('兑换失败，请稍后重试');
     } finally {
       setExchangeInProgress(false);
+    }
+  };
+  
+  // 通过API处理兑换
+  const handleApiExchange = async (reward: Reward) => {
+    try {
+      // 调用后端API处理兑换
+      const response = await exchangeApi.create({
+        reward_id: reward.id,
+        notes: `由${currentChild.name}兑换`,
+        token_burned: false // 告诉后端代币在前端未销毁，需要后端处理
+      });
+      
+      console.log('API兑换响应:', response);
+      
+      if (response.success) {
+        // 显示兑换成功提示
+        toast.success('兑换成功，奖品已完成兑换！', { duration: 4000 });
+        
+        // 计算新余额
+        const newBalance = (parseFloat(balance) - reward.token_price).toFixed(2);
+        console.log(`更新余额: ${balance} -> ${newBalance}`);
+        
+        // 更新本地余额
+        updateLocalBalance(currentChild.wallet_address, newBalance);
+        setBalance(newBalance);
+        
+        // 从可用奖品列表中移除已兑换的奖品
+        const updatedAvailableRewards = rewards.filter(r => r.id !== reward.id);
+        setRewards(updatedAvailableRewards);
+        
+        // 在兑换记录列表中添加新的兑换记录
+        const newExchange: Exchange = {
+          id: response.data.id,
+          reward_id: reward.id,
+          reward_name: reward.name,
+          reward_image: reward.image_url,
+          child_id: currentChild.id,
+          child_name: currentChild.name,
+          token_amount: reward.token_price,
+          status: 'completed', // 已经自动完成
+          exchange_date: new Date().toISOString(),
+          completed_date: new Date().toISOString(), // 自动设置完成时间
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          notes: `由${currentChild.name}兑换，已自动完成`
+        };
+        
+        setExchanges(prev => [newExchange, ...prev]);
+        
+        // 切换到兑换记录标签页
+        setActiveTab('exchanged');
+      } else {
+        toast.error(`兑换失败: ${response.error}`);
+      }
+    } catch (error) {
+      console.error('API兑换过程中发生错误:', error);
+      toast.error('兑换失败，请稍后重试');
+      throw error; // 重新抛出错误，让外层catch捕获
     }
   };
   

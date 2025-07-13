@@ -198,34 +198,37 @@ func (r *ExchangeRepository) GetExchangeWithDetails(id uint) (*models.Exchange, 
 	return &exchange, nil
 }
 
-// GetChildExchangesWithDetails 获取孩子的带详细信息的兑换记录
+// GetChildExchangesWithDetails 获取带详细信息的孩子兑换记录
 func (r *ExchangeRepository) GetChildExchangesWithDetails(childID uint) ([]*models.Exchange, error) {
 	var exchanges []*models.Exchange
-
-	fmt.Printf("获取孩子兑换记录，childID: %d\n", childID)
 
 	err := r.db.Where("child_id = ?", childID).
 		Order("exchange_date DESC").
 		Find(&exchanges).Error
 
 	if err != nil {
-		fmt.Printf("获取孩子兑换记录失败: %v\n", err)
 		return nil, err
 	}
 
-	fmt.Printf("查询到 %d 条兑换记录\n", len(exchanges))
-
+	// 为每条记录添加详细信息
 	for _, exchange := range exchanges {
 		// 获取奖品名称和图片
 		var reward models.Reward
 		if err := r.db.Select("name, image_url").First(&reward, exchange.RewardID).Error; err == nil {
 			exchange.RewardName = reward.Name
 			exchange.RewardImage = reward.ImageURL
-			fmt.Printf("兑换记录 %d: 奖品名称=%s, 奖品图片=%s\n", exchange.ID, reward.Name, reward.ImageURL)
-		} else {
-			fmt.Printf("获取奖品信息失败，兑换ID: %d, 奖品ID: %d, 错误: %v\n", exchange.ID, exchange.RewardID, err)
 		}
 	}
 
 	return exchanges, nil
+}
+
+// AddNotes 向兑换记录添加备注信息，但不改变其状态
+func (r *ExchangeRepository) AddNotes(id uint, notes string) error {
+	updates := map[string]interface{}{
+		"notes":      notes,
+		"updated_at": time.Now(),
+	}
+
+	return r.db.Model(&models.Exchange{}).Where("id = ?", id).Updates(updates).Error
 }

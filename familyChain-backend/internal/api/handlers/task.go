@@ -6,7 +6,10 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"eth-for-babies-backend/internal/models"
@@ -15,6 +18,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -35,6 +39,7 @@ type CreateTaskRequest struct {
 	Description     string  `json:"description" binding:"required"`
 	RewardAmount    string  `json:"reward_amount" binding:"required"`
 	Difficulty      string  `json:"difficulty" binding:"required"`
+	ImageUrl        string  `json:"image_url,omitempty"`
 	AssignedChildID *uint   `json:"assigned_child_id,omitempty"`
 	DueDate         string  `json:"due_date,omitempty"`
 	ContractTaskID  *uint64 `json:"contract_task_id,omitempty"`
@@ -46,6 +51,7 @@ type UpdateTaskRequest struct {
 	RewardAmount    string `json:"reward_amount,omitempty"`
 	Difficulty      string `json:"difficulty,omitempty"`
 	Status          string `json:"status,omitempty"`
+	ImageUrl        string `json:"image_url,omitempty"`
 	AssignedChildID *uint  `json:"assigned_child_id,omitempty"`
 	DueDate         string `json:"due_date,omitempty"`
 }
@@ -67,6 +73,23 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 			"error":   "Invalid request data",
 		})
 		return
+	}
+
+	// 记录请求参数
+	log.Printf("创建任务请求: Title=%s, Description=%s, Difficulty=%s", req.Title, req.Description, req.Difficulty)
+
+	// 特别记录图片URL情况
+	if req.ImageUrl != "" {
+		urlLength := len(req.ImageUrl)
+		var prefix string
+		if urlLength > 30 {
+			prefix = req.ImageUrl[:30] + "..."
+		} else {
+			prefix = req.ImageUrl
+		}
+		log.Printf("请求包含图片URL: 长度=%d, 前缀=%s", urlLength, prefix)
+	} else {
+		log.Printf("请求中不包含图片URL")
 	}
 
 	// 获取当前用户信息
@@ -125,6 +148,18 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		Status:          "pending",
 		CreatedBy:       walletAddress.(string),
 		AssignedChildID: req.AssignedChildID,
+	}
+
+	// 设置图片URL（如果前端提供了）
+	if req.ImageUrl != "" {
+		log.Printf("准备保存图片URL: 长度=%d", len(req.ImageUrl))
+		// 检查图片URL是否过长，SQLite可能有限制
+		if len(req.ImageUrl) > 2000000 {
+			log.Printf("图片URL太长，可能会导致问题: %d 字符", len(req.ImageUrl))
+		}
+		imageUrl := req.ImageUrl
+		task.ImageUrl = &imageUrl
+		log.Printf("已设置图片URL到任务对象")
 	}
 
 	// 设置合约任务ID（如果前端提供了）
@@ -384,6 +419,10 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	}
 	if req.Status != "" && utils.IsValidTaskStatus(req.Status) {
 		task.Status = req.Status
+	}
+	if req.ImageUrl != "" {
+		imageUrl := req.ImageUrl
+		task.ImageUrl = &imageUrl
 	}
 	if req.AssignedChildID != nil {
 		// 验证孩子是否属于当前父母
@@ -1095,4 +1134,67 @@ func (h *TaskHandler) ensureMinterRole() error {
 
 	log.Printf("[SUCCESS] 成功添加铸币权限，区块号: %d，状态: %d", receipt.BlockNumber.Uint64(), receipt.Status)
 	return nil
+}
+
+// UploadImage 处理图片上传并返回URL
+func (h *TaskHandler) UploadImage(c *gin.Context) {
+	// 从请求中获取文件
+	file, err := c.FormFile("image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "无法获取上传的文件: " + err.Error(),
+		})
+		return
+	}
+
+	// 检查文件类型是否为图片
+	if !strings.HasPrefix(file.Header.Get("Content-Type"), "image/") {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "只允许上传图片文件",
+		})
+		return
+	}
+
+	// 创建存储目录
+	uploadDir := "./uploads/images"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "创建上传目录失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 生成唯一文件名
+	fileExt := filepath.Ext(file.Filename)
+	uniqueID := uuid.New().String()
+	fileName := uniqueID + fileExt
+	filePath := filepath.Join(uploadDir, fileName)
+
+	// 保存文件到服务器
+	if err := c.SaveUploadedFile(file, filePath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "保存文件失败: " + err.Error(),
+		})
+		return
+	}
+
+	// 构建可访问的URL
+	baseURL := c.Request.Host
+	protocol := "http"
+	if c.Request.TLS != nil {
+		protocol = "https"
+	}
+	imageURL := fmt.Sprintf("%s://%s/uploads/images/%s", protocol, baseURL, fileName)
+
+	// 返回文件URL
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"url": imageURL,
+		},
+	})
 }

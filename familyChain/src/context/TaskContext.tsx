@@ -100,7 +100,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
               createdAt: apiTask.created_at,
               updatedAt: apiTask.updated_at,
               completionCriteria: apiTask.description, // 使用description作为完成标准
-              contractTaskId: apiTask.contract_task_id ? apiTask.contract_task_id.toString() : undefined // 添加合约任务ID
+              contractTaskId: apiTask.contract_task_id ? apiTask.contract_task_id.toString() : undefined, // 添加合约任务ID
+              imageUrl: apiTask.image_url // 添加图片URL
             };
           });
           console.log('[TaskContext] 成功获取任务:', apiTasks.length, '个任务');
@@ -185,8 +186,18 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         due_date: formattedDueDate,
         created_by: creatorAddress,
         status: 'pending' as const,
-        contract_task_id: taskData.contractTaskId ? Number(taskData.contractTaskId) : undefined // Add contract task ID
+        contract_task_id: taskData.contractTaskId ? Number(taskData.contractTaskId) : undefined, // Add contract task ID
+        image_url: taskData.imageUrl
       };
+      
+      // 添加详细的图片日志
+      if (taskData.imageUrl) {
+        console.log('原始图片URL长度:', taskData.imageUrl.length);
+        console.log('图片URL类型:', taskData.imageUrl.substring(0, 30) + '...');
+        console.log('发送到后端的image_url:', apiTaskData.image_url ? '有值(长度: ' + apiTaskData.image_url.length + ')' : 'undefined');
+      } else {
+        console.log('没有图片URL提供');
+      }
       
       console.log('Sending API data:', apiTaskData);
       
@@ -207,7 +218,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
           createdAt: response.data.created_at,
           updatedAt: response.data.updated_at,
           completionCriteria: taskData.completionCriteria,
-          contractTaskId: response.data.contract_task_id?.toString() // Add contract task ID to response
+          contractTaskId: response.data.contract_task_id?.toString(), // Add contract task ID to response
+          imageUrl: response.data.image_url || taskData.imageUrl
         };
         setTasks(prev => [...prev, newTask]);
         console.log('Task added via API:', newTask);
@@ -971,7 +983,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
           createdAt: apiTask.created_at,
           updatedAt: apiTask.updated_at,
           completionCriteria: apiTask.description,
-          contractTaskId: apiTask.contract_task_id ? apiTask.contract_task_id.toString() : undefined
+          contractTaskId: apiTask.contract_task_id ? apiTask.contract_task_id.toString() : undefined,
+          imageUrl: apiTask.image_url
         };
       });
     } catch (error) {

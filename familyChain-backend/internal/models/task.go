@@ -13,6 +13,7 @@ type Task struct {
 	RewardAmount    string         `json:"reward_amount" gorm:"not null"`
 	Difficulty      string         `json:"difficulty" gorm:"not null;check:difficulty IN ('easy', 'medium', 'hard')"`
 	Status          string         `json:"status" gorm:"not null;default:'pending';check:status IN ('pending', 'in_progress', 'completed', 'approved', 'rejected')"`
+	ImageUrl        *string        `json:"image_url,omitempty"`
 	AssignedChildID *uint          `json:"assigned_child_id,omitempty"`
 	CreatedBy       string         `json:"created_by" gorm:"not null"`
 	ContractTaskID  *uint64        `json:"contract_task_id,omitempty" gorm:"index"`
